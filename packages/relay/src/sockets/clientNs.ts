@@ -92,6 +92,11 @@ export function setupClientNamespace(io: Server, redis: Redis) {
     socket.on('client:session:input', async ({
       sessionId, text,
     }: { sessionId: string; text: string }) => {
+      // A-014: bound stdin payloads (32 KiB) before persisting/forwarding.
+      if (typeof text !== 'string' || text.length > 32 * 1024) {
+        socket.emit('relay:error', { code: 'BAD_INPUT', message: 'Input too large' });
+        return;
+      }
       if (!await limiter.inputWrite(accountId, sessionId)) {
         socket.emit('relay:error', { code: 'RATE_LIMITED', message: 'Slow down' });
         return;
@@ -170,6 +175,13 @@ export function setupClientNamespace(io: Server, redis: Redis) {
     socket.on('client:session:spawn', async ({
       name, cmd, cwd,
     }: { name: string; cmd: string; cwd: string }) => {
+      // A-014: bound spawn fields before forwarding to the daemon.
+      if (typeof cmd !== 'string' || !cmd.trim() || cmd.length > 4096 ||
+          (name != null && (typeof name !== 'string' || name.length > 256)) ||
+          (cwd  != null && (typeof cwd  !== 'string' || cwd.length  > 4096))) {
+        socket.emit('relay:error', { code: 'BAD_INPUT', message: 'Invalid spawn request' });
+        return;
+      }
       if (!await limiter.spawn(accountId)) {
         socket.emit('relay:error', {
           code:    'RATE_LIMITED',

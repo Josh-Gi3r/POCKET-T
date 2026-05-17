@@ -243,8 +243,14 @@ export async function authRoutes(app: FastifyInstance, redis: Redis) {
     { onRequest: [requireAuth] },
     async (req: any, reply) => {
       const { sessionId } = req.params;
-      const before  = req.query.before ? Number(req.query.before) : undefined;
-      const limit   = Math.min(Number(req.query.limit ?? 100), 200);
+      // A-014: validate numeric query params — NaN/negative are rejected,
+      // limit is clamped to [1, 200].
+      const beforeN = Number(req.query.before);
+      const before  = req.query.before && Number.isFinite(beforeN) && beforeN > 0
+        ? beforeN : undefined;
+      const limitN  = Number(req.query.limit ?? 100);
+      const limit   = Number.isFinite(limitN)
+        ? Math.min(Math.max(Math.floor(limitN), 1), 200) : 100;
 
       const [row] = await sql`
         SELECT id FROM sessions
@@ -293,33 +299,36 @@ export async function authRoutes(app: FastifyInstance, redis: Redis) {
     },
   );
 
-  // ── E2E pairing URL (daemon calls this after connecting) ──────────────
-  app.post<{
-    Params: { sessionId: string };
-    Body: { outputKey: string; inputKey: string };
-  }>(
-    '/api/sessions/:sessionId/pair',
-    { onRequest: [requireDaemonAuth] },
-    async (req: any) => {
-      const { sessionId } = req.params;
-      const { outputKey, inputKey } = req.body as {
-        outputKey: string;
-        inputKey:  string;
-      };
+  // ── E2E pairing URL — Phase 2 only (A-009) ────────────────────────────
+  // The current design has the relay briefly hold the pairing keys, which
+  // contradicts the relay-cannot-read model. Not registered until the E2E
+  // key-handling design is finalised (POCKET_T_PHASE2=1 to opt in).
+  if (process.env.POCKET_T_PHASE2 === '1') {
+    app.post<{
+      Params: { sessionId: string };
+      Body: { outputKey: string; inputKey: string };
+    }>(
+      '/api/sessions/:sessionId/pair',
+      { onRequest: [requireDaemonAuth] },
+      async (req: any) => {
+        const { sessionId } = req.params;
+        const { outputKey, inputKey } = req.body as {
+          outputKey: string;
+          inputKey:  string;
+        };
 
-      // Store temporarily in Redis with 5-min TTL
-      await redis.setex(
-        `pair:${sessionId}`,
-        300,
-        JSON.stringify({ outputKey, inputKey }),
-      );
+        await redis.setex(
+          `pair:${sessionId}`,
+          300,
+          JSON.stringify({ outputKey, inputKey }),
+        );
 
-      const fragment   = `outputKey=${encodeURIComponent(outputKey)}&inputKey=${encodeURIComponent(inputKey)}`;
-      const pairingUrl = `${process.env.APP_URL}/pair/${sessionId}#${fragment}`;
-
-      return { pairingUrl };
-    },
-  );
+        const fragment   = `outputKey=${encodeURIComponent(outputKey)}&inputKey=${encodeURIComponent(inputKey)}`;
+        const pairingUrl = `${process.env.APP_URL}/pair/${sessionId}#${fragment}`;
+        return { pairingUrl };
+      },
+    );
+  }
 }
 
 // ── Auth middleware ───────────────────────────────────────────────────────

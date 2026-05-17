@@ -208,10 +208,19 @@ export class HookServer extends EventEmitter {
   }
 }
 
+// A-014: cap the local hook request body (1 MiB) — destroy the socket if
+// a caller streams more so a local process can't exhaust daemon memory.
+const MAX_HOOK_BODY = 1024 * 1024;
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve) => {
     let body = '';
-    req.on('data', (d: Buffer) => (body += d.toString()));
+    let size = 0;
+    req.on('data', (d: Buffer) => {
+      size += d.length;
+      if (size > MAX_HOOK_BODY) { req.destroy(); resolve(body); return; }
+      body += d.toString();
+    });
     req.on('end', () => resolve(body));
+    req.on('error', () => resolve(body));
   });
 }

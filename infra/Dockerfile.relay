@@ -24,5 +24,10 @@ COPY --from=build /app/packages/relay/dist ./dist
 COPY --from=build /app/packages/relay/node_modules ./node_modules
 COPY --from=build /app/packages/shared/dist \
   ./node_modules/@pocket-t/shared/dist
+# A-015: drop privileges — run as the built-in non-root `node` user.
+RUN chown -R node:node /app
+USER node
 EXPOSE 4000
-CMD ["node", "--enable-source-maps", "dist/main.js"]
+# A-015: no --enable-source-maps in production (avoids leaking internals
+# in stack traces). Set NODE_OPTIONS=--enable-source-maps locally to debug.
+CMD ["node", "dist/main.js"]

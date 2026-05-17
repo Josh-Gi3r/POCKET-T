@@ -30,9 +30,13 @@ for (const key of REQUIRED) {
 }
 
 // ── Fastify ───────────────────────────────────────────────────────────────
+// A-013: don't blindly trust X-Forwarded-* . TRUST_PROXY is the hop count
+// of trusted proxies in front of the relay (Fly = 1). Set explicitly per
+// deployment; defaults to 1, never the wide-open `true`.
+const TRUST_PROXY = Number(process.env.TRUST_PROXY ?? '1');
 const app = Fastify({
   logger:      { level: process.env.LOG_LEVEL ?? 'info' },
-  trustProxy:  true,
+  trustProxy:  Number.isFinite(TRUST_PROXY) ? TRUST_PROXY : 1,
 });
 
 await app.register(FastifyCookie, {
