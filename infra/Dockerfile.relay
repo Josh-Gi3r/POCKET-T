@@ -1,0 +1,28 @@
+FROM node:20-slim AS base
+WORKDIR /app
+RUN npm install -g pnpm@9
+
+FROM base AS deps
+COPY package.json pnpm-workspace.yaml ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/relay/package.json packages/relay/
+RUN pnpm install --frozen-lockfile --filter @pocket-t/relay... \
+ && pnpm install --frozen-lockfile --filter @pocket-t/shared
+
+FROM base AS build
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages ./packages
+COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
+COPY packages/relay packages/relay
+RUN pnpm --filter @pocket-t/shared build \
+ && pnpm --filter @pocket-t/relay build
+
+FROM node:20-slim
+WORKDIR /app
+COPY --from=build /app/packages/relay/dist ./dist
+COPY --from=build /app/packages/relay/node_modules ./node_modules
+COPY --from=build /app/packages/shared/dist \
+  ./node_modules/@pocket-t/shared/dist
+EXPOSE 4000
+CMD ["node", "--enable-source-maps", "dist/main.js"]

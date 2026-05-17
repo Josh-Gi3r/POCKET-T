@@ -1,0 +1,30 @@
+{
+  "name": "@pocket-t/daemon",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": { "pocket-t": "./dist/main.js" },
+  "scripts": {
+    "dev":       "tsx watch src/main.ts run",
+    "build":     "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test":      "vitest run"
+  },
+  "dependencies": {
+    "@pocket-t/shared":       "workspace:*",
+    "keytar":                 "^7.9.0",
+    "@xterm/addon-serialize": "^0.13.0",
+    "@xterm/headless":        "^5.5.0",
+    "ghostty-opentui":        "^1.5.0",
+    "node-pty":               "^1.0.0",
+    "socket.io-client":       "^4.7.5",
+    "uuid":                   "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node":  "^20.12.0",
+    "@types/uuid":  "^10.0.0",
+    "esbuild":      "^0.21.0",
+    "tsx":          "^4.11.0",
+    "typescript":   "^5.4.0",
+    "vitest":       "^1.6.0"
+  }
+}

@@ -1,0 +1,29 @@
+app            = "pocket-t-relay"
+primary_region = "sin"   # Singapore — primary write region
+
+[build]
+  dockerfile = "infra/Dockerfile.relay"
+
+[[services]]
+  internal_port = 4000
+  protocol      = "tcp"
+
+  [services.concurrency]
+    type       = "connections"
+    hard_limit = 5000
+    soft_limit = 4000
+
+  [[services.ports]]
+    handlers    = ["tls", "http"]
+    port        = 443
+    force_https = true
+
+[env]
+  NODE_ENV       = "production"
+  PORT           = "4000"
+  PRIMARY_REGION = "sin"
+
+[[vm]]
+  memory   = "1gb"
+  cpu_kind = "shared"
+  cpus     = 2

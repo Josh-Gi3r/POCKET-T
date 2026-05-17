@@ -1,0 +1,22 @@
+{
+  "name": "pocket-t",
+  "private": true,
+  "scripts": {
+    "dev:relay":  "pnpm --filter @pocket-t/relay dev",
+    "dev:web":    "pnpm --filter @pocket-t/web dev",
+    "dev:daemon": "pnpm --filter @pocket-t/daemon dev",
+    "build":      "pnpm -r build",
+    "typecheck":  "pnpm -r typecheck",
+    "db:migrate": "psql $DATABASE_URL -f packages/relay/src/db/schema.sql"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "keytar",
+      "node-pty",
+      "esbuild"
+    ]
+  }
+}

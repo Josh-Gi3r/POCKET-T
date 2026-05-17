@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>pocket-t — your terminal &amp; agents, on your phone</title>
+  <meta name="description" content="pocket-t puts any terminal session — Claude Code, Codex, Aider, Gemini CLI — on your phone. One-tap tool approvals, deterministic project memory (Memento), MCP-ready for OpenClaw, Hermes, NanoClaw, Claude Desktop, Cursor. Free and open source." />
+  <meta name="keywords" content="Claude Code, Claude CLI, Codex, Aider, Gemini CLI, OpenClaw, Hermes, NanoClaw, Cursor, Claude Desktop, MCP, Model Context Protocol, terminal, AI agent supervisor, agent memory, mobile terminal, PTY, self-hosted, open source" />
+  <meta name="theme-color" content="#0C0D0F" />
+  <meta property="og:title" content="pocket-t — your terminal &amp; agents, on your phone" />
+  <meta property="og:description" content="Any terminal. Any agent. On your phone. One-tap approvals, project memory, MCP-ready. Free &amp; open source." />
+  <meta property="og:type" content="website" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+          },
+          colors: {
+            ink:   { 950:'#0C0D0F', 900:'#13151A', 800:'#1A1D24', 700:'#22262F' },
+            chalk: { 50:'#F5F6F8', 100:'#E7E8EC', 300:'#9CA0AB', 500:'#6B7080' },
+            accent:{ 400:'#a78bfa', 500:'#7C7CF6', 600:'#6366F1' },
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing:border-box; }
+    html { scroll-behavior:smooth; scroll-padding-top:80px; }
+    html, body { background:#0C0D0F; color:#F5F6F8; }
+    body { overflow-x:hidden; }
+
+    .grain{position:absolute;inset:0;pointer-events:none;opacity:.04;mix-blend-mode:overlay;
+      background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");}
+    .glow{background:
+      radial-gradient(60% 50% at 50% 0%, rgba(99,102,241,.18), transparent 70%),
+      radial-gradient(40% 60% at 88% 28%, rgba(167,139,250,.10), transparent 70%);}
+    .ring-soft{box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);}
+    .ring-soft-hover{transition:transform .18s ease, box-shadow .18s ease;}
+    .ring-soft-hover:hover{box-shadow:inset 0 0 0 1px rgba(167,139,250,.4), 0 0 60px -10px rgba(99,102,241,.25);transform:translateY(-2px);}
+    .glass{backdrop-filter:blur(12px);background:rgba(19,21,26,.7);}
+    @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+    .marquee{animation:marquee 48s linear infinite;}
+    .gradient-text{background:linear-gradient(180deg,#F5F6F8 0%,#9CA0AB 100%);-webkit-background-clip:text;background-clip:text;color:transparent;}
+    .accent-text{background:linear-gradient(90deg,#a78bfa 0%,#7C7CF6 100%);-webkit-background-clip:text;background-clip:text;color:transparent;}
+    a{color:inherit;}
+    .codeblock{font-family:'JetBrains Mono',monospace;background:#13151A;border:1px solid rgba(255,255,255,.06);border-radius:12px;}
+    .codeblock pre{font-size:13px;}
+    details.acc{border-top:1px solid rgba(255,255,255,.06);}
+    details.acc:last-of-type{border-bottom:1px solid rgba(255,255,255,.06);}
+    details.acc summary{list-style:none;cursor:pointer;padding:18px 4px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+    details.acc summary::-webkit-details-marker{display:none;}
+    details.acc summary .chev{transition:transform .18s ease;color:#6B7080;}
+    details.acc[open] summary .chev{transform:rotate(180deg);color:#a78bfa;}
+    details.acc[open] summary .acc-title{color:#F5F6F8;}
+    details.acc summary:hover .acc-title{color:#F5F6F8;}
+    details.acc .acc-body{padding:0 4px 22px;color:#9CA0AB;line-height:1.65;}
+    .tabbar{display:inline-flex;padding:4px;gap:4px;background:#13151A;border:1px solid rgba(255,255,255,.06);border-radius:10px;flex-wrap:wrap;}
+    .tab-btn{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:500;color:#9CA0AB;cursor:pointer;transition:all .15s;}
+    .tab-btn:hover{color:#F5F6F8;}
+    .tab-btn[aria-selected="true"]{background:rgba(124,124,246,.14);color:#a78bfa;}
+    .tab-panel{display:none;} .tab-panel.active{display:block;}
+    .mobile-menu{display:none;} .mobile-menu.open{display:block;}
+    .bento{transition:all .2s ease;}
+    .bento:hover{background:rgba(19,21,26,.85);border-color:rgba(167,139,250,.2);}
+    @media (max-width:640px){ h1{font-size:2.5rem!important;line-height:1.1!important;} h2{font-size:1.875rem!important;line-height:1.2!important;} .codeblock pre{font-size:11.5px;} }
+  </style>
+</head>
+<body class="font-sans antialiased">
+
+  <!-- NAV -->
+  <header class="fixed top-0 inset-x-0 z-50 glass border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-5 lg:px-6 h-16 flex items-center justify-between">
+      <a href="#" class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-md bg-accent-600/15 border border-accent-500/40 flex items-center justify-center">
+          <span class="text-accent-400 font-bold text-sm font-mono">p</span>
+        </div>
+        <span class="font-semibold tracking-tight font-mono">pocket-t</span>
+      </a>
+      <nav class="hidden lg:flex items-center gap-6 text-sm text-chalk-300">
+        <a href="#what" class="hover:text-chalk-50">What</a>
+        <a href="#hosts" class="hover:text-chalk-50">Agents</a>
+        <a href="#mcp" class="hover:text-chalk-50">MCP</a>
+        <a href="#memento" class="hover:text-chalk-50">Memento</a>
+        <a href="#install" class="hover:text-chalk-50">Install</a>
+        <span class="h-4 w-px bg-white/10"></span>
+        <a href="https://github.com/your-org/pocket-t" target="_blank" rel="noopener" class="text-accent-400 hover:text-accent-500 font-medium">GitHub</a>
+      </nav>
+      <div class="flex items-center gap-3">
+        <a href="#install" class="hidden sm:inline-block text-sm bg-accent-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-accent-500 transition">Install</a>
+        <button id="menu-btn" class="lg:hidden w-9 h-9 rounded-md ring-soft flex items-center justify-center text-chalk-300 hover:text-chalk-50" aria-label="Menu" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="mobile-menu" class="mobile-menu lg:hidden border-t border-white/5 bg-ink-950/95">
+      <nav class="px-5 py-4 grid gap-1 text-sm">
+        <a href="#what" class="py-2.5 text-chalk-300 hover:text-chalk-50">What</a>
+        <a href="#hosts" class="py-2.5 text-chalk-300 hover:text-chalk-50">Agents</a>
+        <a href="#mcp" class="py-2.5 text-chalk-300 hover:text-chalk-50">MCP</a>
+        <a href="#memento" class="py-2.5 text-chalk-300 hover:text-chalk-50">Memento</a>
+        <a href="#install" class="py-2.5 text-chalk-300 hover:text-chalk-50">Install</a>
+        <div class="my-2 border-t border-white/5"></div>
+        <a href="https://github.com/your-org/pocket-t" target="_blank" rel="noopener" class="py-2.5 text-accent-400 hover:text-accent-500 font-medium">GitHub →</a>
+        <a href="#install" class="mt-2 py-3 px-4 rounded-lg bg-accent-600 text-white font-semibold text-center">Install</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="relative pt-32 sm:pt-40 pb-20 sm:pb-24 overflow-hidden">
+    <div class="grain"></div>
+    <div class="glow absolute inset-0 pointer-events-none"></div>
+    <div class="max-w-7xl mx-auto px-5 lg:px-6 relative">
+      <div class="max-w-4xl">
+        <div class="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-accent-400 bg-accent-600/5 border border-accent-500/20 rounded-full px-3 py-1.5 mb-7">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent-500 animate-pulse"></span>
+          MIT · MCP-ready · free &amp; open source
+        </div>
+        <h1 class="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] gradient-text">
+          Your terminal and agents,<br/>
+          on <span class="accent-text">your phone.</span>
+        </h1>
+        <p class="mt-7 text-lg sm:text-xl text-chalk-300 max-w-2xl leading-relaxed">
+          Run Claude&nbsp;Code, Codex, Aider, or any CLI on your Mac. Watch it from your phone as chat bubbles. Approve agent tool calls with <span class="text-chalk-50 font-medium">one tap, before they execute</span>. Persistent project memory. No SSH, no VPN, works on LTE.
+        </p>
+        <div class="mt-9 flex flex-wrap gap-3">
+          <a href="#install" class="bg-accent-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-accent-500 transition">Install in 30 seconds</a>
+          <a href="#mcp" class="border border-white/10 text-chalk-50 px-6 py-3 rounded-lg hover:border-white/30 transition">Wire it into your agent</a>
+          <a href="https://github.com/your-org/pocket-t" target="_blank" rel="noopener" class="border border-white/10 text-chalk-300 hover:text-chalk-50 px-6 py-3 rounded-lg hover:border-white/30 transition flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            Source
+          </a>
+        </div>
+        <div class="mt-10 sm:mt-12 grid grid-cols-2 sm:flex sm:flex-wrap gap-x-7 gap-y-3 text-xs sm:text-sm text-chalk-500">
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-accent-500"></span> Any PTY, any agent</div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-accent-500"></span> One-tap tool approvals</div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-accent-500"></span> Outbound-only, no ports</div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-accent-500"></span> E2E encryption, open source</div>
+        </div>
+        <div class="mt-10 sm:mt-12 p-5 sm:p-6 rounded-2xl ring-soft bg-ink-900/40 max-w-3xl">
+          <div class="text-xs font-mono uppercase tracking-wider text-chalk-500 mb-4">Works with</div>
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="bento ring-soft bg-ink-900/80 px-4 py-2.5 rounded-lg flex items-center gap-2.5"><span class="w-2 h-2 rounded-full bg-accent-500"></span><span class="font-semibold text-chalk-50">Claude Code</span><span class="text-xs text-chalk-500">Claude CLI</span></span>
+            <span class="bento ring-soft bg-ink-900/80 px-4 py-2.5 rounded-lg flex items-center gap-2.5"><span class="w-2 h-2 rounded-full bg-accent-500"></span><span class="font-semibold text-chalk-50">OpenClaw</span><span class="text-xs text-chalk-500">MCP</span></span>
+            <span class="bento ring-soft bg-ink-900/80 px-4 py-2.5 rounded-lg flex items-center gap-2.5"><span class="w-2 h-2 rounded-full bg-accent-500"></span><span class="font-semibold text-chalk-50">Hermes</span><span class="text-xs text-chalk-500">MCP</span></span>
+            <span class="bento ring-soft bg-ink-900/80 px-4 py-2.5 rounded-lg flex items-center gap-2.5"><span class="w-2 h-2 rounded-full bg-accent-500"></span><span class="font-semibold text-chalk-50">NanoClaw</span><span class="text-xs text-chalk-500">.mcp.json</span></span>
+            <span class="text-sm text-chalk-500 ml-1">+ Codex · Aider · Gemini CLI · Claude Desktop · Cursor</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MARQUEE -->
+  <section class="border-y border-white/5 py-7 overflow-hidden bg-ink-900/50">
+    <div class="text-center text-xs font-mono uppercase tracking-widest text-chalk-500 mb-5">Supervise any of these from your phone</div>
+    <div class="flex whitespace-nowrap marquee gap-10 text-xl sm:text-2xl font-mono text-chalk-300">
+      <div class="flex gap-10">
+        <span>Claude Code</span><span class="text-chalk-500">·</span><span>Codex</span><span class="text-chalk-500">·</span><span>Aider</span><span class="text-chalk-500">·</span><span>Gemini CLI</span><span class="text-chalk-500">·</span><span>OpenClaw</span><span class="text-chalk-500">·</span><span>Hermes</span><span class="text-chalk-500">·</span><span>NanoClaw</span><span class="text-chalk-500">·</span><span>Cursor</span><span class="text-chalk-500">·</span><span>bash</span><span class="text-chalk-500">·</span><span>python</span><span class="text-chalk-500">·</span><span>node</span><span class="text-chalk-500">·</span><span>pytest</span><span class="text-chalk-500">·</span>
+      </div>
+      <div class="flex gap-10" aria-hidden="true">
+        <span>Claude Code</span><span class="text-chalk-500">·</span><span>Codex</span><span class="text-chalk-500">·</span><span>Aider</span><span class="text-chalk-500">·</span><span>Gemini CLI</span><span class="text-chalk-500">·</span><span>OpenClaw</span><span class="text-chalk-500">·</span><span>Hermes</span><span class="text-chalk-500">·</span><span>NanoClaw</span><span class="text-chalk-500">·</span><span>Cursor</span><span class="text-chalk-500">·</span><span>bash</span><span class="text-chalk-500">·</span><span>python</span><span class="text-chalk-500">·</span><span>node</span><span class="text-chalk-500">·</span><span>pytest</span><span class="text-chalk-500">·</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROBLEM -->
+  <section class="py-20 sm:py-24">
+    <div class="max-w-7xl mx-auto px-5 lg:px-6">
+      <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+        <div>
+          <div class="text-xs font-mono uppercase tracking-widest text-accent-400 mb-4">The problem</div>
+          <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight gradient-text leading-tight">Your agent runs<br/>while you're away.</h2>
+        </div>
+        <div class="space-y-5 text-base sm:text-lg text-chalk-300 leading-relaxed">
+          <p>You start Claude&nbsp;Code on a long task and walk away. It hits an approval prompt and stalls for an hour. Or worse — it doesn't stall, it runs <code class="font-mono text-accent-400 text-sm">rm&nbsp;-rf</code> while you're at lunch. Every new session starts amnesiac, repeating mistakes it already made yesterday.</p>
+          <p><span class="text-chalk-50 font-medium">pocket-t puts the session in your pocket.</span> Read output as chat. Approve or deny tool calls from your lock screen, before they execute. And Memento gives the agent a memory that survives across sessions — deterministic, no LLM, zero added latency.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT -->
+  <section id="what" class="py-20 sm:py-24 border-t border-white/5">
+    <div class="max-w-7xl mx-auto px-5 lg:px-6">
+      <div class="max-w-3xl mb-12">
+        <div class="text-xs font-mono uppercase tracking-widest text-accent-400 mb-4">What it does</div>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight gradient-text leading-tight">Watch. Approve.<br/>Remember. Integrate.</h2>
+      </div>
+      <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="ring-soft ring-soft-hover bento bg-ink-900/60 p-6 rounded-2xl flex flex-col">
+          <div class="text-xs font-mono uppercase tracking-wider text-accent-400 mb-4">Watch</div>
+          <h3 class="text-lg font-semibold mb-2">Terminal → phone</h3>
+          <p class="text-chalk-300 text-sm leading-relaxed flex-1">Every session becomes a chat contact. Read output, type back, scroll history with push notifications. Desktop gets a full xterm.js terminal.</p>
+        </div>
+        <div class="ring-soft ring-soft-hover bento bg-ink-900/60 p-6 rounded-2xl flex flex-col border border-accent-500/30">
+          <div class="text-xs font-mono uppercase tracking-wider text-accent-400 mb-4">Approve</div>
+          <h3 class="text-lg font-semibold mb-2">One-tap, pre-execution</h3>
+          <p class="text-chalk-300 text-sm leading-relaxed flex-1">Real blocking approval for agent tool calls — not a notification after the fact. Allow or deny destructive commands from your lock screen.</p>
+        </div>
+        <div class="ring-soft ring-soft-hover bento bg-ink-900/60 p-6 rounded-2xl flex flex-col">
+          <div class="text-xs font-mono uppercase tracking-wider text-accent-400 mb-4">Remember</div>
+          <h3 class="text-lg font-semibold mb-2">Memento memory</h3>
+          <p class="text-chalk-300 text-sm leading-relaxed flex-1">Constraints, failures, and decisions from past sessions distilled into <code class="font-mono text-accent-400 text-xs">NOHUP.md</code>, injected before every tool call. Zero LLM cost.</p>
+        </div>
+        <div class="ring-soft ring-soft-hover bento bg-ink-900/60 p-6 rounded-2xl flex flex-col">
+          <div class="text-xs font-mono uppercase tracking-wider text-accent-400 mb-4">Integrate</div>
+          <h3 class="text-lg font-semibold mb-2">MCP-ready</h3>
+          <p class="text-chalk-300 text-sm leading-relaxed flex-1">Expose your Mac's sessions and memory as MCP tools. Any MCP host drives pocket-t natively, in every conversation.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOSTS -->
+  <section id="hosts" class="py-20 sm:py-24 border-t border-white/5 bg-ink-900/30">
+    <div class="max-w-7xl mx-auto px-5 lg:px-6">
+      <div class="max-w-3xl mb-10">
+        <div class="text-xs font-mono uppercase tracking-widest text-accent-400 mb-4">Compatible agents &amp; hosts</div>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight gradient-text leading-tight">Works with every<br/>serious agent stack.</h2>
+        <p class="mt-5 text-base text-chalk-300">pocket-t captures any PTY and speaks the Model Context Protocol — so it plugs into the whole ecosystem, first-party and third-party. Add it to any MCP host with a few lines of config.</p>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div class="ring-soft bento bg-ink-900/60 p-4 rounded-xl"><div class="font-semibold text-chalk-50">Claude Code</div><div class="text-xs text-chalk-500 mt-1">Claude CLI · one-line add</div></div>
+        <div class="ring-soft bento bg-ink-900/60 p-4 rounded-xl"><div class="font-semibold text-chalk-50">Claude Desktop</div><div class="text-xs text-chalk-500 mt-1">mcpServers config</div></div>
+        <div class="ring-soft bento bg-ink-900/60 p-4 rounded-xl"><div class="font-semibold text-chalk-50">OpenClaw</div><div class="text-xs text-chalk-500 mt-1">native MCP</div></div>
+        <div class="ring-soft bento bg-ink-900/60 p-4 rounded-xl"><div class="font-semibold text-chalk-50">Hermes</div><div class="text-xs text-chalk-500 mt-1">native MCP</div></div>
+        <div class="ring-soft bento bg-ink-900/60 p-4 rounded-xl"><div class="font-semibold text-chalk-50">NanoClaw</div><div class="text-xs text-chalk-500 mt-1">.mcp.json</div></div>
+        <div class="ring-soft bento bg-ink-900/60 p-4 rounded-xl"><div class="font-semibold text-chalk-50">Cursor</div><div class="text-xs text-chalk-500 mt-1">MCP stdio</div></div>
+        <div class="ring-soft bento bg-ink-900/60 p-4 rounded-xl"><div class="font-semibold text-chalk-50">Codex</div><div class="text-xs text-chalk-500 mt-1">captured as PTY</div></div>
+        <div class="ring-soft bento bg-ink-900/60 p-4 rounded-xl"><div class="font-semibold text-chalk-50">Aider</div><div class="text-xs text-chalk-500 mt-1">captured as PTY</div></div>
+        <div class="ring-soft bento bg-ink-900/60 p-4 rounded-xl"><div class="font-semibold text-chalk-50">Gemini CLI</div><div class="text-xs text-chalk-500 mt-1">captured as PTY</div></div>
+        <div class="ring-soft bento bg-ink-900/60 p-4 rounded-xl"><div class="font-semibold text-chalk-50">OpenAI Agents SDK</div><div class="text-xs text-chalk-500 mt-1">MCP client</div></div>
+        <div class="ring-soft bento bg-ink-900/60 p-4 rounded-xl"><div class="font-semibold text-chalk-50">any MCP host</div><div class="text-xs text-chalk-500 mt-1">stdio protocol</div></div>
+        <div class="ring-soft bento bg-ink-900/60 p-4 rounded-xl"><div class="font-semibold text-chalk-50">any PTY process</div><div class="text-xs text-chalk-500 mt-1">bash · python · node</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALL -->
+  <section id="install" class="py-20 sm:py-24 border-t border-white/5">
+    <div class="max-w-7xl mx-auto px-5 lg:px-6">
+      <div class="max-w-3xl mb-10">
+        <div class="text-xs font-mono uppercase tracking-widest text-accent-400 mb-4">Install</div>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight gradient-text leading-tight">One curl command.<br/>Then it just runs.</h2>
+      </div>
+      <div class="tabbar mb-6" role="tablist">
+        <div class="tab-btn" role="tab" aria-selected="true" data-tab="mac">Mac</div>
+        <div class="tab-btn" role="tab" aria-selected="false" data-tab="phone">iPhone</div>
+        <div class="tab-btn" role="tab" aria-selected="false" data-tab="mcp">MCP host</div>
+        <div class="tab-btn" role="tab" aria-selected="false" data-tab="self">Self-host</div>
+      </div>
+      <div class="max-w-4xl">
+        <div class="tab-panel active" data-panel="mac">
+          <div class="codeblock p-5 sm:p-6">
+            <div class="text-xs text-chalk-500 mb-3 font-mono">ON YOUR MAC — RUNS FOREVER AS A LAUNCHAGENT</div>
+<pre class="leading-relaxed overflow-x-auto"><code><span class="text-accent-400">curl</span> -fsSL https://install.pocket-t.app | sh
+<span class="text-accent-400">pocket-t</span> auth &lt;your-token&gt;
+<span class="text-accent-400">pocket-t</span> run                 <span class="text-chalk-500"># or: pocket-t run --memento</span></code></pre>
+          </div>
+        </div>
+        <div class="tab-panel" data-panel="phone">
+          <div class="codeblock p-5 sm:p-6">
+            <div class="text-xs text-chalk-500 mb-3 font-mono">ON YOUR IPHONE — PWA, PUSH ON iOS 16.4+</div>
+<pre class="leading-relaxed overflow-x-auto"><code><span class="text-chalk-300">Open</span> https://app.pocket-t.app <span class="text-chalk-300">in Safari</span>
+<span class="text-chalk-500"># Share -&gt; Add to Home Screen -&gt; open from home screen</span>
+<span class="text-chalk-500"># Tap "Enable notifications" -&gt; Allow</span></code></pre>
+          </div>
+        </div>
+        <div class="tab-panel" data-panel="mcp">
+          <div class="codeblock p-5 sm:p-6">
+            <div class="text-xs text-chalk-500 mb-3 font-mono">CLAUDE CODE — ONE LINE</div>
+<pre class="leading-relaxed overflow-x-auto"><code><span class="text-accent-400">claude</span> mcp add pocket-t --scope user -- pocket-t mcp
+
+<span class="text-chalk-500"># Claude Desktop / OpenClaw / Hermes / NanoClaw</span>
+{
+  <span class="text-chalk-300">"mcpServers"</span>: {
+    <span class="text-chalk-300">"pocket-t"</span>: { <span class="text-chalk-300">"command"</span>:<span class="text-accent-400">"pocket-t"</span>, <span class="text-chalk-300">"args"</span>:[<span class="text-accent-400">"mcp"</span>] },
+    <span class="text-chalk-300">"memento"</span>:  { <span class="text-chalk-300">"command"</span>:<span class="text-accent-400">"pocket-t"</span>, <span class="text-chalk-300">"args"</span>:[<span class="text-accent-400">"serve-mcp"</span>] }
+  }
+}</code></pre>
+          </div>
+        </div>
+        <div class="tab-panel" data-panel="self">
+          <div class="codeblock p-5 sm:p-6">
+            <div class="text-xs text-chalk-500 mb-3 font-mono">SELF-HOST — MIT, FREE FOREVER</div>
+<pre class="leading-relaxed overflow-x-auto"><code><span class="text-accent-400">git clone</span> https://github.com/your-org/pocket-t
+<span class="text-accent-400">cd</span> pocket-t
+<span class="text-accent-400">cp</span> packages/relay/.env.example packages/relay/.env
+<span class="text-accent-400">docker compose</span> -f infra/docker-compose.yml up -d</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MCP -->
+  <section id="mcp" class="py-20 sm:py-24 border-t border-white/5 bg-ink-900/30">
+    <div class="max-w-7xl mx-auto px-5 lg:px-6">
+      <div class="max-w-3xl mb-10">
+        <div class="text-xs font-mono uppercase tracking-widest text-accent-400 mb-4">MCP — pocket-t as agent tooling</div>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight gradient-text leading-tight">Native tools for any<br/>MCP-compatible host.</h2>
+      </div>
+      <div class="max-w-4xl">
+        <details class="acc" open>
+          <summary><div><span class="text-xs font-mono uppercase tracking-wider text-accent-400 mr-2">Sessions</span><span class="acc-title font-medium text-chalk-300">list_sessions · get_session_output · send_input · spawn_session · kill_session</span></div><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="acc-body text-sm">Any MCP host can enumerate every terminal session on your Mac, read recent output, type input as if it were you, spawn a fresh CLI, or kill a runaway. The supervision layer, exposed as tools.</div>
+        </details>
+        <details class="acc">
+          <summary><div><span class="text-xs font-mono uppercase tracking-wider text-accent-400 mr-2">Approvals</span><span class="acc-title font-medium text-chalk-300">approve_tool_call</span></div><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="acc-body text-sm">Resolve a pending blocking approval from another agent or a script. Pair with <code class="font-mono text-accent-400">list_sessions</code> filtered to status <code class="font-mono text-accent-400">waiting</code> to build approval automations.</div>
+        </details>
+        <details class="acc">
+          <summary><div><span class="text-xs font-mono uppercase tracking-wider text-accent-400 mr-2">Memory (Memento)</span><span class="acc-title font-medium text-chalk-300">get_context · get_constraints · get_patterns · get_decisions · query_brain · log_event</span></div><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="acc-body text-sm">Run <code class="font-mono text-accent-400">pocket-t serve-mcp</code> and any host can read the project's compiled memory: locked user constraints, known-failure patterns, architectural decisions, or a keyword search across the brain. Read it at session start; it costs zero LLM tokens.</div>
+        </details>
+        <details class="acc">
+          <summary><div><span class="text-xs font-mono uppercase tracking-wider text-accent-400 mr-2">CLI</span><span class="acc-title font-medium text-chalk-300">run · --memento · mcp · serve-mcp · dream · init · scan · skill</span></div><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></summary>
+          <div class="acc-body text-sm">A single binary. <code class="font-mono text-accent-400">run</code> starts the daemon, <code class="font-mono text-accent-400">--memento</code> turns on memory, <code class="font-mono text-accent-400">mcp</code>/<code class="font-mono text-accent-400">serve-mcp</code> expose MCP servers, <code class="font-mono text-accent-400">dream</code> runs the nightly consolidation cycle, <code class="font-mono text-accent-400">init</code> scopes a project, <code class="font-mono text-accent-400">skill</code> prints a Claude-Code skill doc.</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- MEMENTO -->
+  <section id="memento" class="py-20 sm:py-24 border-t border-white/5">
+    <div class="max-w-7xl mx-auto px-5 lg:px-6">
+      <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+        <div>
+          <div class="text-xs font-mono uppercase tracking-widest text-accent-400 mb-4">Memento — the memory layer</div>
+          <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight gradient-text leading-tight">The memory system from<br/>the film, for AI agents.</h2>
+          <p class="mt-5 text-base sm:text-lg text-chalk-300 leading-relaxed">Deterministic. No LLM. Memento watches session output, stamps salience at encoding time, and maintains a live compressed <code class="font-mono text-accent-400 text-sm">NOHUP.md</code> the agent reads before it acts — the tattoo it can't forget.</p>
+          <p class="mt-4 text-base text-chalk-300 leading-relaxed">Corroboration gate, Ebbinghaus decay curve, in-place reconsolidation on correction, Leitner spaced-repetition, and a nightly <code class="font-mono text-accent-400 text-sm">dream</code> consolidation pass that extracts cross-session schemas.</p>
+        </div>
+        <div class="space-y-3">
+          <div class="ring-soft bg-ink-900/50 p-5 rounded-xl"><div class="text-chalk-50 font-medium">Agents retrying failed approaches</div><div class="text-chalk-500 text-sm mt-1">Known-failure patterns promoted after corroboration, surfaced before the retry.</div></div>
+          <div class="ring-soft bg-ink-900/50 p-5 rounded-xl"><div class="text-chalk-50 font-medium">Constraints lost mid-session</div><div class="text-chalk-500 text-sm mt-1">User rules are locked and immune to decay — said once is a rule forever.</div></div>
+          <div class="ring-soft bg-ink-900/50 p-5 rounded-xl"><div class="text-chalk-50 font-medium">Amnesiac session starts</div><div class="text-chalk-500 text-sm mt-1">NOHUP.md injected via the PreToolUse hook, every session, automatically.</div></div>
+          <div class="ring-soft bg-ink-900/50 p-5 rounded-xl"><div class="text-chalk-50 font-medium">Quota burned on retry loops</div><div class="text-chalk-500 text-sm mt-1">Zero LLM, zero latency — a file read on the hot path. Nothing else ships this.</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE -->
+  <section class="py-20 sm:py-24 border-t border-white/5 bg-ink-900/30">
+    <div class="max-w-7xl mx-auto px-5 lg:px-6">
+      <div class="max-w-3xl mb-8">
+        <div class="text-xs font-mono uppercase tracking-widest text-accent-400 mb-4">Architecture</div>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight gradient-text leading-tight">Outbound by design.<br/>No inbound ports, ever.</h2>
+      </div>
+      <div class="codeblock p-5 sm:p-7 max-w-4xl overflow-x-auto">
+<pre class="text-chalk-300 leading-relaxed"><code>  Your Mac                       Relay (you own it)          Your phone
+  +--------------------+         +-----------------+         +--------------+
+  | pocket-t daemon    | outbound| Fastify+SocketIO| outbound| React PWA    |
+  | PTY . ANSI . hooks |  WSS -->| routes,persists |&lt;-- WSS  | chat,approve |
+  | Memento . MCP      |         | never initiates |         | xterm . push |
+  +--------------------+         +-----------------+         +--------------+</code></pre>
+      </div>
+      <p class="mt-6 text-base text-chalk-300 max-w-3xl leading-relaxed">Both endpoints connect <span class="text-chalk-50 font-medium">out</span>. The relay never initiates a connection — so pocket-t works through NAT, hotel WiFi, and LTE with zero network config. E2E encryption is optional, AES-128-GCM, and fully open source: the relay routes ciphertext it cannot read.</p>
+    </div>
+  </section>
+
+  <!-- FREE -->
+  <section class="py-20 sm:py-24 border-t border-white/5">
+    <div class="max-w-7xl mx-auto px-5 lg:px-6">
+      <div class="max-w-3xl mb-8">
+        <div class="text-xs font-mono uppercase tracking-widest text-accent-400 mb-4">Free &amp; open source</div>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight gradient-text leading-tight">Everything is free.<br/>Everything is MIT.</h2>
+      </div>
+      <div class="ring-soft bg-ink-900/50 rounded-2xl p-6 sm:p-8 max-w-3xl">
+        <p class="text-base sm:text-lg text-chalk-300 leading-relaxed">The full daemon, relay, web app, Memento, and end-to-end encryption — all open source, self-host forever at no cost. The only thing we'll ever charge for is <span class="text-chalk-50 font-medium">managed hosting</span>, for people who would rather not run their own relay. No feature is paywalled.</p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a href="https://github.com/your-org/pocket-t" target="_blank" rel="noopener" class="bg-accent-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-accent-500 transition text-sm">Star on GitHub</a>
+          <a href="#install" class="border border-white/10 text-chalk-50 px-5 py-2.5 rounded-lg hover:border-white/30 transition text-sm">Self-host now</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-white/5 py-12">
+    <div class="max-w-7xl mx-auto px-5 lg:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-chalk-500">
+      <div class="font-mono"><span class="text-chalk-50 font-semibold">pocket-t</span> — p stands for terminal</div>
+      <div class="flex items-center gap-5">
+        <a href="https://github.com/your-org/pocket-t" target="_blank" rel="noopener" class="hover:text-chalk-50">GitHub</a>
+        <a href="#install" class="hover:text-chalk-50">Install</a>
+        <a href="#mcp" class="hover:text-chalk-50">MCP</a>
+        <span>MIT</span>
+      </div>
+    </div>
+    <div class="max-w-7xl mx-auto px-5 lg:px-6 mt-6 text-xs text-chalk-500">Any terminal. Any agent. On your phone. No SSH.</div>
+  </footer>
+
+  <script>
+    var mb = document.getElementById('menu-btn'), mm = document.getElementById('mobile-menu');
+    mb && mb.addEventListener('click', function(){
+      var open = mm.classList.toggle('open');
+      mb.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    mm && mm.querySelectorAll('a').forEach(function(a){ a.addEventListener('click', function(){ mm.classList.remove('open'); }); });
+    var tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(function(t){
+      t.addEventListener('click', function(){
+        tabs.forEach(function(x){ x.setAttribute('aria-selected','false'); });
+        t.setAttribute('aria-selected','true');
+        document.querySelectorAll('.tab-panel').forEach(function(p){
+          p.classList.toggle('active', p.getAttribute('data-panel') === t.getAttribute('data-tab'));
+        });
+      });
+    });
+  </script>
+</body>
+</html>

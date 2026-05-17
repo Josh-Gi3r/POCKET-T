@@ -1,0 +1,35 @@
+{
+  "name": "@pocket-t/relay",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "psql $DATABASE_URL -f src/db/schema.sql"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^9.3.1",
+    "@fastify/cors": "^9.0.1",
+    "@pocket-t/shared": "workspace:*",
+    "@socket.io/redis-adapter": "^8.3.0",
+    "bcryptjs": "^2.4.3",
+    "fastify": "^4.28.0",
+    "fastify-raw-body": "^5.0.0",
+    "ioredis": "^5.3.2",
+    "jose": "^5.2.4",
+    "postgres": "^3.4.4",
+    "socket.io": "^4.7.5",
+    "stripe": "^14.25.0",
+    "uuid": "^10.0.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.12.0",
+    "@types/uuid": "^10.0.0",
+    "@types/web-push": "^3.6.3",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.0"
+  }
+}

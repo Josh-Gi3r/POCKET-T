@@ -1,0 +1,40 @@
+version: '3.9'
+
+services:
+  relay:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.relay
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://pocket_t:pocket_t@postgres/pocket_t
+      REDIS_URL:    redis://redis:6379
+      JWT_SECRET:   ${JWT_SECRET}
+      COOKIE_SECRET: ${COOKIE_SECRET}
+      VAPID_PUBLIC: ${VAPID_PUBLIC}
+      VAPID_PRIVATE: ${VAPID_PRIVATE}
+      VAPID_CONTACT: ${VAPID_CONTACT:-ops@example.com}
+      APP_URL:      ${APP_URL:-http://localhost:3000}
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER:     pocket_t
+      POSTGRES_PASSWORD: pocket_t
+      POSTGRES_DB:       pocket_t
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../packages/relay/src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+volumes:
+  pgdata:
