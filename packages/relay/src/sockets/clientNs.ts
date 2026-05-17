@@ -1,11 +1,11 @@
 import type { Server, Socket } from 'socket.io';
 import type { Redis } from 'ioredis';
-import { verifyJwt, type ClientTokenPayload } from '../auth/jwt.js';
+import { verifyClientToken, cookieValue, SESS_COOKIE } from '../auth/session.js';
 import {
   getSessionsByAccount,
   getHistory,
   saveMessage,
-  resolveApproval,
+  resolveApprovalScoped,
   audit,
   updateSession,
   upsertPushSub,
@@ -18,17 +18,16 @@ export function setupClientNamespace(io: Server, redis: Redis) {
   const ns      = io.of('/client');
   const limiter = createRateLimiter(redis);
 
-  // ── Auth middleware ──────────────────────────────────────────────────
+  // ── Auth middleware (A-001/A-002): authenticate from the httpOnly
+  // session cookie and revalidate against web_sessions every connection. ──
   ns.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth?.token;
-      if (!token) return next(new Error('no token'));
-
-      const payload = await verifyJwt(token);
-      if (payload.scope !== 'client') return next(new Error('wrong scope'));
-
-      socket.data.accountId = payload.accountId;
-      socket.data.userId    = (payload as ClientTokenPayload).userId;
+      const token = cookieValue(socket.handshake.headers.cookie, SESS_COOKIE);
+      if (!token) return next(new Error('no session cookie'));
+      const ctx = await verifyClientToken(token);
+      socket.data.accountId = ctx.accountId;
+      socket.data.userId    = ctx.userId;
+      socket.data.email     = ctx.email;
       next();
     } catch {
       next(new Error('unauthorized'));
@@ -131,8 +130,9 @@ export function setupClientNamespace(io: Server, redis: Redis) {
     socket.on('client:approval:respond', async ({
       sessionId, messageId, choice,
     }: { sessionId: string; messageId: string; choice: string }) => {
-      const resolved = await resolveApproval(messageId, choice);
-      if (!resolved) return; // already resolved
+      // A-005: bind resolution to caller's account + session + approval kind
+      const resolved = await resolveApprovalScoped(messageId, sessionId, accountId, choice);
+      if (!resolved) return; // not owned, not an approval, or already resolved
 
       io.of('/daemon')
         .to(`account:${accountId}`)

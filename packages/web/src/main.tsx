@@ -14,6 +14,10 @@ import { DashboardPage } from './pages/DashboardPage.js';
 import { PairPage }      from './pages/PairPage.js';
 import { TeamPage }      from './pages/TeamPage.js';
 
+// Phase 2: paid hosting + E2E pairing UI. Off until the team/billing auth
+// model and the encrypted transport path are complete (audit A-009/A-010).
+const PHASE_2 = false;
+
 // Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -41,7 +45,7 @@ function AuthedApp() {
       <Route path="/chat/:sessionId"   element={<ChatPage />} />
       <Route path="/spawn"             element={<SpawnPage />} />
       <Route path="/dashboard"         element={<DashboardPage />} />
-      <Route path="/team"              element={<TeamPage />} />
+      {PHASE_2 && <Route path="/team"  element={<TeamPage />} />}
       <Route path="*"                  element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -68,7 +72,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/pair/:sessionId" element={<PairPage />} />
+        {PHASE_2 && <Route path="/pair/:sessionId" element={<PairPage />} />}
         <Route path="/*"     element={<AuthedApp />} />
       </Routes>
     </BrowserRouter>

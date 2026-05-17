@@ -1,10 +1,10 @@
 import type { Server, Socket } from 'socket.io';
-import { verifyJwt, type DaemonTokenPayload } from '../auth/jwt.js';
+import { verifyDaemonToken } from '../auth/session.js';
 import {
   upsertSession,
   saveMessage,
-  updateSession,
-  resolveApproval,
+  updateSessionScoped,
+  sessionOwnedByDaemon,
   audit,
 } from '../db/queries.js';
 import sql from '../db/client.js';
@@ -18,16 +18,15 @@ export function setupDaemonNamespace(io: Server) {
   const ns = io.of('/daemon');
 
   // ── Auth middleware ──────────────────────────────────────────────────
+  // A-003: verify the daemon JWT against the daemons table (jti-bound,
+  // revocation-aware) — not just signature/scope.
   ns.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
       if (!token) return next(new Error('no token'));
-
-      const payload = await verifyJwt(token);
-      if (payload.scope !== 'daemon') return next(new Error('wrong scope'));
-
-      socket.data.accountId = payload.accountId;
-      socket.data.daemonId  = (payload as DaemonTokenPayload).daemonId;
+      const ctx = await verifyDaemonToken(token);
+      socket.data.accountId = ctx.accountId;
+      socket.data.daemonId  = ctx.daemonId;
       next();
     } catch {
       next(new Error('unauthorized'));
@@ -62,7 +61,7 @@ export function setupDaemonNamespace(io: Server) {
     // ── Full session list (on connect) ──────────────────────────────
     socket.on('daemon:sessions', async ({ sessions }: { sessions: Session[] }) => {
       for (const s of sessions) {
-        await upsertSession(s).catch(() => {});
+        await upsertSession(s, accountId, daemonId).catch(() => {});
       }
       io.of('/client')
         .to(`account:${accountId}`)
@@ -73,8 +72,10 @@ export function setupDaemonNamespace(io: Server) {
     socket.on('daemon:session:update', async ({
       session,
     }: { session: Partial<Session> & { id: string } }) => {
-      if (session.id && session.status) {
-        await updateSession(session.id, session.status, session.lastOutput)
+      if (!session.id) return;
+      if (!(await sessionOwnedByDaemon(session.id, accountId, daemonId))) return;
+      if (session.status) {
+        await updateSessionScoped(session.id, accountId, session.status, session.lastOutput)
           .catch(() => {});
       }
       io.of('/client')
@@ -86,6 +87,8 @@ export function setupDaemonNamespace(io: Server) {
     socket.on('daemon:session:chunk', async ({
       sessionId, text, rawVt, seq,
     }: { sessionId: string; text: string; rawVt: string; seq: number }) => {
+      if (!(await sessionOwnedByDaemon(sessionId, accountId, daemonId))) return;
+
       // Persist asynchronously (don't block the stream)
       saveMessage({
         sessionId,
@@ -97,7 +100,7 @@ export function setupDaemonNamespace(io: Server) {
         seq,
       }).catch(() => {});
 
-      updateSession(sessionId, 'running', text, seq).catch(() => {});
+      updateSessionScoped(sessionId, accountId, 'running', text, seq).catch(() => {});
 
       // Fan out only to clients attached to this session
       io.of('/client')
@@ -106,9 +109,10 @@ export function setupDaemonNamespace(io: Server) {
     });
 
     // ── Snapshot (for newly attached clients) ────────────────────────
-    socket.on('daemon:session:snapshot', ({
+    socket.on('daemon:session:snapshot', async ({
       sessionId, plainText, rawVt,
     }: { sessionId: string; plainText: string; rawVt: string }) => {
+      if (!(await sessionOwnedByDaemon(sessionId, accountId, daemonId))) return;
       io.of('/client')
         .to(`session:${sessionId}:pending`)
         .emit('relay:session:snapshot', { sessionId, plainText, rawVt });
@@ -122,6 +126,9 @@ export function setupDaemonNamespace(io: Server) {
       messageId: string;
       options:   ApprovalOption[];
     }) => {
+      const owned = await sessionOwnedByDaemon(sessionId, accountId, daemonId);
+      if (!owned) return;
+
       await saveMessage({
         sessionId,
         accountId,
@@ -133,7 +140,7 @@ export function setupDaemonNamespace(io: Server) {
         approvalPending: true,
       }).catch(() => {});
 
-      await updateSession(sessionId, 'waiting').catch(() => {});
+      await updateSessionScoped(sessionId, accountId, 'waiting').catch(() => {});
 
       io.of('/client')
         .to(`account:${accountId}`)
@@ -144,14 +151,9 @@ export function setupDaemonNamespace(io: Server) {
       // Push if no client is attached
       const room = io.of('/client').adapter.rooms.get(`session:${sessionId}`);
       if (!room?.size) {
-        const [row] = await sql`
-          SELECT name FROM sessions WHERE id = ${sessionId}
-        `;
-        if (row) {
-          await notifyApproval(
-            accountId, row.name, sessionId, messageId, options,
-          ).catch(() => {});
-        }
+        await notifyApproval(
+          accountId, owned.name, sessionId, messageId, options,
+        ).catch(() => {});
       }
 
       await audit({
@@ -166,7 +168,10 @@ export function setupDaemonNamespace(io: Server) {
     socket.on('daemon:session:exit', async ({
       sessionId, exitCode,
     }: { sessionId: string; exitCode: number }) => {
-      await updateSession(sessionId, 'dead').catch(() => {});
+      const owned = await sessionOwnedByDaemon(sessionId, accountId, daemonId);
+      if (!owned) return;
+
+      await updateSessionScoped(sessionId, accountId, 'dead').catch(() => {});
 
       io.of('/client')
         .to(`account:${accountId}`)
@@ -177,12 +182,7 @@ export function setupDaemonNamespace(io: Server) {
       // Push if no client attached
       const room = io.of('/client').adapter.rooms.get(`session:${sessionId}`);
       if (!room?.size) {
-        const [row] = await sql`
-          SELECT name FROM sessions WHERE id = ${sessionId}
-        `;
-        if (row) {
-          await notifyDead(accountId, row.name, sessionId).catch(() => {});
-        }
+        await notifyDead(accountId, owned.name, sessionId).catch(() => {});
       }
     });
 
@@ -195,6 +195,9 @@ export function setupDaemonNamespace(io: Server) {
       toolName:   string;
       toolInput:  string;
     }) => {
+      const owned = await sessionOwnedByDaemon(sessionId, accountId, daemonId);
+      if (!owned) return;
+
       // Fan out to all clients watching this account
       io.of('/client')
         .to(`account:${accountId}`)
@@ -205,18 +208,13 @@ export function setupDaemonNamespace(io: Server) {
       // Push notification for hook approvals too
       const room = io.of('/client').adapter.rooms.get(`session:${sessionId}`);
       if (!room?.size) {
-        const [row] = await sql`
-          SELECT name FROM sessions WHERE id = ${sessionId}
-        `;
-        if (row) {
-          await notifyApproval(
-            accountId, row.name, sessionId, approvalId,
-            [
-              { key: 'approve', label: `Allow ${toolName}`, variant: 'primary' },
-              { key: 'deny',    label: 'Deny',               variant: 'danger'  },
-            ],
-          ).catch(() => {});
-        }
+        await notifyApproval(
+          accountId, owned.name, sessionId, approvalId,
+          [
+            { key: 'approve', label: `Allow ${toolName}`, variant: 'primary' },
+            { key: 'deny',    label: 'Deny',               variant: 'danger'  },
+          ],
+        ).catch(() => {});
       }
     });
 

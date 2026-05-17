@@ -6,13 +6,18 @@ import sql from '../db/client.js';
 import {
   signDaemonJwt,
   signClientJwt,
-  verifyJwt,
 } from '../auth/jwt.js';
+import {
+  verifyClientToken,
+  verifyDaemonToken,
+  SESS_COOKIE,
+} from '../auth/session.js';
 import {
   getUserByEmail,
   createAccount,
   audit,
   upsertPushSub,
+  resolveApprovalScoped,
 } from '../db/queries.js';
 import { createRateLimiter } from '../middleware/rateLimit.js';
 import type { Redis } from 'ioredis';
@@ -48,7 +53,7 @@ export async function authRoutes(app: FastifyInstance, redis: Redis) {
         VALUES (${user.id}, ${tokenHash}, ${expires}, ${req.ip})
       `;
 
-      reply.setCookie('pocket-t_sess', token, {
+      reply.setCookie(SESS_COOKIE, token, {
         httpOnly: true,
         secure:   true,
         sameSite: 'strict',
@@ -84,7 +89,7 @@ export async function authRoutes(app: FastifyInstance, redis: Redis) {
         VALUES (${user.id}, ${tokenHash}, ${expires}, ${req.ip})
       `;
 
-      reply.setCookie('pocket-t_sess', token, {
+      reply.setCookie(SESS_COOKIE, token, {
         httpOnly: true,
         secure:   true,
         sameSite: 'strict',
@@ -105,12 +110,12 @@ export async function authRoutes(app: FastifyInstance, redis: Redis) {
 
   // ── Logout ────────────────────────────────────────────────────────────
   app.post('/api/auth/logout', async (req, reply) => {
-    const token = req.cookies?.['pocket-t_sess'];
+    const token = req.cookies?.[SESS_COOKIE];
     if (token) {
       const hash = createHash('sha256').update(token).digest('hex');
       await sql`DELETE FROM web_sessions WHERE token_hash = ${hash}`.catch(() => {});
     }
-    reply.clearCookie('pocket-t_sess', { path: '/' });
+    reply.clearCookie(SESS_COOKIE, { path: '/' });
     return { ok: true };
   });
 
@@ -161,20 +166,21 @@ export async function authRoutes(app: FastifyInstance, redis: Redis) {
       }
 
       const tokenHash = createHash('sha256').update(oneTimeToken).digest('hex');
-      const [ott]     = await sql`
-        SELECT * FROM one_time_tokens
+
+      // A-006: atomic claim — the UPDATE itself is the gate, so two
+      // concurrent requests cannot both pass the unused check.
+      const [ott] = await sql`
+        UPDATE one_time_tokens
+        SET used = TRUE
         WHERE token_hash = ${tokenHash}
           AND used = FALSE
           AND expires_at > NOW()
+        RETURNING id, account_id AS "accountId"
       `;
 
       if (!ott) {
         return reply.code(401).send({ error: 'Invalid or expired token' });
       }
-
-      await sql`
-        UPDATE one_time_tokens SET used = TRUE WHERE id = ${ott.id}
-      `;
 
       const daemonId = randomUUID();
       const jti      = randomUUID();
@@ -263,15 +269,11 @@ export async function authRoutes(app: FastifyInstance, redis: Redis) {
       const { sessionId }         = req.params;
       const { choice, messageId } = req.body;
 
-      const [row] = await sql`
-        SELECT id FROM sessions
-        WHERE id = ${sessionId} AND account_id = ${req.accountId}
-      `;
-      if (!row) return reply.code(404).send({ error: 'Not found' });
-
-      const { resolveApproval } = await import('../db/queries.js');
-      const resolved = await resolveApproval(messageId, choice);
-      if (!resolved) return reply.code(409).send({ error: 'Already resolved' });
+      // A-005: single scoped statement — no separate ownership SELECT to race.
+      const resolved = await resolveApprovalScoped(
+        messageId, sessionId, req.accountId, choice,
+      );
+      if (!resolved) return reply.code(409).send({ error: 'Not found or already resolved' });
 
       const io = (app as any).io;
       if (io) {
@@ -322,45 +324,31 @@ export async function authRoutes(app: FastifyInstance, redis: Redis) {
 
 // ── Auth middleware ───────────────────────────────────────────────────────
 
+// A-001/A-002: one shared verifier — cookie token validated against
+// web_sessions (revocation-aware) every request.
 export async function requireAuth(req: any, reply: any) {
-  const token = req.cookies?.['pocket-t_sess'];
+  const token = req.cookies?.[SESS_COOKIE];
   if (!token) return reply.code(401).send({ error: 'Unauthorized' });
-
   try {
-    const payload = await verifyJwt(token) as any;
-    if (payload.scope !== 'client') throw new Error('wrong scope');
-
-    const tokenHash = createHash('sha256').update(token).digest('hex');
-    const [sess]    = await sql`
-      SELECT ws.*, u.email, a.plan
-      FROM web_sessions ws
-      JOIN users u ON u.id = ws.user_id
-      JOIN accounts a ON a.id = u.account_id
-      WHERE ws.token_hash = ${tokenHash}
-        AND ws.expires_at > NOW()
-    `;
-    if (!sess) throw new Error('session expired');
-
-    req.accountId = payload.accountId;
-    req.userId    = payload.userId;
-    req.plan      = sess.plan;
-    req.email     = sess.email;
+    const ctx = await verifyClientToken(token);
+    req.accountId = ctx.accountId;
+    req.userId    = ctx.userId;
+    req.plan      = ctx.plan;
+    req.email     = ctx.email;
   } catch {
     reply.code(401).send({ error: 'Unauthorized' });
   }
 }
 
-// Daemon-scoped bearer auth (daemons authenticate with their JWT, not cookies)
+// A-003: daemon bearer token validated against the daemons table (jti-bound).
 export async function requireDaemonAuth(req: any, reply: any) {
   const header = req.headers?.authorization ?? '';
   const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return reply.code(401).send({ error: 'Unauthorized' });
-
   try {
-    const payload = await verifyJwt(token) as any;
-    if (payload.scope !== 'daemon') throw new Error('wrong scope');
-    req.accountId = payload.accountId;
-    req.daemonId  = payload.daemonId;
+    const ctx = await verifyDaemonToken(token);
+    req.accountId = ctx.accountId;
+    req.daemonId  = ctx.daemonId;
   } catch {
     reply.code(401).send({ error: 'Unauthorized' });
   }

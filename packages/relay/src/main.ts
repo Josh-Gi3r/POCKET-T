@@ -46,6 +46,15 @@ await app.register(FastifyCors, {
   methods:     ['GET', 'POST', 'DELETE', 'OPTIONS'],
 });
 
+// A-012: baseline security headers (the relay is a JSON API — lock it down).
+app.addHook('onRequest', async (_req, reply) => {
+  reply.header('X-Content-Type-Options', 'nosniff');
+  reply.header('X-Frame-Options', 'DENY');
+  reply.header('Referrer-Policy', 'no-referrer');
+  reply.header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+  reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+});
+
 // Raw body for Stripe webhook signature verification (opt-in per route)
 await app.register(import('fastify-raw-body'), {
   field:    'rawBody',
@@ -74,7 +83,9 @@ const io         = new Server(httpServer, {
   // maxDisconnectionDuration: 2 min covers most LTE handoffs.
   connectionStateRecovery: {
     maxDisconnectionDuration: 2 * 60 * 1000,
-    skipMiddlewares:          true,
+    // A-002: re-run auth middleware on recovered connections so logout /
+    // session revocation cannot be bypassed via the recovery window.
+    skipMiddlewares:          false,
   },
 });
 
@@ -89,8 +100,14 @@ setupClientNamespace(io, pubClient);
 
 // ── Routes ────────────────────────────────────────────────────────────────
 await authRoutes(app, pubClient);
-await billingRoutes(app);
-await teamRoutes(app);
+
+// Phase 2 (paid hosting). Billing/team route registration is gated off by
+// default — their auth/data model is incomplete (audit A-010). Flip
+// POCKET_T_PHASE2=1 only once that work lands.
+if (process.env.POCKET_T_PHASE2 === '1') {
+  await billingRoutes(app);
+  await teamRoutes(app);
+}
 
 app.get('/healthz', async () => ({ ok: true, ts: Date.now() }));
 

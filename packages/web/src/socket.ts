@@ -5,11 +5,14 @@ type ClientSocket = Socket<RelayToClientEvents, ClientEmitEvents>;
 
 let _socket: ClientSocket | null = null;
 
+// A-001/A-002: auth comes from the httpOnly `pocket-t_sess` cookie sent on
+// the handshake (withCredentials). No JWT is ever exposed to JS / stored
+// in localStorage — the relay validates the cookie against web_sessions.
 export function getSocket(): ClientSocket {
   if (_socket) return _socket;
   _socket = io('', {
     path:              '/socket.io',
-    auth:              { token: getStoredToken(), scope: 'client' },
+    withCredentials:   true,
     transports:        ['websocket'],
     autoConnect:       false,
     reconnectionDelayMax: 10_000,
@@ -19,8 +22,3 @@ export function getSocket(): ClientSocket {
 
 export function connectSocket()    { getSocket().connect(); }
 export function disconnectSocket() { _socket?.disconnect(); _socket = null; }
-
-const TOKEN_KEY = 'pocket-t_token';
-export function getStoredToken()              { return localStorage.getItem(TOKEN_KEY); }
-export function storeToken(t: string)         { localStorage.setItem(TOKEN_KEY, t); }
-export function clearToken()                  { localStorage.removeItem(TOKEN_KEY); }

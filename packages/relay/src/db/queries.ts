@@ -7,13 +7,20 @@ import type {
 
 // ── Sessions ──────────────────────────────────────────────────────────────
 
-export async function upsertSession(s: Session) {
+// A-004: account_id/daemon_id come from the authenticated socket, never
+// the daemon-supplied payload. ON CONFLICT only updates a row this daemon
+// already owns — a foreign session id cannot be hijacked.
+export async function upsertSession(
+  s: Session,
+  accountId: string,
+  daemonId:  string,
+) {
   await sql`
     INSERT INTO sessions
       (id, daemon_id, account_id, name, cmd, cwd,
        status, last_output, last_active_at, seq, pid)
     VALUES
-      (${s.id}, ${s.daemonId}, ${s.accountId}, ${s.name}, ${s.cmd},
+      (${s.id}, ${daemonId}, ${accountId}, ${s.name}, ${s.cmd},
        ${s.cwd}, ${s.status}, ${s.lastOutput},
        to_timestamp(${s.lastActiveAt} / 1000.0), ${s.seq},
        ${s.pid ?? null})
@@ -23,9 +30,35 @@ export async function upsertSession(s: Session) {
       last_active_at = EXCLUDED.last_active_at,
       seq            = EXCLUDED.seq,
       pid            = EXCLUDED.pid
+    WHERE sessions.daemon_id = ${daemonId}
+      AND sessions.account_id = ${accountId}
   `;
 }
 
+// Account-scoped status update — used by daemon paths after an ownership
+// check and by client paths that already verify account ownership.
+export async function updateSessionScoped(
+  sessionId:  string,
+  accountId:  string,
+  status:     Session['status'],
+  lastOutput?: string,
+  seq?:        number,
+) {
+  await sql`
+    UPDATE sessions SET
+      status         = ${status},
+      last_active_at = NOW()
+      ${lastOutput != null
+        ? sql`, last_output = ${lastOutput.slice(0, 120)}`
+        : sql``}
+      ${seq != null
+        ? sql`, seq = ${seq}`
+        : sql``}
+    WHERE id = ${sessionId} AND account_id = ${accountId}
+  `;
+}
+
+// Back-compat: callers that already gate on account ownership upstream.
 export async function updateSession(
   sessionId: string,
   status:    Session['status'],
@@ -44,6 +77,21 @@ export async function updateSession(
         : sql``}
     WHERE id = ${sessionId}
   `;
+}
+
+// Returns the session name iff it belongs to this account+daemon, else null.
+export async function sessionOwnedByDaemon(
+  sessionId: string,
+  accountId: string,
+  daemonId:  string,
+): Promise<{ name: string } | null> {
+  const [row] = await sql<{ name: string }[]>`
+    SELECT name FROM sessions
+    WHERE id = ${sessionId}
+      AND account_id = ${accountId}
+      AND daemon_id  = ${daemonId}
+  `;
+  return row ?? null;
 }
 
 export async function getSessionsByAccount(
@@ -102,8 +150,13 @@ export async function saveMessage(m: {
   return row;
 }
 
-export async function resolveApproval(
+// A-005: resolution is bound to the caller's account, the session, the
+// message id, and kind='approval' — and is atomic (no separate ownership
+// SELECT that could race the UPDATE).
+export async function resolveApprovalScoped(
   messageId: string,
+  sessionId: string,
+  accountId: string,
   choice:    string,
 ) {
   const [row] = await sql`
@@ -112,6 +165,9 @@ export async function resolveApproval(
       approval_pending = FALSE,
       approval_choice  = ${choice}
     WHERE id = ${messageId}
+      AND session_id = ${sessionId}
+      AND account_id = ${accountId}
+      AND kind = 'approval'
       AND approval_pending = TRUE
     RETURNING id
   `;
