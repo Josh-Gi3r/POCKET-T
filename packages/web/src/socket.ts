@@ -10,7 +10,8 @@ let _socket: ClientSocket | null = null;
 // in localStorage — the relay validates the cookie against web_sessions.
 export function getSocket(): ClientSocket {
   if (_socket) return _socket;
-  _socket = io('', {
+  // Connect to the /client namespace (relay handles /client + /daemon only).
+  _socket = io('/client', {
     path:              '/socket.io',
     withCredentials:   true,
     transports:        ['websocket'],

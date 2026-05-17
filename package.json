@@ -7,7 +7,8 @@
     "dev:daemon": "pnpm --filter @pocket-t/daemon dev",
     "build":      "pnpm -r build",
     "typecheck":  "pnpm -r typecheck",
-    "db:migrate": "psql $DATABASE_URL -f packages/relay/src/db/schema.sql"
+    "db:migrate": "psql $DATABASE_URL -f packages/relay/src/db/schema.sql",
+    "postinstall": "chmod +x node_modules/.pnpm/node-pty@*/node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true"
   },
   "devDependencies": {
     "typescript": "^5.4.0"

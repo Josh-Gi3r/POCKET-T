@@ -2,6 +2,7 @@ import os from 'node:os';
 import { join } from 'node:path';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { loadConfig, saveConfig } from './config.js';
+import { TmuxHost } from './tmux/TmuxHost.js';
 import { PtyHost } from './pty/PtyHost.js';
 import { RelayClient } from './uplink/RelayClient.js';
 import { HookServer } from './hooks/HookServer.js';
@@ -11,19 +12,19 @@ import { resolveProject, initProject } from './discover/ProjectResolver.js';
 import { MementoEngine } from './memento/index.js';
 import { DreamCycle } from './memento/DreamCycle.js';
 import { McpServer as MementoMcpServer } from './memento/McpServer.js';
+import type { Session } from '@pocket-t/shared';
 
 const RELAY_URL =
   process.env.POCKET_T_RELAY_URL ??
   (process.env.POCKET_T_REGION === 'us'
     ? 'wss://iad.relay.pocket-t.app'
-    : 'wss://relay.pocket-t.app');   // SIN default
+    : 'wss://relay.pocket-t.app');
 const HOOK_PORT  = 7621;
 const CLAUDE_SETTINGS = join(os.homedir(), '.claude', 'settings.json');
 
 const [,, command, ...rest] = process.argv;
 
 // ─── Memento standalone test mode ─────────────────────────────────────────
-
 const mementoEnabled = process.argv.includes('--memento');
 const testMode       = process.argv.includes('--test');
 
@@ -31,26 +32,19 @@ if (testMode && mementoEnabled) {
   const projectRoot = process.cwd();
   const sessionId   = 'test-' + Date.now().toString(36);
   const engine      = new MementoEngine({ projectRoot, sessionId });
-
   const lines = [
     '✓ Read file: src/auth.ts',
     'Thinking... I need to install bcrypt',
     "Error: Cannot find module 'bcrypt'",
-    "Error: Cannot find module 'bcrypt'",   // repeat → promotes
+    "Error: Cannot find module 'bcrypt'",
     '$ npm install bcrypt',
     '✓ Wrote file: src/auth.ts',
-    'Never modify the database migrations directly',  // user constraint
+    'Never modify the database migrations directly',
   ];
-
   console.log('\n[test] Feeding simulated PTY lines:');
-  for (const line of lines) {
-    console.log(`  > ${line}`);
-    engine.onLine(line);
-  }
-
+  for (const line of lines) { console.log(`  > ${line}`); engine.onLine(line); }
   console.log('\n[test] Triggering session end...');
   engine.onSessionEnd();
-
   const nohupPath = join(projectRoot, 'NOHUP.md');
   if (existsSync(nohupPath)) {
     console.log('\n[test] ✓ NOHUP.md written:\n');
@@ -63,7 +57,6 @@ if (testMode && mementoEnabled) {
 }
 
 // ─── pocket-t auth <token> ────────────────────────────────────────────────
-
 if (command === 'auth') {
   const oneTimeToken = rest[0];
   if (!oneTimeToken) {
@@ -76,9 +69,9 @@ if (command === 'auth') {
   let data: any;
   try {
     const res = await fetch(`${httpUrl}/api/daemon/auth`, {
-      method:  'POST',
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ oneTimeToken }),
+      body: JSON.stringify({ oneTimeToken }),
     });
     data = await res.json();
     if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -91,77 +84,49 @@ if (command === 'auth') {
     process.exit(1);
   }
   await saveConfig({
-    daemonId:  data.daemonId,
-    accountId: data.accountId,
-    token:     data.daemonJwt,
-    relayUrl:  RELAY_URL,
+    daemonId:   data.daemonId,
+    accountId:  data.accountId,
+    token:      data.daemonJwt,
+    relayUrl:   RELAY_URL,
     e2eEnabled: false,
   });
-  console.log('[pocket-t] ✓ Authenticated! Daemon ID:', data.daemonId);
+  console.log('\n[pocket-t] ✓ Authenticated! Daemon ID:', data.daemonId);
   process.exit(0);
 }
 
 // ─── pocket-t init [name] ─────────────────────────────────────────────────
-
 if (command === 'init') {
   const project = initProject(process.cwd(), rest[0]);
   console.log(`\n[pocket-t] ✓ Project initialized`);
   console.log(`[pocket-t] Name: ${project.name}`);
-  console.log(`[pocket-t] ID:   ${project.id}`);
   console.log(`[pocket-t] Run: pocket-t run --memento\n`);
   process.exit(0);
 }
 
 // ─── pocket-t scan ────────────────────────────────────────────────────────
-
 if (command === 'scan') {
-  const procs = (await scanProcesses()).filter((p) => p.interesting);
+  const procs = (await scanProcesses()).filter(p => p.interesting);
   if (procs.length === 0) {
     console.log('No interesting processes found.');
-    console.log('Try starting Claude Code, Aider, or another CLI tool.');
   } else {
     console.log(`\nFound ${procs.length} interesting processes:\n`);
-    for (const p of procs) {
-      console.log(`  [${p.pid}] ${p.cmd}  —  ${p.args.slice(0, 80)}`);
-    }
+    for (const p of procs) console.log(`  [${p.pid}] ${p.cmd}  —  ${p.args.slice(0, 80)}`);
   }
   process.exit(0);
 }
 
 // ─── pocket-t skill ───────────────────────────────────────────────────────
-
 if (command === 'skill') {
-  console.log(`# pocket-t — Terminal Supervisor
-
-## What pocket-t is
-pocket-t is running on this Mac. It captures all terminal sessions,
-routes them to your mobile device, and manages approval flows for
-tool calls via the PreToolUse hook.
-
-## PreToolUse hook
-The hook server is running at http://127.0.0.1:${HOOK_PORT}/hook/preToolUse
-All tool calls POST to this endpoint before executing. The response includes:
-- decision: "approve" | "deny"
-- context: contents of NOHUP.md if present (project memory)
-
-## Project memory
-If NOHUP.md exists in the current directory, read it at session start.
-It contains constraints, known failures, and decisions from past sessions.
-These facts are injected automatically via the PreToolUse hook context.
-
-## Commands
-- pocket-t run            Start daemon (connects to relay)
-- pocket-t run --memento  Start daemon with memory enabled
-- pocket-t mcp            Start MCP server (stdio)
-- pocket-t init           Initialize project memory
-- pocket-t scan           List interesting running processes
-- pocket-t skill          Print this document
-`);
+  console.log(
+    `# pocket-t — Terminal Supervisor\n\n` +
+    `Hook server: http://127.0.0.1:${HOOK_PORT}/hook/preToolUse\n` +
+    `If NOHUP.md exists in project root, read it at session start.\n` +
+    `Project memory is injected via PreToolUse hook context automatically.\n`,
+  );
   process.exit(0);
 }
 
-// ─── pocket-t dream — manual Memento consolidation cycle ──────────────────
-
+// ─── pocket-t dream ───────────────────────────────────────────────────────
 if (command === 'dream') {
   const cycle  = new DreamCycle(process.cwd());
   const result = await cycle.run();
@@ -169,51 +134,34 @@ if (command === 'dream') {
   process.exit(result.error ? 1 : 0);
 }
 
-// ─── pocket-t serve-mcp — expose Memento as an MCP server ─────────────────
-
+// ─── pocket-t serve-mcp (Memento memory as MCP) ───────────────────────────
 if (command === 'serve-mcp') {
   const server = new MementoMcpServer(process.cwd());
-  server.serve();  // blocks on stdin — process stays alive until stdin closes
+  server.serve();  // blocks on stdin
 }
 
-// ─── pocket-t mcp ─────────────────────────────────────────────────────────
-
+// ─── pocket-t mcp (session supervisor MCP) ────────────────────────────────
 else if (command === 'mcp') {
   const config  = await loadConfig();
   const project = resolveProject(process.cwd());
-
   const host = new PtyHost(config.daemonId, config.accountId, {
     onChunk: () => {}, onStatusChange: () => {}, onApproval: () => {}, onExit: () => {},
   }, project?.mementoEnabled ? project.root : undefined);
-
-  const hookServer = new HookServer({
-    port: HOOK_PORT + 1, projectRoot: project?.root,
-  });
+  const hookServer = new HookServer({ port: HOOK_PORT + 1, projectRoot: project?.root });
   hookServer.start();
-
   const mcp = new McpServer(host, null as any, hookServer);
   mcp.start();
   console.error('[pocket-t] MCP server ready. Listening on stdio.');
 }
 
-// ─── pocket-t run ─────────────────────────────────────────────────────────
-
+// ─── pocket-t run (default) ───────────────────────────────────────────────
 else if (command === 'run' || command === undefined) {
   const config  = await loadConfig();
   const project = resolveProject(process.cwd());
-
-  if (project) {
-    console.log(`[pocket-t] Project: ${project.name} (${project.id})`);
-  } else if (mementoEnabled) {
-    console.warn('[pocket-t] No .nohup-project found. Run: pocket-t init');
-  }
-
   const mementoRoot =
-    (mementoEnabled && project?.mementoEnabled)
-      ? project.root
-      : undefined;
+    (mementoEnabled && project?.mementoEnabled) ? project.root : undefined;
 
-  // Wire Claude Code hooks (optional, non-destructive)
+  // Configure Claude Code hooks (non-destructive, idempotent)
   if (existsSync(join(os.homedir(), '.claude'))) {
     try {
       let settings: any = {};
@@ -222,7 +170,8 @@ else if (command === 'run' || command === undefined) {
       }
       settings.hooks ??= {};
       settings.hooks.PreToolUse ??= [];
-      const hookCmd = `curl -sf -X POST http://127.0.0.1:${HOOK_PORT}/hook/preToolUse ` +
+      const hookCmd =
+        `curl -sf -X POST http://127.0.0.1:${HOOK_PORT}/hook/preToolUse ` +
         `-H 'Content-Type: application/json' --data @-`;
       const alreadySet = settings.hooks.PreToolUse.some(
         (h: any) => typeof h.command === 'string' && h.command.includes('pocket-t'),
@@ -245,7 +194,8 @@ else if (command === 'run' || command === undefined) {
     projectRoot: mementoRoot ?? process.cwd(),
   });
 
-  const host = new PtyHost(config.daemonId, config.accountId, {
+  // PtyHost — phone-initiated spawns that bypass tmux (rare)
+  const ptyHost = new PtyHost(config.daemonId, config.accountId, {
     onChunk: (sessionId, ev) =>
       relayClient.emitChunk(sessionId, ev.text, ev.rawVt, ev.seq),
     onChunkEncrypted: (sessionId, ev) =>
@@ -258,25 +208,85 @@ else if (command === 'run' || command === undefined) {
       relayClient.emitExit(sessionId, ev.exitCode),
   }, mementoRoot, config.e2eEnabled);
 
-  relayClient = new RelayClient(config.relayUrl, config.token, host, hookServer);
+  // TmuxHost — every terminal you open (auto-attached to the pocket-t tmux
+  // server via the shell snippet) shows up here as a session.
+  const tmuxHost = new TmuxHost(config.daemonId, config.accountId, {
+    onChunk: (sessionId, text, rawVt, seq) =>
+      relayClient.emitChunk(sessionId, text, rawVt, seq),
+    onSessionAdded: (session: Session) =>
+      relayClient.emitSessionUpdate(session),
+    onSessionRemoved: (sessionId: string) =>
+      relayClient.emitExit(sessionId, 0),
+    onSessionUpdate: (sessionId, status, lastOutput) =>
+      relayClient.emitSessionUpdate({
+        id: sessionId, daemonId: config.daemonId, accountId: config.accountId,
+        name: sessionId, cmd: '', cwd: '', status,
+        lastOutput: lastOutput ?? '', lastActiveAt: Date.now(), seq: 0,
+      } as Session),
+  });
 
-  hookServer.on('approvalRequested', (payload) =>
+  relayClient = new RelayClient(config.relayUrl, config.token, ptyHost, hookServer);
+
+  relayClient.onConnect = () => {
+    const sessions = tmuxHost.allSessions();
+    if (sessions.length) relayClient.emitAllSessions(sessions);
+    console.log(`[pocket-t] announced ${sessions.length} tmux sessions`);
+  };
+
+  relayClient.onInput = async (sessionId, text) => {
+    if (sessionId.startsWith('tmux-')) await tmuxHost.sendInput(sessionId, text);
+    else ptyHost.write(sessionId, text + '\r');
+  };
+
+  relayClient.onSpawn = async (name, cmd, cwd) => {
+    try { await tmuxHost.spawnWindow(name, cmd, cwd); }
+    catch (e) { console.error('[relay] spawn error:', e); }
+  };
+
+  relayClient.onKill = async (sessionId) => {
+    if (sessionId.startsWith('tmux-')) await tmuxHost.killSession(sessionId);
+    else ptyHost.kill(sessionId);
+  };
+
+  relayClient.onAttach = async (sessionId) => {
+    if (sessionId.startsWith('tmux-')) {
+      const snap = await tmuxHost.capturePane(sessionId);
+      if (snap.length) {
+        relayClient.emitSnapshot(sessionId, snap.toString('utf-8'), snap.toString('base64'));
+      }
+      return;
+    }
+    const s = ptyHost.get(sessionId);
+    if (s) {
+      const snap = s.snapshot();
+      relayClient.emitSnapshot(sessionId, snap.plainText, snap.rawVt);
+    }
+  };
+
+  hookServer.on('approvalRequested', (payload: any) =>
     relayClient.emitHookApproval(payload));
 
   hookServer.start();
   relayClient.connect();
 
-  console.log('\n[pocket-t] Daemon running');
-  console.log(`[pocket-t] Daemon ID: ${config.daemonId}`);
-  if (mementoRoot) {
-    console.log(`[pocket-t] Memory:    enabled → ${mementoRoot}/NOHUP.md`);
+  try {
+    await tmuxHost.start();
+    console.log('[pocket-t] tmux capture active — every terminal you open appears on your phone');
+  } catch (e) {
+    console.warn('[pocket-t] tmux not available:', (e as Error).message);
+    console.warn('[pocket-t] spawn-only mode. Restart your Mac after install to enable auto-capture.');
   }
-  console.log(`[pocket-t] Relay:     ${config.relayUrl}`);
-  console.log(`[pocket-t] Hooks:     http://127.0.0.1:${HOOK_PORT}\n`);
+
+  console.log('\n[pocket-t] Daemon running');
+  console.log(`[pocket-t] Relay:  ${config.relayUrl}`);
+  console.log(`[pocket-t] Hooks:  http://127.0.0.1:${HOOK_PORT}`);
+  if (mementoRoot) console.log(`[pocket-t] Memory: ${mementoRoot}/NOHUP.md`);
+  console.log('[pocket-t] Waiting for phone...\n');
 
   const shutdown = () => {
     console.log('\n[pocket-t] Shutting down...');
-    for (const s of host.all()) s.kill('SIGTERM');
+    tmuxHost.stop();
+    for (const s of ptyHost.all()) s.kill('SIGTERM');
     process.exit(0);
   };
   process.on('SIGTERM', shutdown);
@@ -285,6 +295,6 @@ else if (command === 'run' || command === undefined) {
 
 else {
   console.error(`Unknown command: ${command}`);
-  console.error('Commands: auth, init, scan, skill, mcp, dream, serve-mcp, run');
+  console.error('Commands: auth, init, scan, skill, dream, serve-mcp, mcp, run');
   process.exit(1);
 }

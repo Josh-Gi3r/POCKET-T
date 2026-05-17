@@ -42,9 +42,9 @@ export function setupClientNamespace(io: Server, redis: Redis) {
 
     socket.join(`account:${accountId}`);
 
-    // Send current sessions immediately
-    const sessions = await getSessionsByAccount(accountId);
-    socket.emit('relay:sessions', { sessions });
+    // Register all socket.on(...) handlers synchronously before any await
+    // (Socket.IO drops events that arrive before their listener is bound).
+    // The initial session snapshot is emitted afterwards.
 
     // ── Attach to session ────────────────────────────────────────────
     socket.on('client:session:attach', async ({
@@ -255,5 +255,19 @@ export function setupClientNamespace(io: Server, redis: Redis) {
         meta:  { approvalId, decision, toolName: 'unknown' },
       });
     });
+
+    // ── Initial snapshot (now that every handler is bound) ───────────
+    const sessions = await getSessionsByAccount(accountId);
+    socket.emit('relay:sessions', { sessions });
+
+    // Tell this client which of its daemons are already online. Without
+    // this, a client that connects AFTER its daemon never learns the
+    // daemon is up (relay:daemon:status is only emitted on daemon connect).
+    for (const dsock of io.of('/daemon').sockets.values()) {
+      const d = dsock.data as { accountId?: string; daemonId?: string };
+      if (d?.accountId === accountId && d?.daemonId) {
+        socket.emit('relay:daemon:status', { daemonId: d.daemonId, online: true });
+      }
+    }
   });
 }

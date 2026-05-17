@@ -38,6 +38,12 @@ export default defineConfig({
   ],
   server: {
     port:  3000,
+    // When served through an HTTPS tunnel (phone testing), allow the
+    // tunnel host and route HMR over wss:443. No effect on plain `pnpm dev`.
+    allowedHosts: process.env.PUBLIC_HOST ? [process.env.PUBLIC_HOST] : undefined,
+    hmr: process.env.PUBLIC_HOST
+      ? { host: process.env.PUBLIC_HOST, protocol: 'wss', clientPort: 443 }
+      : undefined,
     proxy: {
       '/api':       { target: 'http://localhost:4000', changeOrigin: true },
       '/socket.io': { target: 'http://localhost:4000', changeOrigin: true, ws: true },

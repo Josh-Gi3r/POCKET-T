@@ -1,5 +1,4 @@
 import Fastify from 'fastify';
-import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { Redis } from 'ioredis';
@@ -28,6 +27,16 @@ for (const key of REQUIRED) {
     process.exit(1);
   }
 }
+
+// A socket handler that throws (e.g. a bad DB query) must not take the whole
+// relay — and every other connected user's live session — down with it.
+// Log and keep serving; the offending request just fails.
+process.on('unhandledRejection', (reason) => {
+  console.error('[relay] unhandledRejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[relay] uncaughtException:', err);
+});
 
 // ── Fastify ───────────────────────────────────────────────────────────────
 // A-013: don't blindly trust X-Forwarded-* . TRUST_PROXY is the hop count
@@ -70,13 +79,12 @@ await app.register(import('fastify-raw-body'), {
 const pubClient = new Redis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
 });
-const subClient = pubClient.duplicate();
-
 pubClient.on('error', (e) => console.error('[redis]', e.message));
 
 // ── Socket.IO ─────────────────────────────────────────────────────────────
-const httpServer = createServer(app.server);
-const io         = new Server(httpServer, {
+// Attach to Fastify's own HTTP server. (The previous createServer(app.server)
+// produced a server with no request handler — Fastify routes hung forever.)
+const io         = new Server(app.server, {
   cors: { origin: process.env.APP_URL!, credentials: true },
   transports:    ['websocket'],
   path:          '/socket.io',
@@ -93,7 +101,16 @@ const io         = new Server(httpServer, {
   },
 });
 
-io.adapter(createAdapter(pubClient, subClient));
+// The Redis adapter is only needed to fan out across MULTIPLE relay nodes.
+// On a single relay (local dev, and the default single Fly machine) the
+// default in-memory adapter is correct — the Redis adapter was dropping
+// single-node room broadcasts (spawn/input/chunk never reached the daemon).
+// Opt in for true multi-region with POCKET_T_REDIS_ADAPTER=1.
+if (process.env.POCKET_T_REDIS_ADAPTER === '1') {
+  const subClient = pubClient.duplicate();
+  io.adapter(createAdapter(pubClient, subClient));
+  console.log('[relay] Redis Socket.IO adapter enabled (multi-node)');
+}
 
 // Attach io to app so REST handlers can emit
 (app as any).io = io;
@@ -117,12 +134,10 @@ app.get('/healthz', async () => ({ ok: true, ts: Date.now() }));
 
 // ── Start ──────────────────────────────────────────────────────────────────
 const PORT = Number(process.env.PORT ?? 4000);
-await app.ready();
-
-httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`[relay] listening on :${PORT}`);
-  console.log(`[relay] app url: ${process.env.APP_URL}`);
-});
+await app.ready();              // wires Socket.IO onto app.server
+await app.listen({ port: PORT, host: '0.0.0.0' });
+console.log(`[relay] listening on :${PORT}`);
+console.log(`[relay] app url: ${process.env.APP_URL}`);
 
 // ── Graceful shutdown ─────────────────────────────────────────────────────
 process.on('SIGTERM', async () => {

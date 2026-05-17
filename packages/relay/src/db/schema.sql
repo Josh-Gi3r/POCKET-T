@@ -52,8 +52,11 @@ CREATE TABLE IF NOT EXISTS daemons (
 );
 
 -- ── CLI Sessions ──────────────────────────────────────────────────────────
+-- Session id is daemon-assigned and is NOT a UUID: PTY sessions use a uuid
+-- string, tmux-captured terminals use `tmux-<paneN>`. Keep it TEXT so the
+-- "every terminal you open" capture model works without a uuid cast crash.
 CREATE TABLE IF NOT EXISTS sessions (
-  id              UUID PRIMARY KEY,
+  id              TEXT PRIMARY KEY,
   daemon_id       UUID NOT NULL REFERENCES daemons(id) ON DELETE CASCADE,
   account_id      UUID NOT NULL,
   name            TEXT NOT NULL,
@@ -76,7 +79,7 @@ CREATE INDEX IF NOT EXISTS sessions_daemon
 -- ── Messages ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS messages (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id        UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  session_id        TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
   account_id        UUID NOT NULL,
   role              TEXT NOT NULL CHECK (role IN ('cli','user','system')),
   kind              TEXT NOT NULL DEFAULT 'text'
@@ -110,7 +113,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
   id          BIGSERIAL PRIMARY KEY,
   account_id  UUID,
   user_id     UUID,
-  session_id  UUID,
+  session_id  TEXT,
   event       TEXT NOT NULL,
   meta        JSONB,
   ip          TEXT,

@@ -43,20 +43,11 @@ export function setupDaemonNamespace(io: Server) {
     socket.join(`account:${accountId}`);
     socket.join(`daemon:${daemonId}`);
 
-    // Update last seen
-    await sql`
-      UPDATE daemons
-      SET last_seen_at = NOW(),
-          hostname     = ${
-            (socket.handshake.headers['x-hostname'] as string) ?? null
-          }
-      WHERE id = ${daemonId}
-    `.catch(() => {});
-
-    // Notify browser clients this daemon is online
-    io.of('/client')
-      .to(`account:${accountId}`)
-      .emit('relay:daemon:status', { daemonId, online: true });
+    // CRITICAL: register every socket.on(...) handler synchronously BEFORE
+    // any await. The daemon emits `daemon:sessions` the instant it
+    // connects; Socket.IO does not buffer events for unbound listeners, so
+    // an await here (e.g. the last-seen UPDATE) drops the initial session
+    // list and the phone shows nothing until the next pane event.
 
     // ── Full session list (on connect) ──────────────────────────────
     socket.on('daemon:sessions', async ({ sessions }: { sessions: Session[] }) => {
@@ -73,10 +64,19 @@ export function setupDaemonNamespace(io: Server) {
       session,
     }: { session: Partial<Session> & { id: string } }) => {
       if (!session.id) return;
-      if (!(await sessionOwnedByDaemon(session.id, accountId, daemonId))) return;
-      if (session.status) {
-        await updateSessionScoped(session.id, accountId, session.status, session.lastOutput)
-          .catch(() => {});
+      // A full session payload (spawn / status change via toMeta) is
+      // upserted — account_id/daemon_id forced from the authenticated
+      // socket, conflict-guarded so a foreign session can't be hijacked.
+      // This both creates the row for a freshly spawned session and keeps
+      // the A-004 ownership guarantee. Partial payloads must already own.
+      if (typeof session.name === 'string' && typeof session.cmd === 'string') {
+        await upsertSession(session as Session, accountId, daemonId).catch(() => {});
+      } else {
+        if (!(await sessionOwnedByDaemon(session.id, accountId, daemonId))) return;
+        if (session.status) {
+          await updateSessionScoped(session.id, accountId, session.status, session.lastOutput)
+            .catch(() => {});
+        }
       }
       io.of('/client')
         .to(`account:${accountId}`)
@@ -217,6 +217,20 @@ export function setupDaemonNamespace(io: Server) {
         ).catch(() => {});
       }
     });
+
+    // ── Deferred side-effects (safe now that all handlers are bound) ──
+    sql`
+      UPDATE daemons
+      SET last_seen_at = NOW(),
+          hostname     = ${
+            (socket.handshake.headers['x-hostname'] as string) ?? null
+          }
+      WHERE id = ${daemonId}
+    `.catch(() => {});
+
+    io.of('/client')
+      .to(`account:${accountId}`)
+      .emit('relay:daemon:status', { daemonId, online: true });
 
     // ── Disconnect ───────────────────────────────────────────────────
     socket.on('disconnect', (reason) => {
