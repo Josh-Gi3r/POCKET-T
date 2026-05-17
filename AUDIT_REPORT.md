@@ -2,6 +2,43 @@
 
 Date: 2026-05-17
 
+## Remediation Status (updated 2026-05-17, commit 106b38b)
+
+Fixed:
+
+- A-001/A-002 — shared `auth/session.ts` verifier; `/client` sockets now
+  authenticate from the httpOnly `pocket-t_sess` cookie and revalidate
+  against `web_sessions` every connection; `localStorage` token removed;
+  Socket.IO recovery `skipMiddlewares` set to `false`.
+- A-003 — `verifyDaemonToken` binds the JWT `jti`/`daemonId`/`accountId`
+  to the `daemons` table on every daemon socket and REST call.
+- A-004 — daemon identity is taken only from authenticated socket data;
+  `upsertSession` forces account/daemon ids and conflict-guards; every
+  daemon event verifies `sessionOwnedByDaemon` before mutate/emit;
+  `updateSessionScoped` is account-scoped.
+- A-005 — `resolveApprovalScoped(messageId, sessionId, accountId, choice)`
+  with `kind='approval'`, single atomic statement, used by REST + socket.
+- A-006 — one-time token exchange is a single atomic `UPDATE..RETURNING`.
+- A-007 — Fastify 4 → 5 (+ `@fastify/cookie@11`, `@fastify/cors@10`,
+  `fast-uri@3.1.2`, `fastify-raw-body@5`).
+- A-012 — relay baseline header hook (`default-src 'none'`); web + site
+  add CSP / Referrer-Policy / Permissions-Policy.
+- A-018 — PWA icons added under `packages/web/public/icons/`.
+- A-009/A-010 — `/pair`, `/team` and billing/team route registration are
+  gated behind explicit Phase-2 flags (web `PHASE_2=false`; relay
+  `POCKET_T_PHASE2=1` opt-in), off by default.
+
+Deferred (need running infra to verify or a product decision):
+
+- A-011 runtime schema validation (zod/typebox) at all boundaries.
+- A-013 scope `trustProxy` to the deployment topology.
+- A-014 length/range caps on socket text, history limit, hook bodies.
+- A-015 non-root relay container, prod source-map decision.
+- A-016 relay/web integration tests (need test Postgres/Redis).
+- A-017 ESLint + stricter tsconfig flags.
+
+Original report follows unchanged.
+
 ## Executive Summary
 
 The repository builds and typechecks, and the daemon's existing unit tests pass. The highest-risk issues are in relay authorization boundaries: daemon JWTs are not checked against server-side daemon state after issuance, daemon socket events can mutate or broadcast session data without rechecking session/account ownership, and approval resolution can update an approval by `messageId` without binding it to the caller's account/session. There is also a major auth architecture mismatch: the relay stores the web JWT in an httpOnly cookie, but the browser Socket.IO client tries to read a JWT from `localStorage`, so realtime client connections will not authenticate unless the design is changed.
