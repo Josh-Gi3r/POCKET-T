@@ -10,13 +10,15 @@ import { existsSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
 import { TmuxClient, type TmuxPane } from './TmuxClient.js';
-import type { Session } from '@pocket-t/shared';
+import { VtStream, type VtChunk, type VtApproval } from '../stream/VtStream.js';
+import type { Session, ApprovalOption } from '@pocket-t/shared';
 
 export interface TmuxHostCallbacks {
   onChunk:        (sessionId: string, text: string, rawVt: string, seq: number) => void;
   onSessionAdded: (session: Session) => void;
   onSessionRemoved: (sessionId: string) => void;
   onSessionUpdate: (sessionId: string, status: Session['status'], lastOutput?: string) => void;
+  onApproval?:    (sessionId: string, messageId: string, options: ApprovalOption[]) => void;
 }
 
 export class TmuxHost {
@@ -31,8 +33,7 @@ export class TmuxHost {
   private panes      = new Map<string, TmuxPane>();    // paneId → pane
   private paneOwner  = new Map<string, TmuxClient>();  // paneId → its client
   private seqMap     = new Map<string, number>();      // sessionId → seq
-  private captureTimers = new Map<string, ReturnType<typeof setTimeout>>();
-  private lastCapture   = new Map<string, string>();   // paneId → last screen
+  private streams    = new Map<string, VtStream>();    // paneId → VT stream
   private confPath: string;
 
   // Reconnect control for the PRIMARY (server death). A tmux server death
@@ -120,6 +121,7 @@ export class TmuxHost {
       if (owner !== client) continue;
       this.paneOwner.delete(paneId);
       this.panes.delete(paneId);
+      this.disposeStream(paneId);
       this.callbacks.onSessionRemoved(this.paneToSessionId(paneId));
     }
   }
@@ -162,6 +164,10 @@ export class TmuxHost {
     if (!paneId) return;
     const client = this.paneOwner.get(paneId);
     if (!client) return;
+    // Responding clears the waiting latch so the next prompt is detected,
+    // and flips the session back to running (mirrors pty/Session.write).
+    this.streams.get(paneId)?.clearWaiting();
+    this.callbacks.onSessionUpdate(sessionId, 'running');
     try {
       await client.sendInput(paneId, text);
       await client.sendEnter(paneId);
@@ -195,17 +201,28 @@ export class TmuxHost {
     }
   }
 
-  // Called by ChatPage when user attaches to a session — send current screen
-  async capturePane(sessionId: string): Promise<Buffer> {
+  // Called by ChatPage when user attaches to a session — send current
+  // screen. Prefer the live VT's serialized screen (accurate, includes
+  // base64 rawVt for the desktop terminal view); fall back to a one-shot
+  // capture-pane if the stream isn't up yet.
+  async snapshot(sessionId: string): Promise<{ plainText: string; rawVt: string } | null> {
     const paneId = this.sessionToPaneId(sessionId);
-    if (!paneId) return Buffer.alloc(0);
+    if (!paneId) return null;
+    const st = this.streams.get(paneId);
+    if (st) return st.snapshot();
     const client = this.paneOwner.get(paneId);
-    if (!client) return Buffer.alloc(0);
+    if (!client) return null;
     try {
-      return await client.capturePane(paneId);
+      const buf = await client.capturePane(paneId);
+      if (!buf.length) return null;
+      const seed = new VtStream();
+      seed.seed(buf);
+      const snap = seed.snapshot();
+      seed.dispose();
+      return snap;
     } catch (e) {
-      console.error('[tmux-host] capturePane failed:', (e as Error).message);
-      return Buffer.alloc(0);
+      console.error('[tmux-host] snapshot failed:', (e as Error).message);
+      return null;
     }
   }
 
@@ -216,48 +233,56 @@ export class TmuxHost {
 
   // ─── Private ────────────────────────────────────────────────────────────────
 
+  // Lazily create the per-pane VT stream and wire its events to the
+  // session callbacks. Seeded from a capture-pane so a pane that existed
+  // before the daemon attached has correct VT state for the first snapshot.
+  private ensureStream(paneId: string): VtStream | undefined {
+    const pane = this.panes.get(paneId);
+    if (!pane) return undefined;
+    let st = this.streams.get(paneId);
+    if (st) return st;
+
+    st = new VtStream(pane.width || 120, pane.height || 40);
+    this.streams.set(paneId, st);
+    const sessionId = this.paneToSessionId(paneId);
+
+    st.on('chunk', (c: VtChunk) => {
+      this.seqMap.set(sessionId, c.seq);
+      this.callbacks.onChunk(sessionId, c.text, c.rawVt, c.seq);
+    });
+    st.on('approval', (a: VtApproval) => {
+      this.callbacks.onSessionUpdate(sessionId, 'waiting');
+      this.callbacks.onApproval?.(sessionId, a.messageId, a.options);
+    });
+    st.on('quiescent', () => {
+      const stream = this.streams.get(paneId);
+      this.callbacks.onSessionUpdate(sessionId, 'idle', stream?.lastPreview);
+    });
+
+    const client = this.paneOwner.get(paneId);
+    client?.capturePane(paneId, 200)
+      .then((buf) => { if (buf.length) this.streams.get(paneId)?.seed(buf); })
+      .catch(() => { /* pane may have closed */ });
+
+    return st;
+  }
+
+  private disposeStream(paneId: string): void {
+    const st = this.streams.get(paneId);
+    if (!st) return;
+    st.flushNow();
+    st.dispose();
+    this.streams.delete(paneId);
+  }
+
   private wireEvents(client: TmuxClient): void {
-    // Raw %output is pre-render bytes (cursor moves, alternate-screen
-    // redraws) — meaningless in a chat bubble without a VT renderer, which
-    // is what made text overlap/disappear. Debounce, then capture the
-    // RENDERED screen and stream that instead.
-    client.on('paneOutput', (paneId: string) => {
-      const prev = this.captureTimers.get(paneId);
-      if (prev) clearTimeout(prev);
-      this.captureTimers.set(paneId, setTimeout(async () => {
-        this.captureTimers.delete(paneId);
-        const sessionId = this.paneToSessionId(paneId);
-        const seq       = (this.seqMap.get(sessionId) ?? 0) + 1;
-        this.seqMap.set(sessionId, seq);
-        try {
-          const captured = await client.capturePane(paneId, 100);
-          const screen   = stripAnsi(captured.toString('utf-8'))
-            .replace(/[ \t]+$/gm, '')   // trailing pad from the grid
-            .replace(/\n{3,}/g, '\n\n') // collapse the blank grid rows
-            .trimEnd();
-
-          const prevScreen = this.lastCapture.get(paneId) ?? '';
-          // Identical capture (TUI idle / spinner-only redraw) → emit
-          // nothing. This is what was duplicating the whole conversation
-          // every 300ms forever.
-          if (screen === prevScreen) return;
-
-          // Append-only delta: if the new screen extends the old one, send
-          // just the new tail. Otherwise the screen was redrawn/scrolled —
-          // send the new screen once (not stacked infinitely).
-          let delta: string;
-          if (prevScreen && screen.startsWith(prevScreen)) {
-            delta = screen.slice(prevScreen.length);
-          } else {
-            const pl = longestCommonPrefixLen(prevScreen, screen);
-            delta = pl > 0 ? screen.slice(pl) : screen;
-          }
-          this.lastCapture.set(paneId, screen);
-
-          const out = delta.trim();
-          if (out) this.callbacks.onChunk(sessionId, out, '', seq);
-        } catch { /* pane may have closed */ }
-      }, 300));
+    // Feed the raw %output byte stream into a real headless VT and emit an
+    // append-only normalized delta (see stream/VtStream.ts). The old
+    // capture-pane snapshot+string-diff re-emitted the whole screen on
+    // every scroll and deleted history on every clear for alternate-screen
+    // apps (Claude Code, vim, …) — the core streaming bug.
+    client.on('paneOutput', (paneId: string, bytes: Buffer) => {
+      this.ensureStream(paneId)?.write(bytes);
     });
 
     client.on('paneAdded', (pane: TmuxPane) => {
@@ -270,9 +295,7 @@ export class TmuxHost {
     client.on('paneRemoved', (paneId: string) => {
       this.panes.delete(paneId);
       this.paneOwner.delete(paneId);
-      this.lastCapture.delete(paneId);
-      const t = this.captureTimers.get(paneId);
-      if (t) { clearTimeout(t); this.captureTimers.delete(paneId); }
+      this.disposeStream(paneId);
       this.callbacks.onSessionRemoved(this.paneToSessionId(paneId));
       console.log(`[tmux-host] pane removed: ${paneId}`);
     });
@@ -369,23 +392,6 @@ export class TmuxHost {
     }
     return path;
   }
-}
-
-// ─── ANSI stripper for chat bubbles ──────────────────────────────────────────
-
-const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[PX^_][^\x1b]*\x1b\\|\x1b[@-Z\\-_]|\x1b[()][0-9A-Za-z]|\r(?!\n)/g;
-
-function stripAnsi(s: string): string {
-  return s.replace(ANSI_RE, '').replace(/\x00/g, '');
-}
-
-// How many leading chars two screens share — used to emit only the part
-// of a re-captured screen that's actually new (append-only delta).
-function longestCommonPrefixLen(a: string, b: string): number {
-  const n = Math.min(a.length, b.length);
-  let i = 0;
-  while (i < n && a[i] === b[i]) i++;
-  return i;
 }
 
 // ─── Default tmux.conf for pocket-t's isolated server ────────────────────────

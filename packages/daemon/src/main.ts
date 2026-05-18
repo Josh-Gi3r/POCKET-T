@@ -254,6 +254,8 @@ else if (command === 'run' || command === undefined) {
         name: sessionId, cmd: '', cwd: '', status,
         lastOutput: lastOutput ?? '', lastActiveAt: Date.now(), seq: 0,
       } as Session),
+    onApproval: (sessionId, messageId, options) =>
+      relayClient.emitApproval(sessionId, messageId, options),
   });
 
   relayClient = new RelayClient(config.relayUrl, config.token, ptyHost, hookServer);
@@ -281,9 +283,9 @@ else if (command === 'run' || command === undefined) {
 
   relayClient.onAttach = async (sessionId) => {
     if (sessionId.startsWith('tmux-')) {
-      const snap = await tmuxHost.capturePane(sessionId);
-      if (snap.length) {
-        relayClient.emitSnapshot(sessionId, snap.toString('utf-8'), snap.toString('base64'));
+      const snap = await tmuxHost.snapshot(sessionId);
+      if (snap) {
+        relayClient.emitSnapshot(sessionId, snap.plainText, snap.rawVt);
       }
       return;
     }
