@@ -162,37 +162,55 @@ export class HookServer extends EventEmitter {
     });
   }
 
-  // Tools that always require approval
+  // Decide whether a tool call must be approved by the user.
+  //
+  // Claude Code sends PascalCase tool names (`Bash`, `Edit`, `Write`,
+  // `MultiEdit`, `Read`, ...). The old lowercase-only matching never
+  // matched, so the destructive-command gate failed OPEN and every write
+  // auto-approved. Normalize case, gate write/edit tools explicitly, and
+  // fail CLOSED: anything not provably read-only requires approval.
   private toolRequiresApproval(toolName: string, input: any): boolean {
-    const ALWAYS_APPROVE = new Set([
-      'bash', 'computer', 'str_replace_editor',
-    ]);
-    const NEVER_APPROVE = new Set([
+    const t = String(toolName ?? '').toLowerCase();
+
+    // Provably read-only / non-mutating — safe to auto-approve.
+    const READ_ONLY = new Set([
+      'read', 'glob', 'grep', 'ls', 'websearch', 'webfetch',
+      'todowrite', 'notebookread',
+      // legacy / API tool names
       'read_file', 'list_directory', 'web_search', 'web_fetch',
     ]);
+    if (READ_ONLY.has(t)) return false;
 
-    if (NEVER_APPROVE.has(toolName)) return false;
-    if (ALWAYS_APPROVE.has(toolName)) return true;
+    // Write / edit / filesystem-mutating tools always need approval.
+    const WRITE_LIKE = new Set([
+      'write', 'edit', 'multiedit', 'notebookedit',
+      'str_replace_editor', 'computer',
+    ]);
+    if (
+      WRITE_LIKE.has(t) ||
+      t.includes('write')  || t.includes('edit')   ||
+      t.includes('create') || t.includes('delete') || t.includes('move')
+    ) {
+      return true;
+    }
 
-    // Bash: require approval for destructive commands
-    if (toolName === 'bash') {
-      const cmd = (input?.command ?? '').toLowerCase();
+    // Bash / shell: approve destructive commands. Fail closed if we cannot
+    // read the command string (can't prove it's safe → require approval).
+    if (t === 'bash' || t === 'shell' || t === 'sh') {
+      const cmd = input?.command;
+      if (typeof cmd !== 'string') return true;
+      const lc = cmd.toLowerCase();
       const DESTRUCTIVE = [
         'rm ', 'rmdir', 'dd ', 'mkfs', 'fdisk', 'format',
         'git push', 'git force', 'npm publish', 'heroku',
         'kubectl delete', 'terraform destroy', 'fly destroy',
         'docker rm', 'docker rmi',
       ];
-      return DESTRUCTIVE.some((d) => cmd.includes(d));
+      return DESTRUCTIVE.some((d) => lc.includes(d));
     }
 
-    // Write operations always need approval
-    if (toolName.includes('write') || toolName.includes('create') ||
-        toolName.includes('delete') || toolName.includes('move')) {
-      return true;
-    }
-
-    return false;
+    // Unknown tool → fail closed (require approval).
+    return true;
   }
 
   private loadNohupContext(): string {

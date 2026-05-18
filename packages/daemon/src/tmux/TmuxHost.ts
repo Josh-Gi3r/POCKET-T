@@ -3,7 +3,7 @@
 //
 // Mapping:
 //   tmux pane  →  pocket-t session
-//   pane ID    →  session ID (prefixed "tmux-")
+//   pane ID    →  session ID ("tmux-<daemonId>-<paneNum>")
 //   pane output →  session chunks (streamed to relay)
 
 import { existsSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
@@ -310,14 +310,24 @@ export class TmuxHost {
     });
   }
 
-  // Stable bidirectional ID mapping
+  // Stable bidirectional ID mapping. The id is namespaced by daemonId:
+  // `sessions.id` is a single global TEXT primary key, so a bare
+  // `tmux-<paneNum>` (pane ids reset to %0,%1,... per server) collides
+  // across two Macs on the same account. Prefixing the daemonId makes it
+  // globally unique. main.ts still routes on the `tmux-` prefix, and the
+  // Claude Code hook builds the identical id from $TMUX_PANE.
+  private get idPrefix(): string {
+    return `tmux-${this.daemonId}-`;
+  }
+
   private paneToSessionId(paneId: string): string {
-    return `tmux-${paneId.replace('%', '')}`;
+    return `${this.idPrefix}${paneId.replace('%', '')}`;
   }
 
   private sessionToPaneId(sessionId: string): string | undefined {
-    if (!sessionId.startsWith('tmux-')) return undefined;
-    const num = sessionId.slice('tmux-'.length);
+    if (!sessionId.startsWith(this.idPrefix)) return undefined;
+    const num = sessionId.slice(this.idPrefix.length);
+    if (!/^\d+$/.test(num)) return undefined;
     const paneId = `%${num}`;
     return this.panes.has(paneId) ? paneId : undefined;
   }
