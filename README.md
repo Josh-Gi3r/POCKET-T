@@ -43,7 +43,7 @@ That's it.
 ## Self-host
 
 ```bash
-git clone https://github.com/your-org/pocket-t
+git clone https://github.com/josh-gi3r/pocket-t
 cd pocket-t
 cp packages/relay/.env.example packages/relay/.env
 # fill in DATABASE_URL, REDIS_URL, VAPID keys

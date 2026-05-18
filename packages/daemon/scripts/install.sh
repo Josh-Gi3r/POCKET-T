@@ -59,23 +59,13 @@ if ! command -v tmux >/dev/null 2>&1; then
   fi
 fi
 
-# ── pocket-t tmux.conf (isolated server, not the user's own tmux) ────────
+# ── pocket-t tmux.conf ───────────────────────────────────────────────────
+# The daemon OWNS this file: TmuxHost.ensureConf() rewrites it on every
+# start to stay in sync with the in-binary TMUX_CONF. The installer must
+# NOT write a second copy — it diverged from the daemon's (mouse off vs on,
+# status off vs on) and whichever wrote last won. Just ensure the dir
+# exists; the snippet below tolerates the conf not existing yet (1st boot).
 mkdir -p "$CONF_DIR"
-cat > "$CONF_DIR/tmux.conf" << 'TMUXCONF'
-# pocket-t isolated tmux server
-set -g default-terminal "tmux-256color"
-set -g escape-time 25
-set -g focus-events on
-set -g history-limit 5000
-set -g window-size latest
-set -g status off
-set -g mouse off
-set -g visual-bell off
-set -g visual-activity off
-setw -g monitor-activity off
-set -g bell-action none
-TMUXCONF
-echo "  → tmux.conf written to $CONF_DIR/tmux.conf"
 
 # ── Auto-attach shell snippet — "every terminal is a pocket-t terminal" ──
 SNIPPET=$(cat << 'SHELLSNIPPET'
@@ -95,10 +85,20 @@ __pocket_t_attach() {
   [ "$TERM_PROGRAM" = "cursor" ]              && return
   [ "$TERMINAL_EMULATOR" = "JetBrains-JediTerm" ] && return
   [ -n "$INSIDE_EMACS" ]                      && return
-  exec tmux \
-    -L pocket-t \
-    -f "$HOME/.pocket-t/tmux.conf" \
-    new-session -A -s "term-$$"
+
+  # FAIL-SAFE: never strand the user. The old `exec tmux …` replaced the
+  # shell, so a broken server/conf made every new terminal close instantly
+  # — you couldn't open a working shell to fix it. Instead run tmux as a
+  # child: on success (session ended/detached) close the terminal as
+  # usual; on failure fall through to a normal interactive shell.
+  __ptconf="$HOME/.pocket-t/tmux.conf"
+  if [ -f "$__ptconf" ]; then
+    tmux -L pocket-t -f "$__ptconf" new-session -A -s "term-$$" && exit
+  else
+    # Conf not written yet (daemon hasn't run) — use tmux defaults.
+    tmux -L pocket-t new-session -A -s "term-$$" && exit
+  fi
+  echo "pocket-t: tmux capture unavailable — continuing without it." >&2
 }
 __pocket_t_attach
 # ─── End pocket-t ───────────────────────────────────────────────────────
