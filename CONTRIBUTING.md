@@ -27,9 +27,28 @@ locally (relay + web + daemon).
 
 ## Before opening a PR
 
+`@pocket-t/shared` only exports its `dist`, so build it before
+typechecking anything else:
+
 ```bash
-pnpm -r build        # everything compiles
-pnpm --filter @pocket-t/daemon build && node packages/daemon/dist/main.js scan
+pnpm --filter @pocket-t/shared build   # required first
+pnpm -r typecheck                       # all packages compile
+pnpm --filter @pocket-t/daemon test     # vitest
+pnpm -r build                           # production builds
 ```
 
-Open an issue first for anything large so we can align on approach.
+Web UI changes can't be device-tested in CI — verify typecheck + the Vite
+production build, and exercise the flow in a phone-sized viewport locally.
+
+## Docs
+
+User/operator docs live in `docs/` and are linked from the README.
+`docs/protocol.md` and `docs/schema.md` are derived from
+`packages/shared/src/protocol.ts` and `packages/relay/src/db/schema.sql` —
+update them in the same PR that changes those files.
+
+## PR flow
+
+Open an issue first for anything large so we can align on approach. Keep
+the smallest diff that solves the problem; don't commit `.env` files or
+secrets.

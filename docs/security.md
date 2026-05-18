@@ -1,44 +1,62 @@
 # Security model
 
-## Trust boundaries
+## End-to-end encryption: NOT implemented
 
-- **Self-hosted (this repo):** TLS everywhere. You own the relay, so the
-  relay sees plaintext — you are trusting yourself.
-- **pocket-t Cloud (future):** E2E encrypted; relay routes ciphertext it
-  cannot read. Not in this codebase yet.
+The relay sees terminal output and input in **plaintext** (over TLS in
+transit, but readable by the relay process). The `*:encrypted` events and
+`EncryptedChunk` type in the protocol are placeholders for a future V2
+transport — there is no encrypt/decrypt path, and the relay has no
+encrypted-chunk handler. The pairing screen does **not** claim otherwise.
+
+Implication: when self-hosting you trust your own relay; if you ever use a
+hosted relay you trust its operator. Treat the relay as in-scope for any
+threat model that includes your terminal contents.
 
 ## Outbound-only
 
-The relay never initiates connections. Both the daemon and the browser
-connect outbound over WSS, so no inbound ports are exposed on the Mac.
-Works through NAT/firewalls/LTE.
+The relay never initiates connections. The daemon and the browser both
+dial out over WSS, so no inbound ports are exposed on the Mac. Works
+through NAT / firewalls / LTE.
 
 ## Credentials
 
-- Daemon JWT is stored in the **macOS Keychain** (`security` service
-  `app.pocket-t`, account `daemon-jwt`), never on disk.
-  `~/.pocket-t/config.json` holds only non-secret fields (daemonId,
-  accountId, relayUrl).
-- Web auth is an httpOnly, secure, `SameSite=strict` cookie
-  (`pocket-t_sess`); the JWT is also hashed into the `web_sessions` table
-  so server-side revocation works.
-- One-time daemon tokens are single-use and expire in 15 minutes.
+- **Daemon JWT** → macOS Keychain (`keytar`, service `app.pocket-t`),
+  never on disk. `~/.pocket-t/config.json` holds only non-secret fields
+  (daemonId, accountId, relayUrl). The JWT is `jti`-bound to the
+  `daemons` row and revocable.
+- **Web auth** → httpOnly, `secure`, `SameSite=strict` cookie
+  (`pocket-t_sess`). Its hash is stored in `web_sessions`; logout deletes
+  that row **and** force-disconnects matching live sockets (revocation is
+  immediate, not next-reconnect).
+- **One-time daemon tokens** are single-use and expire in 15 minutes
+  (claimed atomically).
 
-## Authorization
+## Authorization & routing
 
-Every session attach / input / kill path re-checks
-`account_id = <caller account>` against the `sessions` table. Socket.IO
-namespaces enforce JWT scope (`daemon` vs `client`) in middleware.
+- Socket.IO middleware enforces JWT scope (`/daemon`) vs cookie auth
+  (`/client`) on every connection.
+- Every attach / input / kill / approval is re-checked against
+  `account_id` on the `sessions` row, and routed **only** to the owning
+  daemon's room (`daemon:<id>`) — never broadcast to the account.
+- Approval `choice` is validated against the stored option keys before it
+  is forwarded into the pane (it is otherwise a command-injection vector).
+- Phone input is split on newlines and sent as discrete tmux `send-keys`
+  literals; a newline can never break out of the control-mode line.
+- The PreToolUse hook gate is case-normalized and **fails closed**:
+  anything not provably read-only requires approval.
 
 ## Rate limits (Redis)
 
-- stdin writes: 30/sec/session
-- spawns: 10/min/account
-- push: 100/hour/account
-- login: 5 attempts / 15 min / IP
+| Action | Limit |
+|--------|-------|
+| stdin writes | 30 / sec / session |
+| spawns | 10 / min / account |
+| push send | 100 / hour / account |
+| login | 5 / 15 min / IP |
+| register | 5 / hour / IP |
+| push subscribe | 20 / hour / user |
 
-## Pre-launch checklist
+## Reporting
 
-See Part 5 → "Step 9 — Hardening" in the build guide: rate-limit probe,
-Keychain verification, cross-account isolation test, CORS rejection,
-unauthenticated WS rejection, k6 load test.
+Report suspected vulnerabilities privately to the maintainer (do not open
+a public issue). Include repro steps and affected version/commit.
