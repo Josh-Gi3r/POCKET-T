@@ -7,8 +7,9 @@ import FastifyCors from '@fastify/cors';
 import { setupDaemonNamespace } from './sockets/daemonNs.js';
 import { setupClientNamespace } from './sockets/clientNs.js';
 import { authRoutes } from './api/auth.js';
-import { billingRoutes } from './api/billing.js';
-import { teamRoutes } from './api/team.js';
+// billing.ts / team.ts are imported dynamically below (Phase 2 only):
+// billing.ts constructs Stripe at module load and would crash the relay
+// at boot when STRIPE_SECRET_KEY is unset (the default, Phase-2-off case).
 
 // ── Validate environment ──────────────────────────────────────────────────
 const REQUIRED = [
@@ -126,6 +127,8 @@ await authRoutes(app, pubClient);
 // default — their auth/data model is incomplete (audit A-010). Flip
 // POCKET_T_PHASE2=1 only once that work lands.
 if (process.env.POCKET_T_PHASE2 === '1') {
+  const { billingRoutes } = await import('./api/billing.js');
+  const { teamRoutes }    = await import('./api/team.js');
   await billingRoutes(app);
   await teamRoutes(app);
 }

@@ -4,10 +4,18 @@ import sql from '../db/client.js';
 import { requireAuth } from './auth.js';
 import { audit } from '../db/queries.js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  // Guide pins a newer API version string than stripe@14's type union.
-  apiVersion: '2024-06-20' as any,
-});
+// Lazy: never construct Stripe at module load. The Stripe constructor
+// throws on a missing key, which would take the relay down at boot.
+let _stripe: Stripe | null = null;
+function stripe(): Stripe {
+  if (!_stripe) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      // Guide pins a newer API version than stripe@14's type union.
+      apiVersion: '2024-06-20' as any,
+    });
+  }
+  return _stripe;
+}
 
 const PLAN_PRICES: Record<string, string> = {
   pro:  process.env.STRIPE_PRO_PRICE_ID!,
@@ -38,7 +46,7 @@ export async function billingRoutes(app: FastifyInstance) {
       if (billing?.stripeCustomerId) {
         customerId = billing.stripeCustomerId;
       } else {
-        const customer = await stripe.customers.create({
+        const customer = await stripe().customers.create({
           email:    req.email,
           metadata: { accountId: req.accountId },
         });
@@ -52,7 +60,7 @@ export async function billingRoutes(app: FastifyInstance) {
         `;
       }
 
-      const session = await stripe.checkout.sessions.create({
+      const session = await stripe().checkout.sessions.create({
         customer:            customerId,
         payment_method_types: ['card'],
         mode:                'subscription',
@@ -95,7 +103,7 @@ export async function billingRoutes(app: FastifyInstance) {
         });
       }
 
-      const session = await stripe.billingPortal.sessions.create({
+      const session = await stripe().billingPortal.sessions.create({
         customer:   billing.stripeCustomerId,
         return_url: `${process.env.APP_URL}/dashboard`,
       });
@@ -139,7 +147,7 @@ export async function billingRoutes(app: FastifyInstance) {
       let event: Stripe.Event;
 
       try {
-        event = stripe.webhooks.constructEvent(
+        event = stripe().webhooks.constructEvent(
           req.rawBody,
           sig,
           process.env.STRIPE_WEBHOOK_SECRET!,

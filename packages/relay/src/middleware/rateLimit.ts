@@ -25,5 +25,11 @@ export function createRateLimiter(redis: Redis) {
     // login: 5 attempts per 15min per IP
     login: (ip: string) =>
       check(`login:${ip}`, 5, 900),
+    // register: 5 accounts per hour per IP
+    register: (ip: string) =>
+      check(`register:${ip}`, 5, 3600),
+    // push subscribe: 20 per hour per user
+    pushSub: (userId: string) =>
+      check(`pushsub:${userId}`, 20, 3600),
   };
 }

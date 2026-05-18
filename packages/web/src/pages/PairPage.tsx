@@ -36,10 +36,10 @@ export function PairPage() {
       )}
       {status === 'ok' && (
         <>
-          <p className="text-base font-medium text-white">E2E Encryption active</p>
+          <p className="text-base font-medium text-white">Session paired</p>
           <p className="text-sm text-white/40 text-center">
-            Your session is end-to-end encrypted.
-            The relay cannot read your terminal output.
+            Connecting over TLS. End-to-end encryption is not yet
+            enabled — see the security docs for the current model.
           </p>
         </>
       )}

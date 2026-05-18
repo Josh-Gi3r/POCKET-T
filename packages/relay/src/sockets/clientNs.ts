@@ -1,5 +1,6 @@
 import type { Server, Socket } from 'socket.io';
 import type { Redis } from 'ioredis';
+import { createHash } from 'node:crypto';
 import { verifyClientToken, cookieValue, SESS_COOKIE } from '../auth/session.js';
 import {
   getSessionsByAccount,
@@ -54,6 +55,11 @@ export function setupClientNamespace(io: Server, redis: Redis) {
       socket.data.accountId = ctx.accountId;
       socket.data.userId    = ctx.userId;
       socket.data.email     = ctx.email;
+      // Bind the live socket to its web_session so logout can force-drop
+      // it. verifyClientToken only revalidates on (re)connect, so without
+      // this an open socket keeps streaming after the session is revoked.
+      socket.data.sessHash  =
+        createHash('sha256').update(token).digest('hex');
       next();
     } catch {
       next(new Error('unauthorized'));

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { useAuthStore } from '../store/auth.js';
 import { usePush } from '../hooks/usePush.js';
+import { disconnectSocket } from '../socket.js';
 
 // Phase 2: hosted/paid plans. pocket-t ships fully free & open source —
 // billing & team UI stay in the codebase but are not surfaced yet.
@@ -165,6 +166,7 @@ export function DashboardPage() {
 
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    disconnectSocket();
     clearAuth();
     navigate('/login');
   }

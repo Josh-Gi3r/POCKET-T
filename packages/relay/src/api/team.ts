@@ -29,6 +29,15 @@ export async function teamRoutes(app: FastifyInstance) {
     '/api/team/invite',
     { onRequest: [requireAuth] },
     async (req: any, reply) => {
+      // Only owners/admins can invite
+      const [caller] = await sql`
+        SELECT role FROM team_members
+        WHERE account_id = ${req.accountId} AND user_id = ${req.userId}
+      `;
+      if (!caller || caller.role === 'member') {
+        return reply.code(403).send({ error: 'Insufficient permissions.' });
+      }
+
       // Check team plan
       const [billing] = await sql`
         SELECT plan, seat_count FROM billing WHERE account_id = ${req.accountId}
@@ -139,6 +148,21 @@ export async function teamRoutes(app: FastifyInstance) {
 
       if (!caller || caller.role === 'member') {
         return reply.code(403).send({ error: 'Insufficient permissions.' });
+      }
+
+      // Never strand an account with no owner.
+      const [target] = await sql`
+        SELECT role FROM team_members
+        WHERE account_id = ${req.accountId} AND user_id = ${req.params.userId}
+      `;
+      if (target?.role === 'owner') {
+        const [{ count }] = await sql`
+          SELECT COUNT(*) AS count FROM team_members
+          WHERE account_id = ${req.accountId} AND role = 'owner'
+        `;
+        if (Number(count) <= 1) {
+          return reply.code(403).send({ error: 'Cannot remove the last owner.' });
+        }
       }
 
       await sql`
