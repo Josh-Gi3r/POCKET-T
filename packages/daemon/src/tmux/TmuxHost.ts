@@ -6,7 +6,7 @@
 //   pane ID    →  session ID (prefixed "tmux-")
 //   pane output →  session chunks (streamed to relay)
 
-import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
 import { TmuxClient, type TmuxPane } from './TmuxClient.js';
@@ -20,19 +20,32 @@ export interface TmuxHostCallbacks {
 }
 
 export class TmuxHost {
-  private client: TmuxClient;
-  private seqMap  = new Map<string, number>();  // sessionId → chunk sequence number
+  // One control client per tmux session (a tmux -CC client only receives
+  // %output for its attached session). `primary` is the daemon's own
+  // `pocket-t` session and additionally does discovery; every other
+  // session gets its own attach-only client. All feed the same callbacks.
+  private primary!: TmuxClient;
+  private clients = new Map<string, TmuxClient>();   // session name → client
+
+  // Unified pane registry across all clients (pane IDs are server-unique).
+  private panes      = new Map<string, TmuxPane>();    // paneId → pane
+  private paneOwner  = new Map<string, TmuxClient>();  // paneId → its client
+  private seqMap     = new Map<string, number>();      // sessionId → seq
+  private captureTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private lastCapture   = new Map<string, string>();   // paneId → last screen
   private confPath: string;
 
-  // Reconnect control. A tmux server death used to trigger an unbounded
-  // 3s-interval respawn loop; each failed pty.spawn leaked a pseudo-tty,
-  // exhausting the macOS pty pool until *nothing* could fork (the relay,
-  // the user's own shells — the whole machine degraded). Bounded
-  // exponential backoff + a hard cap + reaping the dead client first.
+  // Reconnect control for the PRIMARY (server death). A tmux server death
+  // used to trigger an unbounded 3s respawn loop that leaked a pty per
+  // failed spawn and exhausted the macOS pty pool. Bounded backoff + cap.
   private stopped     = false;
   private retries     = 0;
   private readonly maxRetries = 6;
   private restartTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Reconcile serialization — %sessions-changed can fire in bursts.
+  private reconciling   = false;
+  private reconcileAgain = false;
 
   constructor(
     private readonly daemonId:   string,
@@ -40,20 +53,75 @@ export class TmuxHost {
     private readonly callbacks:  TmuxHostCallbacks,
   ) {
     this.confPath = this.ensureConf();
-    this.client   = new TmuxClient(this.confPath);
-    this.wireEvents();
+    this.primary  = new TmuxClient(this.confPath, 'pocket-t', true);
+    this.clients.set('pocket-t', this.primary);
+    this.wireEvents(this.primary);
   }
 
   async start(): Promise<void> {
-    await this.client.connect();
+    await this.primary.connect();
     this.retries = 0;            // a clean connect resets the backoff
-    console.log('[tmux-host] connected');
+    console.log('[tmux-host] primary connected');
+    await this.reconcileSessions();
   }
 
   stop(): void {
     this.stopped = true;
     if (this.restartTimer) { clearTimeout(this.restartTimer); this.restartTimer = null; }
-    this.client.disconnect();
+    for (const c of this.clients.values()) {
+      try { c.disconnect(); } catch { /* already gone */ }
+    }
+    this.clients.clear();
+  }
+
+  // Spawn/teardown per-session clients so the live set matches the server.
+  private async reconcileSessions(): Promise<void> {
+    if (this.reconciling) { this.reconcileAgain = true; return; }
+    this.reconciling = true;
+    try {
+      const names = await this.primary.listSessions();
+      const live  = new Set(names);
+
+      // New sessions → spawn a dedicated attach-only client.
+      for (const name of names) {
+        if (this.clients.has(name)) continue;
+        const client = new TmuxClient(this.confPath, name, false);
+        this.clients.set(name, client);
+        this.wireEvents(client);
+        try {
+          await client.connect();
+          console.log(`[tmux-host] session client up: ${name}`);
+        } catch (e) {
+          console.error(`[tmux-host] session client failed (${name}):`, (e as Error).message);
+          this.clients.delete(name);
+          try { client.disconnect(); } catch { /* noop */ }
+        }
+      }
+
+      // Vanished sessions → tear the client down (primary never removed).
+      for (const [name, client] of [...this.clients]) {
+        if (name === 'pocket-t' || live.has(name)) continue;
+        try { client.disconnect(); } catch { /* noop */ }
+        this.clients.delete(name);
+        this.dropClientPanes(client);
+        console.log(`[tmux-host] session client gone: ${name}`);
+      }
+    } finally {
+      this.reconciling = false;
+      if (this.reconcileAgain) {
+        this.reconcileAgain = false;
+        setTimeout(() => this.reconcileSessions().catch(() => {}), 150);
+      }
+    }
+  }
+
+  private dropClientPanes(client: TmuxClient): void {
+    for (const [paneId, owner] of [...this.paneOwner]) {
+      if (owner !== client) continue;
+      this.paneOwner.delete(paneId);
+      this.panes.delete(paneId);
+      this.callbacks.onSessionRemoved(this.paneToSessionId(paneId));
+    }
   }
 
   private scheduleReconnect(): void {
@@ -70,11 +138,17 @@ export class TmuxHost {
     console.log(`[tmux-host] reconnecting in ${delay}ms (attempt ${this.retries}/${this.maxRetries})`);
     this.restartTimer = setTimeout(() => {
       this.restartTimer = null;
-      // Reap the dead pty + rebuild a fresh client so connect() state
-      // (startup barrier, seed flags) doesn't carry over and no pty leaks.
-      try { this.client.disconnect(); } catch { /* already gone */ }
-      this.client = new TmuxClient(this.confPath);
-      this.wireEvents();
+      // Server died → every client is dead. Reap them all and rebuild
+      // from a fresh primary so no connect()-state carries over / leaks.
+      for (const c of this.clients.values()) {
+        try { c.disconnect(); } catch { /* noop */ }
+      }
+      this.clients.clear();
+      this.panes.clear();
+      this.paneOwner.clear();
+      this.primary = new TmuxClient(this.confPath, 'pocket-t', true);
+      this.clients.set('pocket-t', this.primary);
+      this.wireEvents(this.primary);
       this.start().catch((e) => {
         console.error('[tmux-host] reconnect failed:', (e as Error).message);
         this.scheduleReconnect();
@@ -86,79 +160,153 @@ export class TmuxHost {
   async sendInput(sessionId: string, text: string): Promise<void> {
     const paneId = this.sessionToPaneId(sessionId);
     if (!paneId) return;
-    await this.client.sendInput(paneId, text);
-    await this.client.sendEnter(paneId);
+    const client = this.paneOwner.get(paneId);
+    if (!client) return;
+    try {
+      await client.sendInput(paneId, text);
+      await client.sendEnter(paneId);
+    } catch (e) {
+      console.error('[tmux-host] sendInput failed:', (e as Error).message);
+    }
   }
 
   // Called by RelayClient when mobile user spawns a new session
   async spawnWindow(name: string, command: string, cwd?: string): Promise<string> {
-    const windowId = await this.client.spawnWindow({ name, command, cwd });
-    // Pane events will fire via TmuxClient → callbacks automatically
-    return windowId;
+    try {
+      const windowId = await this.primary.spawnWindow({ name, command, cwd });
+      // Pane events will fire via the relevant client → callbacks
+      return windowId;
+    } catch (e) {
+      console.error('[tmux-host] spawnWindow failed:', (e as Error).message);
+      return '';
+    }
   }
 
   // Called by RelayClient when mobile user kills a session
   async killSession(sessionId: string): Promise<void> {
     const paneId = this.sessionToPaneId(sessionId);
     if (!paneId) return;
-    await this.client.killPane(paneId);
+    const client = this.paneOwner.get(paneId);
+    if (!client) return;
+    try {
+      await client.killPane(paneId);
+    } catch (e) {
+      console.error('[tmux-host] killSession failed:', (e as Error).message);
+    }
   }
 
   // Called by ChatPage when user attaches to a session — send current screen
   async capturePane(sessionId: string): Promise<Buffer> {
     const paneId = this.sessionToPaneId(sessionId);
     if (!paneId) return Buffer.alloc(0);
-    return this.client.capturePane(paneId);
+    const client = this.paneOwner.get(paneId);
+    if (!client) return Buffer.alloc(0);
+    try {
+      return await client.capturePane(paneId);
+    } catch (e) {
+      console.error('[tmux-host] capturePane failed:', (e as Error).message);
+      return Buffer.alloc(0);
+    }
   }
 
   // Get all current sessions (for relay:sessions on client connect)
   allSessions(): Session[] {
-    return Array.from(this.client.panes.values()).map(p =>
-      this.paneToSession(p)
-    );
+    return Array.from(this.panes.values()).map(p => this.paneToSession(p));
   }
 
   // ─── Private ────────────────────────────────────────────────────────────────
 
-  private wireEvents(): void {
-    this.client.on('paneOutput', (paneId: string, data: Buffer) => {
-      const sessionId = this.paneToSessionId(paneId);
-      const seq       = (this.seqMap.get(sessionId) ?? 0) + 1;
-      this.seqMap.set(sessionId, seq);
+  private wireEvents(client: TmuxClient): void {
+    // Raw %output is pre-render bytes (cursor moves, alternate-screen
+    // redraws) — meaningless in a chat bubble without a VT renderer, which
+    // is what made text overlap/disappear. Debounce, then capture the
+    // RENDERED screen and stream that instead.
+    client.on('paneOutput', (paneId: string) => {
+      const prev = this.captureTimers.get(paneId);
+      if (prev) clearTimeout(prev);
+      this.captureTimers.set(paneId, setTimeout(async () => {
+        this.captureTimers.delete(paneId);
+        const sessionId = this.paneToSessionId(paneId);
+        const seq       = (this.seqMap.get(sessionId) ?? 0) + 1;
+        this.seqMap.set(sessionId, seq);
+        try {
+          const captured = await client.capturePane(paneId, 100);
+          const screen   = stripAnsi(captured.toString('utf-8'))
+            .replace(/[ \t]+$/gm, '')   // trailing pad from the grid
+            .replace(/\n{3,}/g, '\n\n') // collapse the blank grid rows
+            .trimEnd();
 
-      const text  = stripAnsi(data.toString('utf-8'));
-      const rawVt = data.toString('base64');
+          const prevScreen = this.lastCapture.get(paneId) ?? '';
+          // Identical capture (TUI idle / spinner-only redraw) → emit
+          // nothing. This is what was duplicating the whole conversation
+          // every 300ms forever.
+          if (screen === prevScreen) return;
 
-      if (text.trim()) {
-        this.callbacks.onChunk(sessionId, text, rawVt, seq);
-      }
+          // Append-only delta: if the new screen extends the old one, send
+          // just the new tail. Otherwise the screen was redrawn/scrolled —
+          // send the new screen once (not stacked infinitely).
+          let delta: string;
+          if (prevScreen && screen.startsWith(prevScreen)) {
+            delta = screen.slice(prevScreen.length);
+          } else {
+            const pl = longestCommonPrefixLen(prevScreen, screen);
+            delta = pl > 0 ? screen.slice(pl) : screen;
+          }
+          this.lastCapture.set(paneId, screen);
+
+          const out = delta.trim();
+          if (out) this.callbacks.onChunk(sessionId, out, '', seq);
+        } catch { /* pane may have closed */ }
+      }, 300));
     });
 
-    this.client.on('paneAdded', (pane: TmuxPane) => {
-      const session = this.paneToSession(pane);
-      this.callbacks.onSessionAdded(session);
-      console.log(`[tmux-host] pane added: ${pane.id} (${pane.currentCommand})`);
+    client.on('paneAdded', (pane: TmuxPane) => {
+      this.panes.set(pane.id, pane);
+      this.paneOwner.set(pane.id, client);
+      this.callbacks.onSessionAdded(this.paneToSession(pane));
+      console.log(`[tmux-host] pane added: ${pane.id} (${pane.currentCommand}) [${client.sessionName}]`);
     });
 
-    this.client.on('paneRemoved', (paneId: string) => {
-      const sessionId = this.paneToSessionId(paneId);
-      this.callbacks.onSessionRemoved(sessionId);
+    client.on('paneRemoved', (paneId: string) => {
+      this.panes.delete(paneId);
+      this.paneOwner.delete(paneId);
+      this.lastCapture.delete(paneId);
+      const t = this.captureTimers.get(paneId);
+      if (t) { clearTimeout(t); this.captureTimers.delete(paneId); }
+      this.callbacks.onSessionRemoved(this.paneToSessionId(paneId));
       console.log(`[tmux-host] pane removed: ${paneId}`);
     });
 
-    this.client.on('ready', () => {
-      for (const pane of this.client.panes.values()) {
+    client.on('ready', () => {
+      for (const pane of client.panes.values()) {
+        this.panes.set(pane.id, pane);
+        this.paneOwner.set(pane.id, client);
         this.callbacks.onSessionAdded(this.paneToSession(pane));
       }
     });
 
-    this.client.on('exit', () => {
-      console.log('[tmux-host] tmux server exited');
-      this.scheduleReconnect();
+    client.on('sessionsChanged', () => {
+      // primary only — server session set changed
+      this.reconcileSessions().catch((e) =>
+        console.error('[tmux-host] reconcile failed:', (e as Error).message));
     });
 
-    this.client.on('error', (err: Error) => {
-      console.error('[tmux-host] error:', err.message);
+    client.on('exit', () => {
+      if (client === this.primary) {
+        console.log('[tmux-host] tmux server exited');
+        this.scheduleReconnect();
+        return;
+      }
+      // A per-session client died (its session ended, or transient).
+      // Drop its panes; reconcile re-spawns it if the session still exists.
+      console.log(`[tmux-host] session client exited: ${client.sessionName}`);
+      this.clients.delete(client.sessionName);
+      this.dropClientPanes(client);
+      this.reconcileSessions().catch(() => {});
+    });
+
+    client.on('error', (err: Error) => {
+      console.error(`[tmux-host] error [${client.sessionName}]:`, err.message);
     });
   }
 
@@ -171,7 +319,7 @@ export class TmuxHost {
     if (!sessionId.startsWith('tmux-')) return undefined;
     const num = sessionId.slice('tmux-'.length);
     const paneId = `%${num}`;
-    return this.client.panes.has(paneId) ? paneId : undefined;
+    return this.panes.has(paneId) ? paneId : undefined;
   }
 
   private paneToSession(pane: TmuxPane): Session {
@@ -180,7 +328,11 @@ export class TmuxHost {
       id:           sessionId,
       daemonId:     this.daemonId,
       accountId:    this.accountId,
-      name:         pane.title || pane.currentCommand || pane.id,
+      // pane.title defaults to the hostname — useless in the inbox.
+      // Show the running command + the working dir's last segment.
+      name: pane.currentCommand
+        ? `${pane.currentCommand} — ${pane.currentPath.split('/').filter(Boolean).pop() ?? '~'}`
+        : pane.id,
       cmd:          pane.currentCommand,
       cwd:          pane.currentPath,
       status:       'running',
@@ -197,9 +349,13 @@ export class TmuxHost {
     const dir  = join(os.homedir(), '.pocket-t');
     const path = join(dir, 'tmux.conf');
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    if (!existsSync(path)) {
+    // This file is daemon-owned (header says so) — keep it in sync with
+    // TMUX_CONF, otherwise a stale conf (e.g. old `mouse off`) sticks
+    // forever after the first run.
+    const current = existsSync(path) ? readFileSync(path, 'utf-8') : '';
+    if (current !== TMUX_CONF) {
       writeFileSync(path, TMUX_CONF, 'utf-8');
-      console.log('[tmux-host] created tmux.conf at', path);
+      console.log('[tmux-host] wrote tmux.conf at', path);
     }
     return path;
   }
@@ -213,6 +369,15 @@ function stripAnsi(s: string): string {
   return s.replace(ANSI_RE, '').replace(/\x00/g, '');
 }
 
+// How many leading chars two screens share — used to emit only the part
+// of a re-captured screen that's actually new (append-only delta).
+function longestCommonPrefixLen(a: string, b: string): number {
+  const n = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < n && a[i] === b[i]) i++;
+  return i;
+}
+
 // ─── Default tmux.conf for pocket-t's isolated server ────────────────────────
 
 const TMUX_CONF = `
@@ -224,7 +389,10 @@ set -g focus-events on
 set -g history-limit 5000
 set -g window-size latest
 set -g status off
-set -g mouse off
+# Wheel scrolls THIS pane's own scrollback (copy-mode). With mouse off,
+# Terminal.app turns the wheel into ↑/↓ → zsh history → you'd see other
+# terminals' commands (shared HISTFILE). mouse on = scroll the terminal.
+set -g mouse on
 set -g visual-bell off
 set -g visual-activity off
 set -g visual-silence off

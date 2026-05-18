@@ -172,13 +172,22 @@ export function Composer({
           rows={1}
           aria-label="Message input"
           className="
-            w-full bg-white/6 text-white placeholder:text-white/20 text-sm
+            w-full placeholder:text-white/30 text-sm
             rounded-2xl px-3.5 py-2.5 resize-none
             focus:outline-none focus:ring-1 focus:ring-white/15
             disabled:opacity-40 disabled:cursor-not-allowed
             selectable
           "
-          style={{ maxHeight: 140 }}
+          style={{
+            maxHeight: 140,
+            // iOS Safari forces a white textarea bg + uses
+            // -webkit-text-fill-color, which made the text invisible.
+            // Pin an explicit dark field + light text + caret.
+            background: '#23232b',
+            color: '#f4f4f5',
+            WebkitTextFillColor: '#f4f4f5',
+            caretColor: '#f4f4f5',
+          }}
         />
       </div>
 

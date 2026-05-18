@@ -14,6 +14,12 @@ import { DreamCycle } from './memento/DreamCycle.js';
 import { McpServer as MementoMcpServer } from './memento/McpServer.js';
 import type { Session } from '@pocket-t/shared';
 
+// A rejected tmux cmd() (e.g. tmux %error) must never take the daemon down
+// — log and keep the daemon alive so the phone stays connected.
+process.on('unhandledRejection', (reason) => {
+  console.error('[pocket-t] unhandledRejection:', reason);
+});
+
 const RELAY_URL =
   process.env.POCKET_T_RELAY_URL ??
   (process.env.POCKET_T_REGION === 'us'
@@ -169,18 +175,34 @@ else if (command === 'run' || command === undefined) {
         settings = JSON.parse(readFileSync(CLAUDE_SETTINGS, 'utf-8'));
       }
       settings.hooks ??= {};
-      settings.hooks.PreToolUse ??= [];
+      const prev = Array.isArray(settings.hooks.PreToolUse)
+        ? settings.hooks.PreToolUse
+        : [];
       const hookCmd =
         `curl -sf -X POST http://127.0.0.1:${HOOK_PORT}/hook/preToolUse ` +
         `-H 'Content-Type: application/json' --data @-`;
-      const alreadySet = settings.hooks.PreToolUse.some(
-        (h: any) => typeof h.command === 'string' && h.command.includes('pocket-t'),
-      );
-      if (!alreadySet) {
-        settings.hooks.PreToolUse.push({ matcher: '*', command: hookCmd });
-        writeFileSync(CLAUDE_SETTINGS, JSON.stringify(settings, null, 2));
-        console.log('[pocket-t] ✓ Claude Code hooks configured');
-      }
+      const MARK = '/hook/preToolUse';
+      const isOurs = (h: any): boolean => {
+        if (!h || typeof h !== 'object') return false;
+        if (typeof h.command === 'string' && h.command.includes(MARK)) return true;
+        return Array.isArray(h.hooks)
+          && h.hooks.some((x: any) =>
+            typeof x?.command === 'string' && x.command.includes(MARK));
+      };
+      // Drop every entry we previously authored (including the old broken
+      // `{matcher, command}` shape that lacked the required `hooks` array
+      // and was duplicated on every restart — the launch-time validation
+      // dump). Leave the user's own hooks untouched.
+      const cleaned = prev.filter((h: any) => !isOurs(h));
+      // Re-add exactly one entry in the schema Claude Code expects:
+      // { matcher, hooks: [{ type: 'command', command }] }; "" = all tools.
+      cleaned.push({
+        matcher: '',
+        hooks: [{ type: 'command', command: hookCmd }],
+      });
+      settings.hooks.PreToolUse = cleaned;
+      writeFileSync(CLAUDE_SETTINGS, JSON.stringify(settings, null, 2));
+      console.log('[pocket-t] ✓ Claude Code hooks configured (cleaned + revalidated)');
     } catch (e) {
       console.warn('[pocket-t] Could not configure Claude Code hooks:', e);
     }

@@ -63,6 +63,7 @@ export class TmuxClient extends EventEmitter {
   //   'windowAdded'   (window: TmuxWindow)
   //   'windowRemoved' (windowId: string)
   //   'ready'         ()           — initial state fully seeded
+  //   'sessionsChanged' ()         — primary only: server session set changed
   //   'error'         (err: Error)
   //   'exit'          ()
 
@@ -100,6 +101,14 @@ export class TmuxClient extends EventEmitter {
 
   constructor(
     private readonly tmuxConf: string,  // path to pocket-t tmux.conf
+    // The single tmux session this control client is bound to. A tmux -CC
+    // client only receives %output for its ATTACHED session, so there is
+    // one TmuxClient per tmux session. `primary` create-or-attaches the
+    // daemon's own `pocket-t` session and additionally does discovery
+    // (list-sessions + emits 'sessionsChanged'); others attach an
+    // already-existing session.
+    readonly sessionName = 'pocket-t',
+    private readonly primary = true,
     private readonly virtualCols = 220,
     private readonly virtualRows = 50,
   ) {
@@ -155,17 +164,20 @@ export class TmuxClient extends EventEmitter {
   async sendInput(paneId: string, text: string): Promise<void> {
     // Send text literal, then Enter separately for reliability
     // -l disables key-name lookup so "Enter" isn't treated as the Enter key
-    await this.cmd(`send-keys -t ${paneId} -l ${shellQuote(text)}`);
+    try { await this.cmd(`send-keys -t ${paneId} -l ${shellQuote(text)}`); }
+    catch (e) { console.error('[tmux] sendInput failed:', (e as Error).message); }
   }
 
   /** Send Enter key to a pane */
   async sendEnter(paneId: string): Promise<void> {
-    await this.cmd(`send-keys -t ${paneId} Enter`);
+    try { await this.cmd(`send-keys -t ${paneId} Enter`); }
+    catch (e) { console.error('[tmux] sendEnter failed:', (e as Error).message); }
   }
 
   /** Send Ctrl-C to a pane */
   async sendInterrupt(paneId: string): Promise<void> {
-    await this.cmd(`send-keys -t ${paneId} C-c`);
+    try { await this.cmd(`send-keys -t ${paneId} C-c`); }
+    catch (e) { console.error('[tmux] sendInterrupt failed:', (e as Error).message); }
   }
 
   /** Spawn a new window running a command */
@@ -174,9 +186,14 @@ export class TmuxClient extends EventEmitter {
     if (!sessionId) throw new Error('No tmux session available');
 
     const cwdFlag = opts.cwd ? `-c ${shellQuote(opts.cwd)}` : '';
-    const lines = await this.cmd(
-      `new-window -dP -F '#{window_id}' -t ${sessionId}: -n ${shellQuote(opts.name)} ${cwdFlag} ${shellQuote(opts.command)}`
-    );
+    let lines: string[] = [];
+    try {
+      lines = await this.cmd(
+        `new-window -dP -F '#{window_id}' -t ${sessionId}: -n ${shellQuote(opts.name)} ${cwdFlag} ${shellQuote(opts.command)}`
+      );
+    } catch (e) {
+      throw new Error(`Failed to create window: ${(e as Error).message}`);
+    }
     const windowId = lines[0]?.trim();
     if (!windowId) throw new Error('Failed to create window');
     return windowId;
@@ -184,30 +201,50 @@ export class TmuxClient extends EventEmitter {
 
   /** Kill a pane */
   async killPane(paneId: string): Promise<void> {
-    await this.cmd(`kill-pane -t ${paneId}`);
+    try { await this.cmd(`kill-pane -t ${paneId}`); }
+    catch (e) { console.error('[tmux] killPane failed:', (e as Error).message); }
   }
 
   /** Kill a window */
   async killWindow(windowId: string): Promise<void> {
-    await this.cmd(`kill-window -t ${windowId}`);
+    try { await this.cmd(`kill-window -t ${windowId}`); }
+    catch (e) { console.error('[tmux] killWindow failed:', (e as Error).message); }
   }
 
   /** Get the current screen content of a pane (for reconnect repaint) */
   async capturePane(paneId: string, lines = 2000): Promise<Buffer> {
-    const output = await this.cmd(
-      `capture-pane -p -e -J -t ${paneId} -S -${lines}`
-    );
-    return Buffer.from(output.join('\n'), 'utf-8');
+    try {
+      const output = await this.cmd(
+        `capture-pane -p -e -J -t ${paneId} -S -${lines}`
+      );
+      return Buffer.from(output.join('\n'), 'utf-8');
+    } catch (e) {
+      console.error('[tmux] capturePane failed:', (e as Error).message);
+      return Buffer.alloc(0);
+    }
   }
 
   /** Focus a pane (user tapped it on phone) */
   async selectPane(paneId: string): Promise<void> {
-    await this.cmd(`select-pane -t ${paneId}`);
+    try { await this.cmd(`select-pane -t ${paneId}`); }
+    catch (e) { console.error('[tmux] selectPane failed:', (e as Error).message); }
   }
 
   /** Focus a window */
   async selectWindow(windowId: string): Promise<void> {
-    await this.cmd(`select-window -t ${windowId}`);
+    try { await this.cmd(`select-window -t ${windowId}`); }
+    catch (e) { console.error('[tmux] selectWindow failed:', (e as Error).message); }
+  }
+
+  /** All tmux session names on the server (discovery — primary client). */
+  async listSessions(): Promise<string[]> {
+    try {
+      const lines = await this.cmd(`list-sessions -F '#{session_name}'`);
+      return lines.map((l) => l.trim()).filter(Boolean);
+    } catch (e) {
+      console.error('[tmux] listSessions failed:', (e as Error).message);
+      return [];
+    }
   }
 
   // ─── Internal: spawn the control mode process ────────────────────────────────
@@ -217,11 +254,16 @@ export class TmuxClient extends EventEmitter {
       // tmux -CC control mode calls tcgetattr() on its stdin, so it MUST be
       // attached to a real PTY (a plain pipe → "tcgetattr failed" exit 1).
       // iTerm2 does the same — control client runs on a pty.
+      // primary: create-or-attach the daemon's own session.
+      // per-session: attach an existing session (term-*) for its %output.
+      const attachArgs = this.primary
+        ? ['new-session', '-A', '-s', this.sessionName]
+        : ['attach-session', '-t', this.sessionName];
       this.proc = pty.spawn('tmux', [
         '-L', this.socketLabel,
         '-f', this.configPath,
         '-CC',
-        'new-session', '-A', '-s', 'pocket-t',
+        ...attachArgs,
       ], {
         name: 'xterm-256color',
         cols: this.virtualCols,
@@ -278,6 +320,8 @@ export class TmuxClient extends EventEmitter {
     this.seeding = true;
     try {
       await this.doSeed();
+    } catch (e) {
+      console.error('[tmux] seed failed:', (e as Error).message);
     } finally {
       this.seeding = false;
       if (this.reseedQueued) {
@@ -288,20 +332,25 @@ export class TmuxClient extends EventEmitter {
   }
 
   private async doSeed(): Promise<void> {
-    // Sessions
+    // Scope every list to THIS client's own session — a per-session client
+    // must only surface its own panes, otherwise every client would emit
+    // paneAdded for every pane (N× duplicates).
+    const tgt = shellQuote(this.sessionName);
+
+    // Sessions (just our own)
     const sessLines = await this.cmd(
       `list-sessions -F '#{session_id} #{session_name}'`
     );
     for (const line of sessLines) {
       const [id, ...nameParts] = line.trim().split(' ');
-      if (id?.startsWith('$')) {
+      if (id?.startsWith('$') && nameParts.join(' ') === this.sessionName) {
         this.sessions.set(id, { id, name: nameParts.join(' ') });
       }
     }
 
-    // Windows
+    // Windows (this session only)
     const winLines = await this.cmd(
-      `list-windows -a -F '#{window_id} #{session_id} #{window_name} #{window_active} #{window_layout}'`
+      `list-windows -t ${tgt} -F '#{window_id} #{session_id} #{window_name} #{window_active} #{window_layout}'`
     );
     for (const line of winLines) {
       const parts = line.trim().split(' ');
@@ -323,7 +372,7 @@ export class TmuxClient extends EventEmitter {
     // still surfaces brand-new terminals even without a %window-add.
     const seen = new Set<string>();
     const paneLines = await this.cmd(
-      `list-panes -a -F '#{pane_id} #{window_id} #{session_id} #{pane_pid} #{pane_current_command} #{pane_current_path} #{pane_width} #{pane_height} #{pane_active} #{pane_title}'`
+      `list-panes -s -t ${tgt} -F '#{pane_id} #{window_id} #{session_id} #{pane_pid} #{pane_current_command} #{pane_current_path} #{pane_width} #{pane_height} #{pane_active} #{pane_title}'`
     );
     for (const line of paneLines) {
       const parts = line.trim().split(' ');
@@ -366,6 +415,10 @@ export class TmuxClient extends EventEmitter {
   // ─── Internal: raw command → %begin/%end response ───────────────────────────
 
   private cmd(text: string): Promise<string[]> {
+    // An empty line written to a tmux -CC client is the DETACH signal, and
+    // an empty command yields "ambiguous command:" %error — either one
+    // kills the daemon. Never send a blank command.
+    if (!text || !text.trim()) return Promise.resolve([]);
     return new Promise((resolve, reject) => {
       if (!this.proc) {
         reject(new Error('Not connected'));
@@ -480,20 +533,27 @@ export class TmuxClient extends EventEmitter {
     }
 
     if (line.startsWith('%unlinked-window-add ')) {
-      const windowId = line.split(' ')[1];
-      if (windowId) this.onWindowAdded(windowId);
+      // A window in ANOTHER session — that session has its own control
+      // client; not ours to seed.
       return;
     }
 
-    if (line.startsWith('%window-close ') || line.startsWith('%unlinked-window-close ')) {
+    if (line.startsWith('%unlinked-window-close ')) {
+      return;  // another session's window — not ours
+    }
+
+    if (line.startsWith('%window-close ')) {
       const windowId = line.split(' ')[1];
       if (windowId) this.onWindowRemoved(windowId);
       return;
     }
 
     if (line.startsWith('%sessions-changed')) {
-      // Re-seed sessions
+      // Re-seed our own session, and (primary only) tell the host to
+      // reconcile the per-session client pool — a session was created
+      // or destroyed somewhere on the server.
       this.seedState().catch(() => {});
+      if (this.primary) this.emit('sessionsChanged');
       return;
     }
 
@@ -537,6 +597,7 @@ export class TmuxClient extends EventEmitter {
   // ─── Internal: window lifecycle ─────────────────────────────────────────────
 
   private async onWindowAdded(windowId: string): Promise<void> {
+    if (!windowId) return;
     try {
       const lines = await this.cmd(
         `list-windows -a -F '#{window_id} #{session_id} #{window_name} #{window_active} #{window_layout}' -t ${windowId}`

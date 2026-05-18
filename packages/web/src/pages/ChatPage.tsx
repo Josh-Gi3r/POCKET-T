@@ -161,6 +161,7 @@ export function ChatPage() {
             ref={parentRef}
             className="flex-1 overflow-y-auto overscroll-contain"
             onScroll={handleScroll}
+            style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}
           >
             {loading && (
               <div className="text-center py-3 text-white/20 text-xs">
