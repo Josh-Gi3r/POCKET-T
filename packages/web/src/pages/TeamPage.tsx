@@ -56,7 +56,7 @@ export function TeamPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-surface">
+    <div className="flex flex-col app-h bg-surface">
       <header className="flex items-center gap-3 px-4 pt-safe pb-3 pt-3 border-b border-white/8">
         <button onClick={() => navigate(-1)} className="text-white/40">
           <ChevronLeft size={20} />

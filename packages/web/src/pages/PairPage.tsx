@@ -27,7 +27,7 @@ export function PairPage() {
   }, [sessionId]);
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-surface gap-5 p-8">
+    <div className="flex flex-col items-center justify-center app-h bg-surface gap-5 p-8">
       <div className="w-14 h-14 rounded-2xl bg-violet-500/10 flex items-center justify-center">
         <Shield size={28} className="text-violet-400" />
       </div>

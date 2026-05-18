@@ -4,6 +4,8 @@ import { ChevronLeft } from 'lucide-react';
 import { useAuthStore } from '../store/auth.js';
 import { usePush } from '../hooks/usePush.js';
 import { disconnectSocket } from '../socket.js';
+import { BottomNav } from '../components/BottomNav.js';
+import { ConnectionBar } from '../components/ConnectionBar.js';
 
 // Phase 2: hosted/paid plans. pocket-t ships fully free & open source —
 // billing & team UI stay in the codebase but are not surfaced yet.
@@ -172,13 +174,15 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-surface">
+    <div className="flex flex-col app-h bg-surface">
       <header className="flex items-center gap-3 px-4 pt-safe pb-3 pt-3 border-b border-white/8">
         <button onClick={() => navigate(-1)} className="text-white/40">
           <ChevronLeft size={20} />
         </button>
         <h1 className="text-sm font-semibold">Dashboard</h1>
       </header>
+
+      <ConnectionBar />
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
         {/* Account */}
@@ -271,7 +275,7 @@ export function DashboardPage() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            github.com/your-org/pocket-t →
+            github.com/josh-gi3r/pocket-t →
           </a>
         </Section>
 
@@ -282,6 +286,8 @@ export function DashboardPage() {
           Sign out
         </button>
       </div>
+
+      <BottomNav />
     </div>
   );
 }

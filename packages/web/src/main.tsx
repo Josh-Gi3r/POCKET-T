@@ -13,6 +13,7 @@ import { SpawnPage }     from './pages/SpawnPage.js';
 import { DashboardPage } from './pages/DashboardPage.js';
 import { PairPage }      from './pages/PairPage.js';
 import { TeamPage }      from './pages/TeamPage.js';
+import { Toaster }       from './components/Toaster.js';
 
 // Phase 2: paid hosting + E2E pairing UI. Off until the team/billing auth
 // model and the encrypted transport path are complete (audit A-009/A-010).
@@ -31,8 +32,8 @@ function AuthedApp() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-surface">
-        <div className="text-white/20 text-sm font-mono">loading…</div>
+      <div className="flex items-center justify-center app-h bg-surface">
+        <div className="text-white/20 text-sm font-mono animate-pulse">loading…</div>
       </div>
     );
   }
@@ -75,6 +76,7 @@ function App() {
         {PHASE_2 && <Route path="/pair/:sessionId" element={<PairPage />} />}
         <Route path="/*"     element={<AuthedApp />} />
       </Routes>
+      <Toaster />
     </BrowserRouter>
   );
 }

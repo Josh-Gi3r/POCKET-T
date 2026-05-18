@@ -3,6 +3,7 @@ import { getSocket, connectSocket } from '../socket.js';
 import { useSessionsStore } from '../store/sessions.js';
 import { useMessagesStore } from '../store/messages.js';
 import { useHookApprovalStore } from '../store/hookApprovals.js';
+import { useUiStore } from '../store/ui.js';
 
 export function useSocketEvents() {
   const { setSessions, updateSession, setDaemonOnline } = useSessionsStore();
@@ -10,6 +11,19 @@ export function useSocketEvents() {
 
   useEffect(() => {
     const socket = getSocket();
+
+    // Connection state → visible banner (no more silently-frozen screen).
+    socket.on('connect',    () => useUiStore.getState().setConn('connected'));
+    socket.on('disconnect', () => useUiStore.getState().setConn('disconnected'));
+    socket.on('connect_error', () =>
+      useUiStore.getState().setConn('connecting'));
+    socket.io.on('reconnect_attempt', () =>
+      useUiStore.getState().setConn('connecting'));
+
+    // Surface relay errors (RATE_LIMITED / BAD_INPUT / NOT_FOUND / NO_DAEMON)
+    // instead of dropping input with zero feedback.
+    socket.on('relay:error', ({ message }) =>
+      useUiStore.getState().pushToast(message || 'Something went wrong', 'error'));
 
     socket.on('relay:sessions',       ({ sessions }) => setSessions(sessions));
     socket.on('relay:session:update', ({ session })  => updateSession(session));
@@ -29,6 +43,11 @@ export function useSocketEvents() {
     connectSocket();
 
     return () => {
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('connect_error');
+      socket.io.off('reconnect_attempt');
+      socket.off('relay:error');
       socket.off('relay:sessions');
       socket.off('relay:session:update');
       socket.off('relay:daemon:status');
