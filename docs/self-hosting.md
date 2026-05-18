@@ -13,7 +13,7 @@ the data.
 ## Option A — Docker Compose (easiest)
 
 ```bash
-git clone https://github.com/your-org/pocket-t
+git clone https://github.com/josh-gi3r/pocket-t
 cd pocket-t
 
 cat > infra/.env <<'EOF'
@@ -57,3 +57,25 @@ account.
 
 The daemon reads `POCKET_T_RELAY_URL` (default `wss://relay.pocket-t.ai`).
 Set it to your own relay's URL before `auth` and `run`.
+
+## Production hosting topology
+
+The PWA talks to the relay two ways, and they are configured separately:
+
+- **REST (`/api/*`)** — proxied to the relay so cookies stay first-party.
+  In dev, the Vite dev server proxies it. In a static deploy (Vercel),
+  `packages/web/vercel.json` rewrites `/api/(.*)` to the relay origin —
+  change that destination to your relay when self-hosting. The SPA
+  catch-all rewrite must stay last.
+- **Realtime (Socket.IO/WebSocket)** — Vercel cannot proxy the WS
+  upgrade, so the socket connects to the relay **directly**. Build the
+  web app with `VITE_RELAY_URL=https://relay.example.com` (your relay
+  origin). Leave it unset for same-origin dev / a reverse-proxy setup
+  where one origin fronts both the static app and the relay.
+
+The relay's CORS already allows the configured app origin. If you put
+everything behind one reverse proxy (nginx/Caddy) on a single domain,
+you don't need `VITE_RELAY_URL` and the `vercel.json` `/api` rewrite is
+irrelevant — proxy `/api` and `/socket.io` to the relay yourself.
+
+`packages/relay/.env.example` lists every relay variable.

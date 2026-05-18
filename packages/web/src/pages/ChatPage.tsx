@@ -13,6 +13,7 @@ import { ApprovalBar } from '../components/ApprovalBar.js';
 import { HookApprovalBar } from '../components/HookApprovalBar.js';
 import { Composer } from '../components/Composer.js';
 import { TerminalView } from '../components/TerminalView.js';
+import { ConnectionBar } from '../components/ConnectionBar.js';
 import type { Message } from '@pocket-t/shared';
 
 export function ChatPage() {
@@ -31,6 +32,7 @@ export function ChatPage() {
   const atBottomRef  = useRef(true);
   const [showJump, setShowJump]   = useState(false);
   const [viewMode, setViewMode]   = useState<'chat' | 'terminal'>('chat');
+  const [confirmKill, setConfirmKill] = useState(false);
 
   // Detect desktop: > 768px → offer terminal view
   const isDesktop = typeof window !== 'undefined' && window.innerWidth > 768;
@@ -51,13 +53,17 @@ export function ChatPage() {
     getItemKey:     (i) => allMessages[i]?.id ?? i,
   });
 
+  // Follow output live. Keying only on message COUNT meant the view never
+  // moved while a chunk streamed (the synthetic streaming bubble grows but
+  // the count is unchanged) — output scrolled off and the screen looked
+  // frozen. Depend on the streaming text too so it tracks growth.
   useEffect(() => {
     if (atBottomRef.current && allMessages.length > 0) {
       virtualizer.scrollToIndex(allMessages.length - 1, {
         align: 'end', behavior: 'smooth',
       });
     }
-  }, [allMessages.length]);
+  }, [allMessages.length, streaming]);
 
   const handleScroll = useCallback(() => {
     const el = parentRef.current;
@@ -97,15 +103,15 @@ export function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-surface">
+    <div className="flex flex-col app-h bg-surface">
       {/* Header */}
-      <header className="flex items-center gap-3 px-4 pt-safe pb-3 pt-3 border-b border-white/8 flex-shrink-0">
+      <header className="flex items-center gap-2 px-2 pt-safe pb-2 pt-2 border-b border-white/8 flex-shrink-0">
         <button
           onClick={() => navigate(-1)}
-          className="w-8 h-8 flex items-center justify-center text-white/40 hover:text-white/70 -ml-1"
+          className="tap flex items-center justify-center text-white/40 hover:text-white/70"
           aria-label="Back"
         >
-          <ChevronLeft size={20} />
+          <ChevronLeft size={22} />
         </button>
 
         <div className="flex-1 min-w-0">
@@ -125,27 +131,61 @@ export function ChatPage() {
         {isDesktop && (
           <button
             onClick={() => setViewMode(v => v === 'chat' ? 'terminal' : 'chat')}
-            className="text-white/30 hover:text-white/60 transition-colors"
+            className="tap flex items-center justify-center text-white/30 hover:text-white/60 transition-colors"
             title={viewMode === 'chat' ? 'Switch to terminal' : 'Switch to chat'}
           >
             {viewMode === 'chat'
-              ? <TerminalIcon size={16} />
-              : <MessageSquare size={16} />}
+              ? <TerminalIcon size={18} />
+              : <MessageSquare size={18} />}
           </button>
         )}
 
         <button
-          onClick={() => {
-            if (confirm('Kill this session?') && sessionId) {
-              getSocket().emit('client:session:kill', { sessionId });
-            }
-          }}
-          className="text-white/25 hover:text-red-400 transition-colors"
+          onClick={() => setConfirmKill(true)}
+          className="tap flex items-center justify-center text-white/25 hover:text-red-400 transition-colors"
           aria-label="Kill session"
         >
-          <X size={16} />
+          <X size={18} />
         </button>
       </header>
+
+      <ConnectionBar />
+
+      {/* In-app kill confirmation (replaces the native window.confirm,
+          which is blocking and unreliable in a standalone PWA) */}
+      {confirmKill && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-8"
+          onClick={() => setConfirmKill(false)}
+        >
+          <div
+            className="w-full max-w-xs bg-surface-overlay border border-white/10 rounded-2xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm text-white/90 font-medium mb-1">Kill this session?</p>
+            <p className="text-xs text-white/40 mb-4">
+              The terminal process will be terminated.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmKill(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm text-white/70 bg-white/5 active:scale-95 transition-transform"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (sessionId) getSocket().emit('client:session:kill', { sessionId });
+                  setConfirmKill(false);
+                }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white bg-red-600 active:scale-95 transition-transform"
+              >
+                Kill
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       {viewMode === 'terminal' && isDesktop ? (
@@ -155,11 +195,11 @@ export function ChatPage() {
           onInput={send}
         />
       ) : (
-        <>
+        <div className="flex-1 relative min-h-0">
           {/* Message list */}
           <div
             ref={parentRef}
-            className="flex-1 overflow-y-auto overscroll-contain"
+            className="absolute inset-0 overflow-y-auto overscroll-contain"
             onScroll={handleScroll}
             style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}
           >
@@ -205,12 +245,13 @@ export function ChatPage() {
                   align: 'end', behavior: 'smooth',
                 })
               }
-              className="absolute bottom-36 right-4 bg-indigo-600/80 text-white text-xs px-3 py-1.5 rounded-full"
+              className="absolute bottom-4 right-4 bg-indigo-600/90 text-white text-xs
+                         px-3 py-2 rounded-full shadow-lg active:scale-95 transition-transform"
             >
               ↓ Latest
             </button>
           )}
-        </>
+        </div>
       )}
 
       {/* Approval bar */}

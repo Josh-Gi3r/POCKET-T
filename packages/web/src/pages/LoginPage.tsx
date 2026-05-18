@@ -41,7 +41,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+    <div className="min-app-h bg-surface flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="text-5xl mb-3 font-mono font-bold tracking-tighter">
@@ -76,7 +76,7 @@ export function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="w-full bg-surface-overlay border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-indigo-500/50"
+                className="w-full bg-surface-overlay border border-white/10 rounded-xl px-3.5 py-2.5 text-base text-white placeholder:text-white/25 focus:outline-none focus:border-indigo-500/50"
                 placeholder="you@example.com"
               />
             </div>
@@ -90,7 +90,7 @@ export function LoginPage() {
                 required
                 minLength={8}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                className="w-full bg-surface-overlay border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-indigo-500/50"
+                className="w-full bg-surface-overlay border border-white/10 rounded-xl px-3.5 py-2.5 text-base text-white placeholder:text-white/25 focus:outline-none focus:border-indigo-500/50"
                 placeholder={mode === 'register' ? 'min 8 characters' : '••••••••'}
               />
             </div>

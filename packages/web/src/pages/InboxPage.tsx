@@ -1,28 +1,59 @@
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { useSessionsStore } from '../store/sessions.js';
 import { InstallPrompt } from '../components/InstallPrompt.js';
+import { BottomNav } from '../components/BottomNav.js';
+import { ConnectionBar } from '../components/ConnectionBar.js';
 import { usePush } from '../hooks/usePush.js';
 import type { Session } from '@pocket-t/shared';
+
+const RANK: Record<string, number> =
+  { waiting: 0, running: 1, idle: 2, dead: 3 };
 
 export function InboxPage() {
   const navigate      = useNavigate();
   const sessions      = useSessionsStore((s) => s.sessions);
   const daemonOnline  = useSessionsStore((s) => s.daemonOnline);
   const { state: pushState } = usePush();
+  const [query, setQuery] = useState('');
 
   const anyOnline = Object.values(daemonOnline).some(Boolean);
 
-  const sorted = [...sessions].sort((a, b) => {
-    const p = { waiting: 0, running: 1, idle: 2, dead: 3 };
-    const pa = p[a.status] ?? 4;
-    const pb = p[b.status] ?? 4;
-    if (pa !== pb) return pa - pb;
-    return b.lastActiveAt - a.lastActiveAt;
-  });
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = q
+      ? sessions.filter((s) =>
+          `${s.name} ${s.cmd} ${s.cwd}`.toLowerCase().includes(q))
+      : sessions;
+    return [...list].sort((a, b) => {
+      const pa = RANK[a.status] ?? 4;
+      const pb = RANK[b.status] ?? 4;
+      if (pa !== pb) return pa - pb;
+      return b.lastActiveAt - a.lastActiveAt;
+    });
+  }, [sessions, query]);
+
+  // Group by Mac only when more than one daemon is involved, so a
+  // multi-Mac account stays legible instead of an undifferentiated list.
+  const daemonIds = useMemo(
+    () => [...new Set(sessions.map((s) => s.daemonId))],
+    [sessions],
+  );
+  const grouped = daemonIds.length > 1;
+  const groups = useMemo(() => {
+    if (!grouped) return [['', filtered]] as [string, Session[]][];
+    const m = new Map<string, Session[]>();
+    for (const s of filtered) {
+      const arr = m.get(s.daemonId);
+      if (arr) arr.push(s);
+      else m.set(s.daemonId, [s]);
+    }
+    return [...m.entries()];
+  }, [filtered, grouped]);
 
   return (
-    <div className="flex flex-col h-screen bg-surface">
+    <div className="flex flex-col app-h bg-surface">
       <header className="flex items-center justify-between px-4 pt-safe pb-3 pt-3 border-b border-white/8 flex-shrink-0">
         <div className="font-mono font-bold text-lg tracking-tight">
           p<span className="text-white/30">ocket-t</span>
@@ -38,7 +69,7 @@ export function InboxPage() {
           </div>
           <button
             onClick={() => navigate('/spawn')}
-            className="flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300 font-medium"
+            className="tap flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300 font-medium"
           >
             <Plus size={16} />
             New
@@ -46,11 +77,32 @@ export function InboxPage() {
         </div>
       </header>
 
+      <ConnectionBar />
       <InstallPrompt pushState={pushState} />
+
+      {sessions.length > 4 && (
+        <div className="px-4 py-2 flex-shrink-0 border-b border-white/5">
+          <div className="relative">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25"
+            />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search sessions…"
+              aria-label="Search sessions"
+              className="w-full bg-white/5 rounded-xl pl-9 pr-3 py-2 text-base
+                         text-white/85 placeholder:text-white/25
+                         focus:outline-none focus:ring-1 focus:ring-white/15"
+            />
+          </div>
+        </div>
+      )}
 
       {!anyOnline && sessions.length === 0 && <NoDaemonState />}
 
-      <div className="flex-1 overflow-y-auto divide-y divide-white/5">
+      <div className="flex-1 overflow-y-auto">
         {anyOnline && sessions.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-white/30">
             <span className="text-4xl">💤</span>
@@ -64,14 +116,34 @@ export function InboxPage() {
           </div>
         )}
 
-        {sorted.map((s) => (
-          <SessionRow
-            key={s.id}
-            session={s}
-            onClick={() => navigate(`/chat/${s.id}`)}
-          />
+        {sessions.length > 0 && filtered.length === 0 && (
+          <p className="text-center text-sm text-white/25 py-10">
+            No sessions match “{query}”.
+          </p>
+        )}
+
+        {groups.map(([daemonId, rows]) => (
+          <div key={daemonId || 'all'}>
+            {grouped && (
+              <div className="px-4 py-1.5 text-[10px] uppercase tracking-wide
+                              text-white/25 bg-white/[0.02] font-mono">
+                Mac · {daemonId.slice(0, 8)}
+              </div>
+            )}
+            <div className="divide-y divide-white/5">
+              {rows.map((s) => (
+                <SessionRow
+                  key={s.id}
+                  session={s}
+                  onClick={() => navigate(`/chat/${s.id}`)}
+                />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
+
+      <BottomNav />
     </div>
   );
 }

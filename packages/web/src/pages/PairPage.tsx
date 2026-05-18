@@ -27,7 +27,7 @@ export function PairPage() {
   }, [sessionId]);
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-surface gap-5 p-8">
+    <div className="flex flex-col items-center justify-center app-h bg-surface gap-5 p-8">
       <div className="w-14 h-14 rounded-2xl bg-violet-500/10 flex items-center justify-center">
         <Shield size={28} className="text-violet-400" />
       </div>
@@ -36,10 +36,10 @@ export function PairPage() {
       )}
       {status === 'ok' && (
         <>
-          <p className="text-base font-medium text-white">E2E Encryption active</p>
+          <p className="text-base font-medium text-white">Session paired</p>
           <p className="text-sm text-white/40 text-center">
-            Your session is end-to-end encrypted.
-            The relay cannot read your terminal output.
+            Connecting over TLS. End-to-end encryption is not yet
+            enabled — see the security docs for the current model.
           </p>
         </>
       )}

@@ -1,5 +1,6 @@
 import type { Server, Socket } from 'socket.io';
 import type { Redis } from 'ioredis';
+import { createHash } from 'node:crypto';
 import { verifyClientToken, cookieValue, SESS_COOKIE } from '../auth/session.js';
 import {
   getSessionsByAccount,
@@ -18,6 +19,32 @@ export function setupClientNamespace(io: Server, redis: Redis) {
   const ns      = io.of('/client');
   const limiter = createRateLimiter(redis);
 
+  // Resolve the daemon that owns a session so commands target ONLY that
+  // daemon's socket room (`daemon:<id>`) instead of fanning out to every
+  // Mac on the account (`account:<id>`), which made a spawn/input/kill run
+  // on all of an account's machines.
+  async function ownerDaemon(
+    sessionId: string,
+    accountId: string,
+  ): Promise<string | null> {
+    const [row] = await sql`
+      SELECT daemon_id AS "daemonId" FROM sessions
+      WHERE id = ${sessionId} AND account_id = ${accountId}
+    `;
+    return row?.daemonId ?? null;
+  }
+
+  // Online daemons for an account (a daemon socket joins both
+  // `account:<id>` and `daemon:<id>` in the /daemon namespace).
+  function onlineDaemons(accountId: string): string[] {
+    const ids: string[] = [];
+    for (const dsock of io.of('/daemon').sockets.values()) {
+      const d = dsock.data as { accountId?: string; daemonId?: string };
+      if (d?.accountId === accountId && d?.daemonId) ids.push(d.daemonId);
+    }
+    return ids;
+  }
+
   // ── Auth middleware (A-001/A-002): authenticate from the httpOnly
   // session cookie and revalidate against web_sessions every connection. ──
   ns.use(async (socket, next) => {
@@ -28,6 +55,11 @@ export function setupClientNamespace(io: Server, redis: Redis) {
       socket.data.accountId = ctx.accountId;
       socket.data.userId    = ctx.userId;
       socket.data.email     = ctx.email;
+      // Bind the live socket to its web_session so logout can force-drop
+      // it. verifyClientToken only revalidates on (re)connect, so without
+      // this an open socket keeps streaming after the session is revoked.
+      socket.data.sessHash  =
+        createHash('sha256').update(token).digest('hex');
       next();
     } catch {
       next(new Error('unauthorized'));
@@ -51,11 +83,8 @@ export function setupClientNamespace(io: Server, redis: Redis) {
       sessionId, lastSeq,
     }: { sessionId: string; lastSeq?: number }) => {
       // Ownership check — critical security gate
-      const [row] = await sql`
-        SELECT id FROM sessions
-        WHERE id = ${sessionId} AND account_id = ${accountId}
-      `;
-      if (!row) {
+      const daemonId = await ownerDaemon(sessionId, accountId);
+      if (!daemonId) {
         socket.emit('relay:error', {
           code:    'NOT_FOUND',
           message: 'Session not found',
@@ -74,9 +103,9 @@ export function setupClientNamespace(io: Server, redis: Redis) {
         hasMore: messages.length === 200,
       });
 
-      // Ask daemon for current screen snapshot
+      // Ask ONLY the owning daemon for the current screen snapshot
       io.of('/daemon')
-        .to(`account:${accountId}`)
+        .to(`daemon:${daemonId}`)
         .emit('relay:cmd:attach', { sessionId });
 
       await audit({ accountId, userId, sessionId, event: 'session_attached' });
@@ -102,11 +131,8 @@ export function setupClientNamespace(io: Server, redis: Redis) {
         return;
       }
 
-      const [row] = await sql`
-        SELECT id FROM sessions
-        WHERE id = ${sessionId} AND account_id = ${accountId}
-      `;
-      if (!row) return;
+      const daemonId = await ownerDaemon(sessionId, accountId);
+      if (!daemonId) return;
 
       await saveMessage({
         sessionId,
@@ -117,10 +143,12 @@ export function setupClientNamespace(io: Server, redis: Redis) {
         seq:  Date.now(),
       }).catch(() => {});
 
-      // Forward to daemon (append \r = Enter key)
+      // Forward raw text to the owning daemon ONLY. Submit (Enter) is owned
+      // by the daemon: PtyHost appends \r, the tmux path sends a dedicated
+      // Enter key — appending \r here too caused a double-submit.
       io.of('/daemon')
-        .to(`account:${accountId}`)
-        .emit('relay:cmd:input', { sessionId, text: text + '\r' });
+        .to(`daemon:${daemonId}`)
+        .emit('relay:cmd:input', { sessionId, text });
 
       await audit({
         accountId,
@@ -135,12 +163,17 @@ export function setupClientNamespace(io: Server, redis: Redis) {
     socket.on('client:approval:respond', async ({
       sessionId, messageId, choice,
     }: { sessionId: string; messageId: string; choice: string }) => {
-      // A-005: bind resolution to caller's account + session + approval kind
+      // A-005: bind resolution to caller's account + session + approval
+      // kind, AND require `choice` to be one of the stored option keys —
+      // an arbitrary string here is injected straight into the pane.
       const resolved = await resolveApprovalScoped(messageId, sessionId, accountId, choice);
-      if (!resolved) return; // not owned, not an approval, or already resolved
+      if (!resolved) return; // not owned, not an approval, bad choice, or resolved
+
+      const daemonId = await ownerDaemon(sessionId, accountId);
+      if (!daemonId) return;
 
       io.of('/daemon')
-        .to(`account:${accountId}`)
+        .to(`daemon:${daemonId}`)
         .emit('relay:cmd:input', { sessionId, text: choice });
 
       await updateSession(sessionId, 'running').catch(() => {});
@@ -194,8 +227,18 @@ export function setupClientNamespace(io: Server, redis: Redis) {
       // fully free & open source — no session caps. checkSessionLimit()
       // is retained in middleware/planGate.ts for a future phase.
 
+      // No session exists yet, so route by an online daemon for the
+      // account rather than broadcasting the spawn to every Mac.
+      const online = onlineDaemons(accountId);
+      if (online.length === 0) {
+        socket.emit('relay:error', {
+          code:    'NO_DAEMON',
+          message: 'No Mac is online to start a session',
+        });
+        return;
+      }
       io.of('/daemon')
-        .to(`account:${accountId}`)
+        .to(`daemon:${online[0]}`)
         .emit('relay:cmd:spawn', { name, cmd, cwd: cwd || '~' });
 
       await audit({
@@ -210,14 +253,11 @@ export function setupClientNamespace(io: Server, redis: Redis) {
     socket.on('client:session:kill', async ({
       sessionId, signal,
     }: { sessionId: string; signal?: string }) => {
-      const [row] = await sql`
-        SELECT id FROM sessions
-        WHERE id = ${sessionId} AND account_id = ${accountId}
-      `;
-      if (!row) return;
+      const daemonId = await ownerDaemon(sessionId, accountId);
+      if (!daemonId) return;
 
       io.of('/daemon')
-        .to(`account:${accountId}`)
+        .to(`daemon:${daemonId}`)
         .emit('relay:cmd:kill', {
           sessionId,
           signal: signal ?? 'SIGTERM',
@@ -237,16 +277,13 @@ export function setupClientNamespace(io: Server, redis: Redis) {
     socket.on('client:hook:approve', async ({
       approvalId, sessionId, decision,
     }: { approvalId: string; sessionId: string; decision: 'approve' | 'deny' }) => {
-      // Verify session ownership
-      const [row] = await sql`
-        SELECT id FROM sessions
-        WHERE id = ${sessionId} AND account_id = ${accountId}
-      `;
-      if (!row) return;
+      // Verify session ownership + resolve the owning daemon
+      const daemonId = await ownerDaemon(sessionId, accountId);
+      if (!daemonId) return;
 
-      // Route to daemon
+      // Route to the owning daemon ONLY
       io.of('/daemon')
-        .to(`account:${accountId}`)
+        .to(`daemon:${daemonId}`)
         .emit('relay:cmd:approveHook', { approvalId, decision });
 
       await audit({

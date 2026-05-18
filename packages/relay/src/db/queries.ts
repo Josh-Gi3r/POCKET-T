@@ -152,7 +152,9 @@ export async function saveMessage(m: {
 
 // A-005: resolution is bound to the caller's account, the session, the
 // message id, and kind='approval' — and is atomic (no separate ownership
-// SELECT that could race the UPDATE).
+// SELECT that could race the UPDATE). The `choice` MUST be one of the
+// stored option keys: it is forwarded verbatim into the terminal pane, so
+// an arbitrary string here is a command-injection vector.
 export async function resolveApprovalScoped(
   messageId: string,
   sessionId: string,
@@ -169,6 +171,11 @@ export async function resolveApprovalScoped(
       AND account_id = ${accountId}
       AND kind = 'approval'
       AND approval_pending = TRUE
+      AND approval_options IS NOT NULL
+      AND ${choice} IN (
+        SELECT elem->>'key'
+        FROM jsonb_array_elements(approval_options) AS elem
+      )
     RETURNING id
   `;
   return row ?? null;

@@ -178,9 +178,18 @@ else if (command === 'run' || command === undefined) {
       const prev = Array.isArray(settings.hooks.PreToolUse)
         ? settings.hooks.PreToolUse
         : [];
+      // Tag every hook call with the pocket-t session it belongs to so the
+      // relay can route the approval back to the right phone. tmux exports
+      // $TMUX_PANE (e.g. "%3") into every pane's environment; Claude Code
+      // (and its hook subprocess) inherit it. ${TMUX_PANE#%} strips the
+      // leading '%', yielding the same id TmuxHost.paneToSessionId builds:
+      // tmux-<daemonId>-<paneNum>. Without this the relay saw 'unknown'
+      // and silently dropped the approval.
       const hookCmd =
         `curl -sf -X POST http://127.0.0.1:${HOOK_PORT}/hook/preToolUse ` +
-        `-H 'Content-Type: application/json' --data @-`;
+        `-H 'Content-Type: application/json' ` +
+        `-H "x-session: tmux-${config.daemonId}-` + '${TMUX_PANE#%}"' + ` ` +
+        `--data @-`;
       const MARK = '/hook/preToolUse';
       const isOurs = (h: any): boolean => {
         if (!h || typeof h !== 'object') return false;
@@ -245,6 +254,8 @@ else if (command === 'run' || command === undefined) {
         name: sessionId, cmd: '', cwd: '', status,
         lastOutput: lastOutput ?? '', lastActiveAt: Date.now(), seq: 0,
       } as Session),
+    onApproval: (sessionId, messageId, options) =>
+      relayClient.emitApproval(sessionId, messageId, options),
   });
 
   relayClient = new RelayClient(config.relayUrl, config.token, ptyHost, hookServer);
@@ -272,9 +283,9 @@ else if (command === 'run' || command === undefined) {
 
   relayClient.onAttach = async (sessionId) => {
     if (sessionId.startsWith('tmux-')) {
-      const snap = await tmuxHost.capturePane(sessionId);
-      if (snap.length) {
-        relayClient.emitSnapshot(sessionId, snap.toString('utf-8'), snap.toString('base64'));
+      const snap = await tmuxHost.snapshot(sessionId);
+      if (snap) {
+        relayClient.emitSnapshot(sessionId, snap.plainText, snap.rawVt);
       }
       return;
     }

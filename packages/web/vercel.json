@@ -1,6 +1,8 @@
 {
+  "_comment": "REST /api is proxied to the relay so the PWA works same-origin (cookies, CSRF). The realtime socket connects to the relay directly via VITE_RELAY_URL (socket.ts) because Vercel can't proxy the WS upgrade. Update the /api destination to your relay origin when self-hosting. The SPA catch-all MUST stay last.",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/(.*)",       "destination": "https://relay.pocket-t.ai/api/$1" },
+    { "source": "/(.*)",           "destination": "/index.html" }
   ],
   "headers": [
     {

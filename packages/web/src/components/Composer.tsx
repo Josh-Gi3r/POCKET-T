@@ -1,7 +1,7 @@
 import {
   useState, useRef, useEffect, useCallback,
 } from 'react';
-import { Mic, Paperclip, Send, Square } from 'lucide-react';
+import { Mic, Paperclip, Send, Square, CornerDownLeft } from 'lucide-react';
 import { useVoice } from '../hooks/useVoice.js';
 
 interface Props {
@@ -46,6 +46,23 @@ export function Composer({
       submit();
     }
   }
+
+  // On a phone keyboard there is no Shift+Enter, so Enter always submits
+  // and multi-line input is otherwise impossible. Insert a newline at the
+  // caret and keep focus.
+  const insertNewline = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el || disabled) return;
+    const start = el.selectionStart ?? text.length;
+    const end   = el.selectionEnd ?? text.length;
+    const next  = `${text.slice(0, start)}\n${text.slice(end)}`;
+    setText(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + 1;
+      el.setSelectionRange(pos, pos);
+    });
+  }, [text, disabled]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -131,11 +148,11 @@ export function Composer({
       <button
         onClick={() => fileInputRef.current?.click()}
         disabled={disabled}
-        className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-white/30 hover:text-white/60 transition-colors disabled:opacity-30"
+        className="flex-shrink-0 tap flex items-center justify-center text-white/30 hover:text-white/60 transition-colors disabled:opacity-30"
         aria-label="Attach file"
         title="Attach file"
       >
-        <Paperclip size={18} />
+        <Paperclip size={19} />
       </button>
 
       {/* Voice input */}
@@ -143,7 +160,7 @@ export function Composer({
         <button
           onClick={isListening ? stopVoice : startVoice}
           disabled={disabled}
-          className={`flex-shrink-0 w-8 h-8 flex items-center justify-center transition-colors disabled:opacity-30 ${
+          className={`flex-shrink-0 tap flex items-center justify-center transition-colors disabled:opacity-30 ${
             isListening
               ? 'text-red-400 animate-pulse'
               : 'text-white/30 hover:text-white/60'
@@ -151,7 +168,7 @@ export function Composer({
           aria-label={isListening ? 'Stop recording' : 'Start voice input'}
           title={isListening ? 'Stop' : 'Voice input'}
         >
-          {isListening ? <Square size={16} /> : <Mic size={18} />}
+          {isListening ? <Square size={17} /> : <Mic size={19} />}
         </button>
       )}
 
@@ -172,7 +189,7 @@ export function Composer({
           rows={1}
           aria-label="Message input"
           className="
-            w-full placeholder:text-white/30 text-sm
+            w-full placeholder:text-white/30 text-base
             rounded-2xl px-3.5 py-2.5 resize-none
             focus:outline-none focus:ring-1 focus:ring-white/15
             disabled:opacity-40 disabled:cursor-not-allowed
@@ -191,19 +208,30 @@ export function Composer({
         />
       </div>
 
+      {/* Newline (phone keyboards submit on Enter, so multi-line needs this) */}
+      <button
+        onClick={insertNewline}
+        disabled={disabled}
+        aria-label="Insert newline"
+        title="New line"
+        className="flex-shrink-0 tap flex items-center justify-center text-white/30 hover:text-white/60 transition-colors disabled:opacity-30"
+      >
+        <CornerDownLeft size={18} />
+      </button>
+
       {/* Send */}
       <button
         onClick={submit}
         disabled={disabled || !text.trim()}
         aria-label="Send"
         className="
-          flex-shrink-0 w-9 h-9 flex items-center justify-center
+          flex-shrink-0 tap w-11 h-11 flex items-center justify-center
           bg-indigo-600 hover:bg-indigo-500 text-white rounded-full
           transition-colors active:scale-95
           disabled:opacity-30 disabled:cursor-not-allowed
         "
       >
-        <Send size={15} />
+        <Send size={17} />
       </button>
     </div>
   );

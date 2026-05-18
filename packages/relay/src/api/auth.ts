@@ -29,6 +29,9 @@ export async function authRoutes(app: FastifyInstance, redis: Redis) {
   app.post<{ Body: { email: string; password: string } }>(
     '/api/auth/register',
     async (req, reply) => {
+      if (!await limiter.register(req.ip)) {
+        return reply.code(429).send({ error: 'Too many attempts' });
+      }
       const { email, password } = req.body;
       if (!email || !password || password.length < 8) {
         return reply.code(400).send({
@@ -114,6 +117,15 @@ export async function authRoutes(app: FastifyInstance, redis: Redis) {
     if (token) {
       const hash = createHash('sha256').update(token).digest('hex');
       await sql`DELETE FROM web_sessions WHERE token_hash = ${hash}`.catch(() => {});
+      // Force-drop any live socket bound to this session — deleting the
+      // row alone only takes effect on the next (re)connect, so an open
+      // socket would keep streaming after logout.
+      const io = (app as any).io;
+      if (io) {
+        for (const s of io.of('/client').sockets.values()) {
+          if (s.data?.sessHash === hash) s.disconnect(true);
+        }
+      }
     }
     reply.clearCookie(SESS_COOKIE, { path: '/' });
     return { ok: true };
@@ -227,8 +239,20 @@ export async function authRoutes(app: FastifyInstance, redis: Redis) {
   }>(
     '/api/push/subscribe',
     { onRequest: [requireAuth] },
-    async (req: any) => {
-      const { endpoint, keys } = req.body;
+    async (req: any, reply: any) => {
+      if (!await limiter.pushSub(req.userId)) {
+        return reply.code(429).send({ error: 'Too many attempts' });
+      }
+      const { endpoint, keys } = req.body ?? {};
+      const isStr = (v: any, max: number) =>
+        typeof v === 'string' && v.length > 0 && v.length <= max;
+      if (
+        !isStr(endpoint, 2048) ||
+        !/^https:\/\//.test(endpoint) ||
+        !keys || !isStr(keys.p256dh, 256) || !isStr(keys.auth, 256)
+      ) {
+        return reply.code(400).send({ error: 'Invalid subscription' });
+      }
       await upsertPushSub(req.userId, endpoint, keys.p256dh, keys.auth);
       return { ok: true };
     },
@@ -283,9 +307,17 @@ export async function authRoutes(app: FastifyInstance, redis: Redis) {
 
       const io = (app as any).io;
       if (io) {
-        io.of('/daemon')
-          .to(`account:${req.accountId}`)
-          .emit('relay:cmd:input', { sessionId, text: choice });
+        // Route to the owning daemon only — broadcasting to account:<id>
+        // ran the input on every Mac on the account.
+        const [s] = await sql`
+          SELECT daemon_id AS "daemonId" FROM sessions
+          WHERE id = ${sessionId} AND account_id = ${req.accountId}
+        `;
+        if (s?.daemonId) {
+          io.of('/daemon')
+            .to(`daemon:${s.daemonId}`)
+            .emit('relay:cmd:input', { sessionId, text: choice });
+        }
       }
 
       await audit({

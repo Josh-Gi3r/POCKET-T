@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { getSocket } from '../socket.js';
+import { BottomNav } from '../components/BottomNav.js';
+import { ConnectionBar } from '../components/ConnectionBar.js';
 
 const QUICK = [
   { label: 'Claude Code',  cmd: 'claude',       icon: '🤖' },
@@ -29,13 +31,15 @@ export function SpawnPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-surface">
+    <div className="flex flex-col app-h bg-surface">
       <header className="flex items-center gap-3 px-4 pt-safe pb-3 pt-3 border-b border-white/8">
         <button onClick={() => navigate(-1)} className="text-white/40 hover:text-white/70">
           <ChevronLeft size={20} />
         </button>
         <h1 className="text-sm font-semibold">New session</h1>
       </header>
+
+      <ConnectionBar />
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5">
         <div>
@@ -70,7 +74,7 @@ export function SpawnPage() {
                 value={value}
                 onChange={(e) => set(e.target.value)}
                 placeholder={placeholder}
-                className={`w-full bg-surface-raised border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-indigo-500/50 ${mono ? 'font-mono' : ''}`}
+                className={`w-full bg-surface-raised border border-white/10 rounded-xl px-3.5 py-2.5 text-base text-white placeholder:text-white/20 focus:outline-none focus:border-indigo-500/50 ${mono ? 'font-mono' : ''}`}
               />
             </div>
           ))}
@@ -86,6 +90,8 @@ export function SpawnPage() {
           Start session
         </button>
       </div>
+
+      <BottomNav />
     </div>
   );
 }

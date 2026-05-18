@@ -21,10 +21,49 @@
     user-select: none;
   }
 
-  .selectable { user-select: text; }
+  /* iOS Safari zooms the whole page when focusing an input whose font is
+     < 16px. Pin the floor so the app never zoom-jumps on tap. */
+  input, textarea, select { font-size: 16px; }
+
+  .selectable {
+    user-select: text;
+    -webkit-user-select: text;
+  }
 
   ::-webkit-scrollbar { width: 0; }
+}
+
+@layer utilities {
+  /* Dynamic viewport height: 100vh on iOS is the LARGE viewport and hides
+     content behind the URL bar / home indicator. dvh tracks the real
+     visible area; svh is the safe fallback. */
+  .app-h {
+    height: 100vh;
+    height: 100svh;
+    height: 100dvh;
+  }
+  .min-app-h {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
 
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   .pt-safe { padding-top: env(safe-area-inset-top); }
+  .mb-safe { margin-bottom: env(safe-area-inset-bottom); }
+  /* Space a scroll/content region above the fixed bottom nav (56px) +
+     the home indicator. */
+  .pb-nav  { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
+  .bottom-safe { bottom: env(safe-area-inset-bottom); }
+
+  /* Minimum 44×44 touch target (Apple HIG). */
+  .tap {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  @keyframes pt-toast-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-toast-in { animation: pt-toast-in 0.18s ease-out; }
 }

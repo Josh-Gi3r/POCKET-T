@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # @pocket-t/shared only exports its dist, so build it before anything
+      # typechecks against it.
+      - name: Build shared
+        run: pnpm --filter @pocket-t/shared build
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Test
+        run: pnpm --filter @pocket-t/daemon test
+
+      - name: Build
+        run: pnpm -r build
+
+      # Lint lands on a codebase that grew without it — informational
+      # until the backlog is burned down, so it doesn't block merges yet.
+      - name: Lint
+        run: pnpm lint
+        continue-on-error: true
