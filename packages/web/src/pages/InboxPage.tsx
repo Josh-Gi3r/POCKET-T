@@ -136,7 +136,7 @@ function NoDaemonState() {
       <div className="bg-surface-raised border border-white/8 rounded-xl px-4 py-3 w-full text-left">
         <p className="text-xs text-white/30 font-mono mb-2">Install:</p>
         <code className="text-xs text-emerald-400 font-mono block">
-          curl -fsSL install.pocket-t.app | sh
+          curl -fsSL install.pocket-t.ai | sh
         </code>
         <p className="text-xs text-white/30 font-mono mt-3 mb-1">Then:</p>
         <code className="text-xs text-indigo-400 font-mono block">

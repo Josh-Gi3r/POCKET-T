@@ -23,16 +23,16 @@ is at home and you're not.
 **On your Mac:**
 
 ```bash
-curl -fsSL https://install.pocket-t.app | sh
+curl -fsSL https://install.pocket-t.ai | sh
 pocket-t auth <your-token>
 ```
 
-Get your token at [pocket-t.app](https://pocket-t.app) — free account,
+Get your token at [pocket-t.ai](https://pocket-t.ai) — free account,
 no credit card.
 
 **On your phone:**
 
-Open [app.pocket-t.app](https://app.pocket-t.app) in Safari.
+Open [app.pocket-t.ai](https://app.pocket-t.ai) in Safari.
 Tap Share → Add to Home Screen.
 Open from your home screen.
 
@@ -84,7 +84,7 @@ Works through any NAT or firewall.
 ## License
 
 MIT — free forever to self-host.
-[pocket-t.app](https://pocket-t.app) is the hosted version
+[pocket-t.ai](https://pocket-t.ai) is the hosted version
 for people who don't want to run their own relay.
 
 ---

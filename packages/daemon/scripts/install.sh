@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-line installer: curl -fsSL https://install.pocket-t.app | sh
+# One-line installer: curl -fsSL https://install.pocket-t.ai | sh
 #
 # After install + restart, EVERY terminal you open (Terminal.app, iTerm2,
 # Ghostty, anything) auto-attaches to pocket-t's isolated tmux server and
@@ -9,7 +9,7 @@
 # signing of the binary is the one remaining gap (needs an Apple identity).
 set -euo pipefail
 
-RELAY="https://relay.pocket-t.app"
+RELAY="https://relay.pocket-t.ai"
 BIN_DIR="/usr/local/bin"
 CONF_DIR="$HOME/.pocket-t"
 ZSHRC="$HOME/.zshrc"
@@ -151,7 +151,7 @@ echo "  Next: connect this Mac to your account"
 echo ""
 echo "    pocket-t auth <your-token>"
 echo ""
-echo "  Get your token at: https://app.pocket-t.app/dashboard"
+echo "  Get your token at: https://app.pocket-t.ai/dashboard"
 echo ""
 echo "  ════════════════════════════════════════════════"
 echo "  IMPORTANT: open a new terminal (or restart your"

@@ -6,7 +6,7 @@ import {
 import type { ApprovalOption } from '@pocket-t/shared';
 
 webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_CONTACT ?? 'ops@pocket-t.app'}`,
+  `mailto:${process.env.VAPID_CONTACT ?? 'ops@pocket-t.ai'}`,
   process.env.VAPID_PUBLIC!,
   process.env.VAPID_PRIVATE!,
 );

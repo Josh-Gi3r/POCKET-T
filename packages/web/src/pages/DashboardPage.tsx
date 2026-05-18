@@ -157,7 +157,7 @@ export function DashboardPage() {
   }
 
   async function copyCmd() {
-    const cmd = `curl -fsSL https://install.pocket-t.app | sh\npocket-t auth ${token}`;
+    const cmd = `curl -fsSL https://install.pocket-t.ai | sh\npocket-t auth ${token}`;
     await navigator.clipboard.writeText(cmd);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -204,7 +204,7 @@ export function DashboardPage() {
               <div className="bg-surface-overlay rounded-xl p-3 border border-white/8">
                 <p className="text-[10px] text-white/30 mb-1.5">Run on your Mac:</p>
                 <code className="text-xs font-mono text-emerald-400 break-all leading-relaxed whitespace-pre">
-                  {`curl -fsSL https://install.pocket-t.app | sh\npocket-t auth ${token}`}
+                  {`curl -fsSL https://install.pocket-t.ai | sh\npocket-t auth ${token}`}
                 </code>
               </div>
               <button onClick={copyCmd} className="text-xs text-white/40">

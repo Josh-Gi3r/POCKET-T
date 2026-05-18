@@ -55,5 +55,5 @@ account.
 
 ## Pointing the daemon at your relay
 
-The daemon reads `POCKET_T_RELAY_URL` (default `wss://relay.pocket-t.app`).
+The daemon reads `POCKET_T_RELAY_URL` (default `wss://relay.pocket-t.ai`).
 Set it to your own relay's URL before `auth` and `run`.

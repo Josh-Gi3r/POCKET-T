@@ -43,7 +43,7 @@ export async function loadConfig(): Promise<DaemonConfig> {
   if (!existsSync(CONFIG_FILE)) {
     console.error(
       '[pocket-t] Not authenticated. Run: pocket-t auth <one-time-token>\n' +
-      '[pocket-t] Get your token at https://app.pocket-t.app/dashboard'
+      '[pocket-t] Get your token at https://app.pocket-t.ai/dashboard'
     );
     process.exit(1);
   }

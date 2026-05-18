@@ -184,7 +184,7 @@ Location:
 
 Evidence:
 
-- The documented install path remains `curl -fsSL https://install.pocket-t.app | sh`.
+- The documented install path remains `curl -fsSL https://install.pocket-t.ai | sh`.
 - The installer downloads `releases/latest` tarball and plist artifacts.
 - It extracts and installs them without checksum, signature, or notarization verification.
 - It loads a persistent LaunchAgent after download.

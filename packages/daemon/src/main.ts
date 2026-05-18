@@ -23,8 +23,8 @@ process.on('unhandledRejection', (reason) => {
 const RELAY_URL =
   process.env.POCKET_T_RELAY_URL ??
   (process.env.POCKET_T_REGION === 'us'
-    ? 'wss://iad.relay.pocket-t.app'
-    : 'wss://relay.pocket-t.app');
+    ? 'wss://iad.relay.pocket-t.ai'
+    : 'wss://relay.pocket-t.ai');
 const HOOK_PORT  = 7621;
 const CLAUDE_SETTINGS = join(os.homedir(), '.claude', 'settings.json');
 
@@ -67,7 +67,7 @@ if (command === 'auth') {
   const oneTimeToken = rest[0];
   if (!oneTimeToken) {
     console.error('Usage: pocket-t auth <one-time-token>');
-    console.error('Get your token at https://app.pocket-t.app/dashboard');
+    console.error('Get your token at https://app.pocket-t.ai/dashboard');
     process.exit(1);
   }
   const httpUrl = RELAY_URL.replace('wss://', 'https://').replace('ws://', 'http://');
