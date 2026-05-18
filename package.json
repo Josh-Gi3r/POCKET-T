@@ -6,12 +6,20 @@
     "dev:web":    "pnpm --filter @pocket-t/web dev",
     "dev:daemon": "pnpm --filter @pocket-t/daemon dev",
     "build":      "pnpm -r build",
-    "typecheck":  "pnpm -r typecheck",
+    "shared":     "pnpm --filter @pocket-t/shared build",
+    "typecheck":  "pnpm --filter @pocket-t/shared build && pnpm -r typecheck",
+    "test":       "pnpm --filter @pocket-t/daemon test",
+    "lint":       "pnpm --filter @pocket-t/shared build && eslint . && prettier --check .",
+    "format":     "prettier --write .",
     "db:migrate": "psql $DATABASE_URL -f packages/relay/src/db/schema.sql",
     "postinstall": "chmod +x node_modules/.pnpm/node-pty@*/node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true"
   },
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "eslint": "^9.13.0",
+    "@eslint/js": "^9.13.0",
+    "typescript-eslint": "^8.11.0",
+    "prettier": "^3.3.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

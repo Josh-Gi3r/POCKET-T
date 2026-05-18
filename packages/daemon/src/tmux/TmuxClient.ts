@@ -733,7 +733,7 @@ function isOctalDigit(c: string): boolean {
  * need multi-line input (sendInput) split on newlines themselves; stripping
  * here also protects spawn/window names, cwd and command args.
  */
-function shellQuote(s: string): string {
+export function shellQuote(s: string): string {
   const safe = s.replace(/[\x00\r\n]/g, '');
   return "'" + safe.replace(/'/g, "'\\''") + "'";
 }
