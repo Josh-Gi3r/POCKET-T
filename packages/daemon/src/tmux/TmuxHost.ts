@@ -11,14 +11,25 @@ import { join } from 'node:path';
 import os from 'node:os';
 import { TmuxClient, type TmuxPane } from './TmuxClient.js';
 import { VtStream, type VtChunk, type VtApproval } from '../stream/VtStream.js';
-import type { Session, ApprovalOption } from '@pocket-t/shared';
+import { ClaudeTranscript, hasActiveTranscript, type Turn } from '../agent/ClaudeTranscript.js';
+import type { Session, ApprovalOption, MessageKind, MessageRole } from '@pocket-t/shared';
 
 export interface TmuxHostCallbacks {
-  onChunk:        (sessionId: string, text: string, rawVt: string, seq: number) => void;
+  // kind/role absent → raw terminal stream (unchanged). Present → a typed
+  // agent turn → its own bubble on the phone.
+  onChunk:        (sessionId: string, text: string, rawVt: string, seq: number, kind?: MessageKind, role?: MessageRole) => void;
   onSessionAdded: (session: Session) => void;
   onSessionRemoved: (sessionId: string) => void;
   onSessionUpdate: (sessionId: string, status: Session['status'], lastOutput?: string) => void;
   onApproval?:    (sessionId: string, messageId: string, options: ApprovalOption[]) => void;
+}
+
+function looksLikeClaudeCommand(command: string): boolean {
+  const base = command.split(/[\\/]/).pop()?.toLowerCase() ?? '';
+  // Claude Code commonly appears as `node` in tmux's pane_current_command
+  // because the `claude` launcher is a Node CLI. The live transcript check
+  // still has to pass before agent mode starts.
+  return base === 'claude' || base === 'claude-code' || base === 'node';
 }
 
 export class TmuxHost {
@@ -34,6 +45,12 @@ export class TmuxHost {
   private paneOwner  = new Map<string, TmuxClient>();  // paneId → its client
   private seqMap     = new Map<string, number>();      // sessionId → seq
   private streams    = new Map<string, VtStream>();    // paneId → VT stream
+  // Panes whose pane is running Claude Code: streamed from the structured
+  // on-disk transcript instead of the scraped TUI screen (the spinner/box
+  // /ANSI garbage). Presence in this map = "agent mode" → VT is suppressed.
+  private agents     = new Map<string, ClaudeTranscript>();  // paneId → tail
+  private agentScan: ReturnType<typeof setInterval> | null = null;
+  private agentScanRunning = false;
   private confPath: string;
 
   // Reconnect control for the PRIMARY (server death). A tmux server death
@@ -64,15 +81,65 @@ export class TmuxHost {
     this.retries = 0;            // a clean connect resets the backoff
     console.log('[tmux-host] primary connected');
     await this.reconcileSessions();
+    // Detect Claude Code panes and switch them to transcript mode.
+    if (!this.agentScan) this.agentScan = setInterval(() => { void this.scanAgents(); }, 4000);
   }
 
   stop(): void {
     this.stopped = true;
     if (this.restartTimer) { clearTimeout(this.restartTimer); this.restartTimer = null; }
+    if (this.agentScan) { clearInterval(this.agentScan); this.agentScan = null; }
+    for (const a of this.agents.values()) a.stop();
+    this.agents.clear();
     for (const c of this.clients.values()) {
       try { c.disconnect(); } catch { /* already gone */ }
     }
     this.clients.clear();
+  }
+
+  // Per-pane: if it is actually running Claude Code and its cwd has a live
+  // transcript, stream structured turns from disk and suppress the TUI screen.
+  // Cwd alone is not enough: a normal shell in `/Users/josh` can share the
+  // same project transcript and must keep rendering as a terminal.
+  private async scanAgents(): Promise<void> {
+    if (this.agentScanRunning) return;
+    this.agentScanRunning = true;
+    try {
+      for (const [paneId, pane] of [...this.panes]) {
+        const client = this.paneOwner.get(paneId);
+        const fresh = await client?.refreshPane(paneId);
+        const current = fresh ?? pane;
+        this.panes.set(paneId, current);
+
+        const commandIsClaude = looksLikeClaudeCommand(current.currentCommand);
+        if (this.agents.has(paneId)) {
+          if (!commandIsClaude) {
+            this.agents.get(paneId)?.stop();
+            this.agents.delete(paneId);
+            console.log(`[tmux-host] agent mode off: ${paneId} (${current.currentCommand || 'unknown'})`);
+          }
+          continue;
+        }
+
+        if (!commandIsClaude || !hasActiveTranscript(current.currentPath, 30 * 60_000)) continue;
+        const sessionId = this.paneToSessionId(paneId);
+        const ct = new ClaudeTranscript(current.currentPath);
+        if (!ct.start()) continue;
+        ct.on('turn', (t: Turn) => {
+          const seq = (this.seqMap.get(sessionId) ?? 0) + 1;
+          this.seqMap.set(sessionId, seq);
+          this.callbacks.onChunk(sessionId, t.text, '', seq, t.kind, t.role);
+          this.callbacks.onSessionUpdate(sessionId, 'running');
+        });
+        ct.on('error', (e: Error) =>
+          console.error(`[tmux-host] transcript error [${paneId}]:`, e.message));
+        this.agents.set(paneId, ct);
+        this.disposeStream(paneId);     // stop emitting the scraped screen
+        console.log(`[tmux-host] agent mode: ${paneId} (Claude transcript) ${current.currentPath}`);
+      }
+    } finally {
+      this.agentScanRunning = false;
+    }
   }
 
   // Spawn/teardown per-session clients so the live set matches the server.
@@ -122,6 +189,8 @@ export class TmuxHost {
       this.paneOwner.delete(paneId);
       this.panes.delete(paneId);
       this.disposeStream(paneId);
+      this.agents.get(paneId)?.stop();
+      this.agents.delete(paneId);
       this.callbacks.onSessionRemoved(this.paneToSessionId(paneId));
     }
   }
@@ -208,6 +277,7 @@ export class TmuxHost {
   async snapshot(sessionId: string): Promise<{ plainText: string; rawVt: string } | null> {
     const paneId = this.sessionToPaneId(sessionId);
     if (!paneId) return null;
+    if (this.agents.has(paneId)) return null;
     const st = this.streams.get(paneId);
     if (st) return st.snapshot();
     const client = this.paneOwner.get(paneId);
@@ -282,6 +352,9 @@ export class TmuxHost {
     // every scroll and deleted history on every clear for alternate-screen
     // apps (Claude Code, vim, …) — the core streaming bug.
     client.on('paneOutput', (paneId: string, bytes: Buffer) => {
+      // Claude Code panes are streamed from the structured transcript, not
+      // the redrawing TUI — never feed their scraped bytes to the VT.
+      if (this.agents.has(paneId)) return;
       this.ensureStream(paneId)?.write(bytes);
     });
 
@@ -296,6 +369,8 @@ export class TmuxHost {
       this.panes.delete(paneId);
       this.paneOwner.delete(paneId);
       this.disposeStream(paneId);
+      this.agents.get(paneId)?.stop();
+      this.agents.delete(paneId);
       this.callbacks.onSessionRemoved(this.paneToSessionId(paneId));
       console.log(`[tmux-host] pane removed: ${paneId}`);
     });
@@ -402,7 +477,9 @@ const TMUX_CONF = `
 set -g default-terminal "tmux-256color"
 set -g escape-time 25
 set -g focus-events on
-set -g history-limit 5000
+# The auto-attach wrap makes this tmux THE Mac terminal's scrollback —
+# 5000 truncated real user history ("terminals getting cut"). Keep large.
+set -g history-limit 200000
 set -g window-size latest
 set -g status off
 # Wheel scrolls THIS pane's own scrollback (copy-mode). With mouse off,

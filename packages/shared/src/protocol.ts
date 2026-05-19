@@ -1,4 +1,4 @@
-import type { Session, Message, ApprovalOption } from './types.js';
+import type { Session, Message, ApprovalOption, MessageKind, MessageRole } from './types.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Socket.IO requires function-shaped EventsMap interfaces.
@@ -11,7 +11,10 @@ import type { Session, Message, ApprovalOption } from './types.js';
 export interface DaemonEmitEvents {
   'daemon:sessions':        (p: { sessions: Session[] }) => void;
   'daemon:session:update':  (p: { session: Partial<Session> & { id: string } }) => void;
-  'daemon:session:chunk':   (p: { sessionId: string; text: string; rawVt: string; seq: number }) => void;
+  // kind/role optional: absent = raw terminal stream (VtStream) → unchanged
+  // streaming behaviour. Present = a structured agent turn (transcript) →
+  // rendered as its own typed bubble.
+  'daemon:session:chunk':   (p: { sessionId: string; text: string; rawVt: string; seq: number; kind?: MessageKind; role?: MessageRole }) => void;
   'daemon:session:snapshot':(p: { sessionId: string; plainText: string; rawVt: string }) => void;
   'daemon:session:approval':(p: { sessionId: string; messageId: string; options: ApprovalOption[] }) => void;
   'daemon:session:exit':    (p: { sessionId: string; exitCode: number }) => void;
@@ -55,7 +58,7 @@ export interface ClientEmitEvents {
 export interface RelayToClientEvents {
   'relay:sessions':             (p: { sessions: Session[] }) => void;
   'relay:session:update':       (p: { session: Partial<Session> & { id: string } }) => void;
-  'relay:session:chunk':        (p: { sessionId: string; text: string; rawVt: string; seq: number }) => void;
+  'relay:session:chunk':        (p: { sessionId: string; text: string; rawVt: string; seq: number; kind?: MessageKind; role?: MessageRole }) => void;
   'relay:session:history':      (p: { sessionId: string; messages: Message[]; hasMore: boolean }) => void;
   'relay:session:snapshot':     (p: { sessionId: string; plainText: string; rawVt: string }) => void;
   'relay:daemon:status':        (p: { daemonId: string; online: boolean }) => void;

@@ -19,6 +19,8 @@ export class RelayClient {
     text:      string;
     rawVt:     string;
     seq:       number;
+    kind?:     import('@pocket-t/shared').MessageKind;
+    role?:     import('@pocket-t/shared').MessageRole;
   }> = [];
 
   // Optional hooks — when set, take precedence over the built-in PtyHost
@@ -126,8 +128,12 @@ export class RelayClient {
     });
   }
 
-  emitChunk(sessionId: string, text: string, rawVt: string, seq: number) {
-    const payload = { sessionId, text, rawVt, seq };
+  emitChunk(
+    sessionId: string, text: string, rawVt: string, seq: number,
+    kind?: import('@pocket-t/shared').MessageKind,
+    role?: import('@pocket-t/shared').MessageRole,
+  ) {
+    const payload = { sessionId, text, rawVt, seq, kind, role };
     if (!this.connected) {
       if (this.chunkBuffer.length < MAX_OFFLINE_BUFFER) {
         this.chunkBuffer.push(payload);

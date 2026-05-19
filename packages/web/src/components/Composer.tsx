@@ -135,7 +135,7 @@ export function Composer({
   const isListening = voiceState === 'listening';
 
   return (
-    <div className="border-t border-white/8 px-3 py-2 pb-safe flex items-end gap-2 flex-shrink-0 bg-surface">
+    <div className="relative z-10 border-t border-white/8 px-3 py-2 pb-safe flex items-end gap-2 flex-shrink-0 bg-surface">
       {/* File upload */}
       <input
         ref={fileInputRef}

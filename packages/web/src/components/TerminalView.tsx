@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Session } from '@pocket-t/shared';
+import '@xterm/xterm/css/xterm.css';
 
 interface Props {
   session:   Session;
@@ -32,6 +33,7 @@ export function TerminalView({ session, rawVts, onInput }: Props) {
         lineHeight:  1.4,
         scrollback:  5000,
         convertEol:  true,
+        disableStdin: true,
       });
 
       fitAddon = new FitAddon();
@@ -39,7 +41,7 @@ export function TerminalView({ session, rawVts, onInput }: Props) {
       term.open(containerRef.current!);
       fitAddon.fit();
 
-      term.onData((data: string) => onInput(data));
+      void onInput;
 
       termRef.current  = term;
       addonRef.current = fitAddon;
@@ -49,6 +51,7 @@ export function TerminalView({ session, rawVts, onInput }: Props) {
         const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
         term.write(bytes);
       }
+      lastWrittenRef.current = rawVts.length;
     }
 
     init();
@@ -77,7 +80,7 @@ export function TerminalView({ session, rawVts, onInput }: Props) {
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-hidden"
+      className="flex-1 min-h-0 overflow-hidden bg-[#0c0d0f]"
       style={{ padding: '4px' }}
     />
   );

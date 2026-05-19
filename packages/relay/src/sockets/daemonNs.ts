@@ -12,7 +12,7 @@ import {
   notifyApproval,
   notifyDead,
 } from '../push/notify.js';
-import type { ApprovalOption, Session } from '@pocket-t/shared';
+import type { ApprovalOption, Session, Message } from '@pocket-t/shared';
 
 export function setupDaemonNamespace(io: Server) {
   const ns = io.of('/daemon');
@@ -85,16 +85,20 @@ export function setupDaemonNamespace(io: Server) {
 
     // ── PTY chunk: persist + fan out ────────────────────────────────
     socket.on('daemon:session:chunk', async ({
-      sessionId, text, rawVt, seq,
-    }: { sessionId: string; text: string; rawVt: string; seq: number }) => {
+      sessionId, text, rawVt, seq, kind, role,
+    }: {
+      sessionId: string; text: string; rawVt: string; seq: number;
+      kind?: Message['kind']; role?: Message['role'];
+    }) => {
       if (!(await sessionOwnedByDaemon(sessionId, accountId, daemonId))) return;
 
-      // Persist asynchronously (don't block the stream)
+      // Persist asynchronously (don't block the stream). kind/role absent =
+      // raw terminal stream (cli/text). Present = a typed agent turn.
       saveMessage({
         sessionId,
         accountId,
-        role: 'cli',
-        kind: 'text',
+        role: role ?? 'cli',
+        kind: kind ?? 'text',
         text,
         rawVt,
         seq,
@@ -105,7 +109,7 @@ export function setupDaemonNamespace(io: Server) {
       // Fan out only to clients attached to this session
       io.of('/client')
         .to(`session:${sessionId}`)
-        .emit('relay:session:chunk', { sessionId, text, rawVt, seq });
+        .emit('relay:session:chunk', { sessionId, text, rawVt, seq, kind, role });
     });
 
     // ── Snapshot (for newly attached clients) ────────────────────────

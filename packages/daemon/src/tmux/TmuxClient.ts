@@ -262,6 +262,21 @@ export class TmuxClient extends EventEmitter {
     }
   }
 
+  /** Refresh one pane's dynamic metadata (command/cwd/size can change). */
+  async refreshPane(paneId: string): Promise<TmuxPane | null> {
+    try {
+      const lines = await this.cmd(
+        `list-panes -t ${paneId} -F '#{pane_id} #{window_id} #{session_id} #{pane_pid} #{pane_current_command} #{pane_current_path} #{pane_width} #{pane_height} #{pane_active} #{pane_title}'`
+      );
+      const pane = parsePaneLine(lines[0], this.virtualCols, this.virtualRows);
+      if (!pane) return null;
+      this.panes.set(pane.id, pane);
+      return pane;
+    } catch {
+      return null;
+    }
+  }
+
   // ─── Internal: spawn the control mode process ────────────────────────────────
 
   private async spawnControl(): Promise<void> {
@@ -693,6 +708,24 @@ export class TmuxClient extends EventEmitter {
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
+
+function parsePaneLine(line: string | undefined, fallbackCols: number, fallbackRows: number): TmuxPane | null {
+  const parts = line?.trim().split(' ') ?? [];
+  if (parts.length < 9 || !parts[0]?.startsWith('%')) return null;
+  const [paneId, windowId, sessionId, pidStr, currentCommand, currentPath, widthStr, heightStr, activeStr, ...titleParts] = parts;
+  return {
+    id:             paneId,
+    windowId,
+    sessionId,
+    pid:            Number(pidStr) || 0,
+    currentCommand: currentCommand || '',
+    currentPath:    currentPath || '',
+    width:          Number(widthStr) || fallbackCols,
+    height:         Number(heightStr) || fallbackRows,
+    active:         activeStr === '1',
+    title:          titleParts.join(' '),
+  };
+}
 
 /**
  * Decode tmux's octal escaping.

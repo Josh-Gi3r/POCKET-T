@@ -33,9 +33,7 @@ export function ChatPage() {
   const [showJump, setShowJump]   = useState(false);
   const [viewMode, setViewMode]   = useState<'chat' | 'terminal'>('chat');
   const [confirmKill, setConfirmKill] = useState(false);
-
-  // Detect desktop: > 768px → offer terminal view
-  const isDesktop = typeof window !== 'undefined' && window.innerWidth > 768;
+  const terminalAvailable = rawVts.some(Boolean);
 
   const allMessages: Message[] = streaming
     ? [...messages, {
@@ -80,6 +78,14 @@ export function ChatPage() {
     return () => { getSocket().emit('client:session:detach', { sessionId }); };
   }, [sessionId]);
 
+  useEffect(() => {
+    setViewMode('chat');
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!terminalAvailable && viewMode === 'terminal') setViewMode('chat');
+  }, [terminalAvailable, viewMode]);
+
   function send(text: string) {
     if (!sessionId || !text.trim()) return;
     addUserMessage(sessionId, text);
@@ -92,7 +98,10 @@ export function ChatPage() {
   }
 
   const pendingApproval = [...messages].reverse().find(
-    (m) => m.kind === 'approval' && m.approvalPending
+    (m) => m.kind === 'approval' &&
+      m.approvalPending &&
+      Array.isArray(m.approvalOptions) &&
+      m.approvalOptions.length > 0
   );
 
   const statusColor: Record<string, string> = {
@@ -105,7 +114,7 @@ export function ChatPage() {
   return (
     <div className="flex flex-col app-h bg-surface">
       {/* Header */}
-      <header className="flex items-center gap-2 px-2 pt-safe pb-2 pt-2 border-b border-white/8 flex-shrink-0">
+      <header className="relative z-10 flex items-center gap-2 px-2 pt-safe pb-2 pt-2 border-b border-white/8 flex-shrink-0 bg-surface">
         <button
           onClick={() => navigate(-1)}
           className="tap flex items-center justify-center text-white/40 hover:text-white/70"
@@ -128,9 +137,11 @@ export function ChatPage() {
           </p>
         </div>
 
-        {isDesktop && (
+        {terminalAvailable && (
           <button
-            onClick={() => setViewMode(v => v === 'chat' ? 'terminal' : 'chat')}
+            onClick={() => {
+              setViewMode(v => v === 'chat' ? 'terminal' : 'chat');
+            }}
             className="tap flex items-center justify-center text-white/30 hover:text-white/60 transition-colors"
             title={viewMode === 'chat' ? 'Switch to terminal' : 'Switch to chat'}
           >
@@ -188,7 +199,7 @@ export function ChatPage() {
       )}
 
       {/* Content */}
-      {viewMode === 'terminal' && isDesktop ? (
+      {viewMode === 'terminal' && terminalAvailable ? (
         <TerminalView
           session={session!}
           rawVts={rawVts}
@@ -265,15 +276,13 @@ export function ChatPage() {
       )}
 
       {/* Composer */}
-      {viewMode === 'chat' && (
-        <Composer
-          onSend={send}
-          disabled={session?.status === 'dead'}
-          placeholder={
-            session?.status === 'dead' ? 'Session ended' : 'Type a message…'
-          }
-        />
-      )}
+      <Composer
+        onSend={send}
+        disabled={session?.status === 'dead'}
+        placeholder={
+          session?.status === 'dead' ? 'Session ended' : 'Type a message…'
+        }
+      />
     </div>
   );
 }

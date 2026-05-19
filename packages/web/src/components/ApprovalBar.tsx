@@ -6,7 +6,10 @@ interface Props {
 }
 
 export function ApprovalBar({ message, onRespond }: Props) {
-  if (!message.approvalOptions?.length || !message.approvalPending) return null;
+  const options = Array.isArray(message.approvalOptions)
+    ? message.approvalOptions
+    : [];
+  if (!options.length || !message.approvalPending) return null;
 
   return (
     <div className="border-t border-amber-500/20 bg-amber-500/5 px-4 py-3 flex-shrink-0">
@@ -14,7 +17,7 @@ export function ApprovalBar({ message, onRespond }: Props) {
         Approval needed
       </p>
       <div className="flex gap-2 flex-wrap">
-        {message.approvalOptions.map((opt) => (
+        {options.map((opt) => (
           <button
             key={opt.key}
             onClick={() => onRespond(opt.key, message.id)}

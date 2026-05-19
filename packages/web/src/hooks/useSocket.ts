@@ -7,7 +7,7 @@ import { useUiStore } from '../store/ui.js';
 
 export function useSocketEvents() {
   const { setSessions, updateSession, setDaemonOnline } = useSessionsStore();
-  const { loadHistory, addChunk, addSnapshot }          = useMessagesStore();
+  const { loadHistory, addChunk, addTurn, addSnapshot }  = useMessagesStore();
 
   useEffect(() => {
     const socket = getSocket();
@@ -31,10 +31,14 @@ export function useSocketEvents() {
       setDaemonOnline(daemonId, online));
     socket.on('relay:session:history', ({ sessionId, messages }) =>
       loadHistory(sessionId, messages));
-    socket.on('relay:session:chunk',  ({ sessionId, text, rawVt, seq }) =>
-      addChunk(sessionId, text, rawVt, seq));
-    socket.on('relay:session:snapshot', ({ sessionId, plainText }) =>
-      addSnapshot(sessionId, plainText));
+    socket.on('relay:session:chunk',  ({ sessionId, text, rawVt, seq, kind, role }) => {
+      // A kind-tagged chunk is a complete structured agent turn → its own
+      // typed bubble. Untagged = raw terminal stream → existing streaming.
+      if (kind) addTurn(sessionId, role ?? 'cli', kind, text, seq);
+      else addChunk(sessionId, text, rawVt, seq);
+    });
+    socket.on('relay:session:snapshot', ({ sessionId, plainText, rawVt }) =>
+      addSnapshot(sessionId, plainText, rawVt));
     socket.on('relay:hook:approval', ({ approvalId, sessionId, toolName, toolInput }) =>
       useHookApprovalStore.getState().addPending({
         approvalId, sessionId, toolName, toolInput,

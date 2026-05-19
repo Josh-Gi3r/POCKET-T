@@ -242,8 +242,8 @@ else if (command === 'run' || command === undefined) {
   // TmuxHost — every terminal you open (auto-attached to the pocket-t tmux
   // server via the shell snippet) shows up here as a session.
   const tmuxHost = new TmuxHost(config.daemonId, config.accountId, {
-    onChunk: (sessionId, text, rawVt, seq) =>
-      relayClient.emitChunk(sessionId, text, rawVt, seq),
+    onChunk: (sessionId, text, rawVt, seq, kind, role) =>
+      relayClient.emitChunk(sessionId, text, rawVt, seq, kind, role),
     onSessionAdded: (session: Session) =>
       relayClient.emitSessionUpdate(session),
     onSessionRemoved: (sessionId: string) =>
