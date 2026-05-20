@@ -32,13 +32,14 @@ export function projectDirForCwd(cwd: string): string | null {
 // The session Claude is actively writing = newest *.jsonl in the project
 // dir. (A new `claude` run in the same cwd creates a newer file; we follow
 // the freshest.)
-function newestTranscript(dir: string): { path: string; mtime: number } | null {
+function newestTranscript(dir: string, minMtimeMs = 0): { path: string; mtime: number } | null {
   let best: { path: string; mtime: number } | null = null;
   for (const f of readdirSync(dir)) {
     if (!f.endsWith('.jsonl')) continue;
     try {
       const st = statSync(join(dir, f));
       const m = st.mtimeMs;
+      if (m < minMtimeMs) continue;
       if (!best || m > best.mtime) best = { path: join(dir, f), mtime: m };
     } catch { /* race: file vanished */ }
   }
@@ -65,7 +66,7 @@ export class ClaudeTranscript extends EventEmitter {
   private rescan: ReturnType<typeof setInterval> | null = null;
   private stopped = false;
 
-  constructor(private readonly cwd: string) { super(); }
+  constructor(private readonly cwd: string, private readonly minMtimeMs = 0) { super(); }
 
   /** Resolve the active transcript and start tailing forward-only.
    *  Returns false if this cwd has no Claude transcript (caller falls
@@ -73,7 +74,7 @@ export class ClaudeTranscript extends EventEmitter {
   start(): boolean {
     const dir = projectDirForCwd(this.cwd);
     if (!dir) return false;
-    const t = newestTranscript(dir);
+    const t = newestTranscript(dir, this.minMtimeMs);
     if (!t) return false;
 
     this.file = t.path;
@@ -105,7 +106,7 @@ export class ClaudeTranscript extends EventEmitter {
 
   private maybeSwitch(dir: string): void {
     if (this.stopped) return;
-    const t = newestTranscript(dir);
+    const t = newestTranscript(dir, this.minMtimeMs);
     if (t && t.path !== this.file) {
       this.file = t.path;
       this.offset = 0;          // a fresh session — read it from the top

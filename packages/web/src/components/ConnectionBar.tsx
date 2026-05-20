@@ -12,8 +12,8 @@ export function ConnectionBar() {
     <div
       className={`flex-shrink-0 text-center text-[11px] font-medium py-1 ${
         reconnecting
-          ? 'bg-amber-500/15 text-amber-300'
-          : 'bg-red-500/15 text-red-300'
+          ? 'bg-amber-200/55 text-amber-700'
+          : 'bg-rose-200/65 text-rose-700'
       }`}
       role="status"
     >

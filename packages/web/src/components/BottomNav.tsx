@@ -16,8 +16,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="flex-shrink-0 flex items-stretch border-t border-white/8
-                 bg-surface pb-safe"
+      className="glass-nav flex-shrink-0 flex items-stretch pb-safe"
     >
       {ITEMS.map(({ to, label, icon: Icon }) => {
         const active = to === '/' ? pathname === '/' : pathname.startsWith(to);
@@ -27,13 +26,13 @@ export function BottomNav() {
             onClick={() => navigate(to)}
             className={`flex-1 tap flex flex-col items-center justify-center gap-0.5
                         py-2 transition-colors ${
-              active ? 'text-indigo-400' : 'text-white/35 hover:text-white/60'
+              active ? 'text-violet-600' : 'text-slate-500/70 hover:text-violet-500'
             }`}
             aria-label={label}
             aria-current={active ? 'page' : undefined}
           >
             <Icon size={20} />
-            <span className="text-[10px] font-medium">{label}</span>
+            <span className="text-[10px] font-semibold">{label}</span>
           </button>
         );
       })}

@@ -41,25 +41,25 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-app-h bg-surface flex items-center justify-center p-4">
+    <div className="app-shell min-app-h flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3 font-mono font-bold tracking-tighter">
-            p<span className="text-white/30">ocket-t</span>
+          <div className="text-5xl mb-3 font-mono font-bold tracking-tighter text-slate-900">
+            p<span className="text-violet-500/80">ocket-t</span>
           </div>
-          <p className="text-white/30 text-sm">p stands for terminal</p>
+          <p className="text-slate-500 text-sm">p stands for terminal</p>
         </div>
 
-        <div className="bg-surface-raised border border-white/8 rounded-2xl p-6">
-          <div className="flex gap-1 mb-6 bg-surface-overlay rounded-xl p-1">
+        <div className="glass-panel rounded-[32px] p-6">
+          <div className="flex gap-1 mb-6 bg-white/45 rounded-[22px] p-1 border border-white/60">
             {(['login', 'register'] as Mode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className={`flex-1 text-sm font-medium py-1.5 rounded-lg transition-colors ${
+                className={`flex-1 text-sm font-semibold py-1.5 rounded-2xl transition-colors ${
                   mode === m
-                    ? 'bg-white/10 text-white'
-                    : 'text-white/40 hover:text-white/60'
+                    ? 'lavender-button'
+                    : 'text-slate-500 hover:text-violet-600'
                 }`}
               >
                 {m === 'login' ? 'Sign in' : 'Create account'}
@@ -69,20 +69,20 @@ export function LoginPage() {
 
           <form onSubmit={submit} className="flex flex-col gap-4">
             <div>
-              <label className="text-xs text-white/50 block mb-1.5">Email</label>
+              <label className="text-xs text-slate-500 block mb-1.5 font-medium">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="w-full bg-surface-overlay border border-white/10 rounded-xl px-3.5 py-2.5 text-base text-white placeholder:text-white/25 focus:outline-none focus:border-indigo-500/50"
+                className="soft-input w-full rounded-[22px] px-3.5 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-violet-300/50"
                 placeholder="you@example.com"
               />
             </div>
 
             <div>
-              <label className="text-xs text-white/50 block mb-1.5">Password</label>
+              <label className="text-xs text-slate-500 block mb-1.5 font-medium">Password</label>
               <input
                 type="password"
                 value={password}
@@ -90,13 +90,13 @@ export function LoginPage() {
                 required
                 minLength={8}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                className="w-full bg-surface-overlay border border-white/10 rounded-xl px-3.5 py-2.5 text-base text-white placeholder:text-white/25 focus:outline-none focus:border-indigo-500/50"
+                className="soft-input w-full rounded-[22px] px-3.5 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-violet-300/50"
                 placeholder={mode === 'register' ? 'min 8 characters' : '••••••••'}
               />
             </div>
 
             {error && (
-              <p className="text-red-400 text-xs bg-red-500/10 rounded-lg px-3 py-2">
+              <p className="text-red-700 text-xs bg-red-100/70 rounded-2xl px-3 py-2">
                 {error}
               </p>
             )}
@@ -104,7 +104,7 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium py-2.5 rounded-xl text-sm transition-colors"
+              className="lavender-button w-full disabled:opacity-50 font-semibold py-2.5 rounded-[22px] text-sm transition active:scale-[0.99]"
             >
               {loading
                 ? 'Please wait…'
@@ -113,11 +113,11 @@ export function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-white/25 text-xs mt-6">
+        <p className="text-center text-slate-500 text-xs mt-6">
           Free forever to self-host ·{' '}
           <a
             href="https://github.com/your-org/pocket-t"
-            className="underline hover:text-white/40"
+            className="underline hover:text-violet-600"
           >
             Open source
           </a>

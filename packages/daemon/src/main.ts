@@ -27,6 +27,7 @@ const RELAY_URL =
     : 'wss://relay.pocket-t.ai');
 const HOOK_PORT  = 7621;
 const CLAUDE_SETTINGS = join(os.homedir(), '.claude', 'settings.json');
+const TMUX_CAPTURE_ENABLED = process.env.POCKET_T_ENABLE_TMUX_CAPTURE === '1';
 
 const [,, command, ...rest] = process.argv;
 
@@ -179,16 +180,15 @@ else if (command === 'run' || command === undefined) {
         ? settings.hooks.PreToolUse
         : [];
       // Tag every hook call with the pocket-t session it belongs to so the
-      // relay can route the approval back to the right phone. tmux exports
-      // $TMUX_PANE (e.g. "%3") into every pane's environment; Claude Code
-      // (and its hook subprocess) inherit it. ${TMUX_PANE#%} strips the
-      // leading '%', yielding the same id TmuxHost.paneToSessionId builds:
-      // tmux-<daemonId>-<paneNum>. Without this the relay saw 'unknown'
-      // and silently dropped the approval.
+      // relay can route the approval back to the right phone. Daemon-owned
+      // PTY sessions export POCKET_T_SESSION_ID. The tmux fallback remains
+      // for explicit experimental capture sessions.
       const hookCmd =
         `curl -sf -X POST http://127.0.0.1:${HOOK_PORT}/hook/preToolUse ` +
         `-H 'Content-Type: application/json' ` +
-        `-H "x-session: tmux-${config.daemonId}-` + '${TMUX_PANE#%}"' + ` ` +
+        `-H "x-session: ` +
+        '${POCKET_T_SESSION_ID:-tmux-' + config.daemonId + '-${TMUX_PANE#%}}' +
+        `" ` +
         `--data @-`;
       const MARK = '/hook/preToolUse';
       const isOurs = (h: any): boolean => {
@@ -231,6 +231,8 @@ else if (command === 'run' || command === undefined) {
       relayClient.emitChunk(sessionId, ev.text, ev.rawVt, ev.seq),
     onChunkEncrypted: (sessionId, ev) =>
       relayClient.emitChunkEncrypted(sessionId, ev.encrypted, ev.seq),
+    onTurn: (sessionId, turn, seq) =>
+      relayClient.emitChunk(sessionId, turn.text, '', seq, turn.kind, turn.role),
     onStatusChange: (session) =>
       relayClient.emitSessionUpdate(session),
     onApproval: (sessionId, ev) =>
@@ -239,9 +241,10 @@ else if (command === 'run' || command === undefined) {
       relayClient.emitExit(sessionId, ev.exitCode),
   }, mementoRoot, config.e2eEnabled);
 
-  // TmuxHost — every terminal you open (auto-attached to the pocket-t tmux
-  // server via the shell snippet) shows up here as a session.
-  const tmuxHost = new TmuxHost(config.daemonId, config.accountId, {
+  // TmuxHost is now an explicit legacy/experimental capture mode. The core
+  // product path is daemon-owned PTYs so normal Terminal.app windows are not
+  // hijacked.
+  const tmuxHost = TMUX_CAPTURE_ENABLED ? new TmuxHost(config.daemonId, config.accountId, {
     onChunk: (sessionId, text, rawVt, seq, kind, role) =>
       relayClient.emitChunk(sessionId, text, rawVt, seq, kind, role),
     onSessionAdded: (session: Session) =>
@@ -256,33 +259,36 @@ else if (command === 'run' || command === undefined) {
       } as Session),
     onApproval: (sessionId, messageId, options) =>
       relayClient.emitApproval(sessionId, messageId, options),
-  });
+  }) : null;
 
   relayClient = new RelayClient(config.relayUrl, config.token, ptyHost, hookServer);
 
   relayClient.onConnect = () => {
-    const sessions = tmuxHost.allSessions();
+    const sessions = tmuxHost?.allSessions() ?? [];
     if (sessions.length) relayClient.emitAllSessions(sessions);
-    console.log(`[pocket-t] announced ${sessions.length} tmux sessions`);
+    if (tmuxHost) console.log(`[pocket-t] announced ${sessions.length} tmux sessions`);
   };
 
   relayClient.onInput = async (sessionId, text) => {
-    if (sessionId.startsWith('tmux-')) await tmuxHost.sendInput(sessionId, text);
+    if (sessionId.startsWith('tmux-') && tmuxHost) await tmuxHost.sendInput(sessionId, text);
     else ptyHost.write(sessionId, text + '\r');
   };
 
   relayClient.onSpawn = async (name, cmd, cwd) => {
-    try { await tmuxHost.spawnWindow(name, cmd, cwd); }
+    try {
+      const session = ptyHost.spawn(name, cmd, cwd);
+      relayClient.emitSessionUpdate(session);
+    }
     catch (e) { console.error('[relay] spawn error:', e); }
   };
 
   relayClient.onKill = async (sessionId) => {
-    if (sessionId.startsWith('tmux-')) await tmuxHost.killSession(sessionId);
+    if (sessionId.startsWith('tmux-') && tmuxHost) await tmuxHost.killSession(sessionId);
     else ptyHost.kill(sessionId);
   };
 
   relayClient.onAttach = async (sessionId) => {
-    if (sessionId.startsWith('tmux-')) {
+    if (sessionId.startsWith('tmux-') && tmuxHost) {
       const snap = await tmuxHost.snapshot(sessionId);
       if (snap) {
         relayClient.emitSnapshot(sessionId, snap.plainText, snap.rawVt);
@@ -302,12 +308,16 @@ else if (command === 'run' || command === undefined) {
   hookServer.start();
   relayClient.connect();
 
-  try {
-    await tmuxHost.start();
-    console.log('[pocket-t] tmux capture active — every terminal you open appears on your phone');
-  } catch (e) {
-    console.warn('[pocket-t] tmux not available:', (e as Error).message);
-    console.warn('[pocket-t] spawn-only mode. Restart your Mac after install to enable auto-capture.');
+  if (tmuxHost) {
+    try {
+      await tmuxHost.start();
+      console.log('[pocket-t] tmux capture active (experimental)');
+    } catch (e) {
+      console.warn('[pocket-t] tmux not available:', (e as Error).message);
+      console.warn('[pocket-t] daemon-owned PTY mode remains active.');
+    }
+  } else {
+    console.log('[pocket-t] daemon-owned PTY mode active — normal Terminal.app is untouched');
   }
 
   console.log('\n[pocket-t] Daemon running');
@@ -318,7 +328,7 @@ else if (command === 'run' || command === undefined) {
 
   const shutdown = () => {
     console.log('\n[pocket-t] Shutting down...');
-    tmuxHost.stop();
+    tmuxHost?.stop();
     for (const s of ptyHost.all()) s.kill('SIGTERM');
     process.exit(0);
   };

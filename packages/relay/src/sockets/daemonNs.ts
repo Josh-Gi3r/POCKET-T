@@ -51,6 +51,16 @@ export function setupDaemonNamespace(io: Server) {
 
     // ── Full session list (on connect) ──────────────────────────────
     socket.on('daemon:sessions', async ({ sessions }: { sessions: Session[] }) => {
+      const liveIds = sessions.map((s) => s.id);
+      await sql`
+        DELETE FROM sessions
+        WHERE account_id = ${accountId}
+          AND daemon_id = ${daemonId}
+          ${liveIds.length
+            ? sql`AND id NOT IN ${sql(liveIds)}`
+            : sql``}
+      `.catch(() => {});
+
       for (const s of sessions) {
         await upsertSession(s, accountId, daemonId).catch(() => {});
       }
@@ -175,7 +185,12 @@ export function setupDaemonNamespace(io: Server) {
       const owned = await sessionOwnedByDaemon(sessionId, accountId, daemonId);
       if (!owned) return;
 
-      await updateSessionScoped(sessionId, accountId, 'dead').catch(() => {});
+      await sql`
+        DELETE FROM sessions
+        WHERE id = ${sessionId}
+          AND account_id = ${accountId}
+          AND daemon_id = ${daemonId}
+      `.catch(() => {});
 
       io.of('/client')
         .to(`account:${accountId}`)

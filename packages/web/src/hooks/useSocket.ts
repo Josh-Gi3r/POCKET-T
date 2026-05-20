@@ -7,7 +7,7 @@ import { useUiStore } from '../store/ui.js';
 
 export function useSocketEvents() {
   const { setSessions, updateSession, setDaemonOnline } = useSessionsStore();
-  const { loadHistory, addChunk, addTurn, addSnapshot }  = useMessagesStore();
+  const { loadHistory, addChunk, addRawVt, addTurn, addSnapshot }  = useMessagesStore();
 
   useEffect(() => {
     const socket = getSocket();
@@ -34,8 +34,19 @@ export function useSocketEvents() {
     socket.on('relay:session:chunk',  ({ sessionId, text, rawVt, seq, kind, role }) => {
       // A kind-tagged chunk is a complete structured agent turn → its own
       // typed bubble. Untagged = raw terminal stream → existing streaming.
-      if (kind) addTurn(sessionId, role ?? 'cli', kind, text, seq);
-      else addChunk(sessionId, text, rawVt, seq);
+      if (kind) {
+        addTurn(sessionId, role ?? 'cli', kind, text, seq);
+        return;
+      }
+
+      const session = useSessionsStore.getState()
+        .sessions.find((s) => s.id === sessionId);
+      if (session?.cmd.split(/\s+/)[0]?.split('/').pop() === 'claude') {
+        addRawVt(sessionId, rawVt);
+        return;
+      }
+
+      addChunk(sessionId, text, rawVt, seq);
     });
     socket.on('relay:session:snapshot', ({ sessionId, plainText, rawVt }) =>
       addSnapshot(sessionId, plainText, rawVt));

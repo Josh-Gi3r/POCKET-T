@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import os from 'node:os';
+import { join } from 'node:path';
 import {
   Session,
   type ChunkEvent,
@@ -8,10 +10,12 @@ import {
 } from './Session.js';
 import { MementoEngine } from '../memento/index.js';
 import { KeyManager } from '../crypto/KeyManager.js';
+import { ClaudeTranscript, type Turn } from '../agent/ClaudeTranscript.js';
 
 export interface PtyHostCallbacks {
   onChunk:        (sessionId: string, ev: ChunkEvent) => void;
   onChunkEncrypted?: (sessionId: string, ev: EncryptedChunkEvent) => void;
+  onTurn?:        (sessionId: string, turn: Turn, seq: number) => void;
   onStatusChange: (session: Session) => void;
   onApproval:     (sessionId: string, ev: ApprovalEvent) => void;
   onExit:         (sessionId: string, ev: ExitEvent) => void;
@@ -19,6 +23,8 @@ export interface PtyHostCallbacks {
 
 export class PtyHost {
   private sessions = new Map<string, Session>();
+  private transcripts = new Map<string, ClaudeTranscript>();
+  private seqMap = new Map<string, number>();
 
   constructor(
     readonly daemonId:  string,
@@ -31,7 +37,7 @@ export class PtyHost {
   spawn(name: string, cmdStr: string, cwd: string): Session {
     const [bin, ...args] = cmdStr.trim().split(/\s+/);
     const id             = randomUUID();
-    const effectiveCwd   = cwd || process.env.HOME || '/';
+    const effectiveCwd   = resolveCwd(cwd);
 
     const mementoEngine = this.mementoRoot
       ? new MementoEngine({ projectRoot: this.mementoRoot, sessionId: id })
@@ -44,8 +50,14 @@ export class PtyHost {
       mementoEngine, keyManager, this.e2eEnabled,
     );
 
-    session.on('chunk',        (ev: ChunkEvent)   =>
-      this.callbacks.onChunk(session.id, ev));
+    const isClaude = bin.split(/[\\/]/).pop()?.toLowerCase() === 'claude';
+
+    session.on('chunk',        (ev: ChunkEvent)   => {
+      // Claude Code sessions get clean chat turns from the JSONL transcript.
+      // Suppress the redrawing TUI stream once transcript mode is active.
+      if (isClaude && this.transcripts.has(session.id)) return;
+      this.callbacks.onChunk(session.id, ev);
+    });
 
     session.on('chunkEncrypted', (ev: EncryptedChunkEvent) =>
       this.callbacks.onChunkEncrypted?.(session.id, ev));
@@ -58,12 +70,38 @@ export class PtyHost {
 
     session.on('exit',         (ev: ExitEvent)     => {
       this.sessions.delete(session.id);
+      this.transcripts.get(session.id)?.stop();
+      this.transcripts.delete(session.id);
+      this.seqMap.delete(session.id);
       this.callbacks.onExit(session.id, ev);
     });
 
     this.sessions.set(id, session);
+    if (isClaude) this.attachClaudeTranscript(session);
     console.log(`[pty] spawned ${name} (pid=${session.pid}, id=${id})`);
     return session;
+  }
+
+  private attachClaudeTranscript(session: Session, attempts = 0): void {
+    if (!this.sessions.has(session.id) || this.transcripts.has(session.id)) return;
+
+    const transcript = new ClaudeTranscript(session.cwd, session.startedAt - 2000);
+    if (!transcript.start()) {
+      if (attempts < 20) {
+        setTimeout(() => this.attachClaudeTranscript(session, attempts + 1), 1000);
+      }
+      return;
+    }
+
+    transcript.on('turn', (turn: Turn) => {
+      const seq = (this.seqMap.get(session.id) ?? 0) + 1;
+      this.seqMap.set(session.id, seq);
+      this.callbacks.onTurn?.(session.id, turn, seq);
+    });
+    transcript.on('error', (e: Error) =>
+      console.error(`[pty] Claude transcript error [${session.id}]:`, e.message));
+    this.transcripts.set(session.id, transcript);
+    console.log(`[pty] Claude transcript mode: ${session.id}`);
   }
 
   get(id: string): Session | undefined {
@@ -96,4 +134,12 @@ export class PtyHost {
   count(): number {
     return this.sessions.size;
   }
+}
+
+function resolveCwd(cwd: string): string {
+  const home = os.homedir() || process.env.HOME || '/';
+  const raw = (cwd || home).trim();
+  if (!raw || raw === '~') return home;
+  if (raw.startsWith('~/')) return join(home, raw.slice(2));
+  return raw;
 }

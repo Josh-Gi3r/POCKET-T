@@ -35,12 +35,16 @@ export function ChatPage() {
   const [confirmKill, setConfirmKill] = useState(false);
   const terminalAvailable = rawVts.some(Boolean);
 
+  const visibleMessages = isClaudeSession(session)
+    ? messages.filter((m) => !isRawClaudeTerminalMessage(m))
+    : messages;
+
   const allMessages: Message[] = streaming
-    ? [...messages, {
+    ? [...visibleMessages, {
         id: '__streaming__', sessionId: sessionId!, role: 'cli', kind: 'text',
         text: streaming, seq: Date.now(), createdAt: Date.now(),
       } as Message]
-    : messages;
+    : visibleMessages;
 
   const virtualizer = useVirtualizer({
     count:          allMessages.length,
@@ -105,19 +109,19 @@ export function ChatPage() {
   );
 
   const statusColor: Record<string, string> = {
-    running: 'text-emerald-400',
-    waiting: 'text-amber-400',
-    idle:    'text-white/30',
-    dead:    'text-red-400',
+    running: 'text-emerald-600',
+    waiting: 'text-amber-600',
+    idle:    'text-slate-400',
+    dead:    'text-red-500',
   };
 
   return (
-    <div className="flex flex-col app-h bg-surface">
+    <div className="app-shell flex flex-col app-h">
       {/* Header */}
-      <header className="relative z-10 flex items-center gap-2 px-2 pt-safe pb-2 pt-2 border-b border-white/8 flex-shrink-0 bg-surface">
+      <header className="glass-panel relative z-10 mx-3 mt-3 flex items-center gap-2 px-2 pt-safe pb-2 pt-2 rounded-[28px] flex-shrink-0">
         <button
           onClick={() => navigate(-1)}
-          className="tap flex items-center justify-center text-white/40 hover:text-white/70"
+          className="tap flex items-center justify-center text-slate-500 hover:text-violet-600"
           aria-label="Back"
         >
           <ChevronLeft size={22} />
@@ -125,14 +129,14 @@ export function ChatPage() {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm text-white truncate">
+            <span className="font-semibold text-sm text-slate-900 truncate">
               {session?.name ?? '…'}
             </span>
             <span className={`text-[10px] font-medium ${statusColor[session?.status ?? 'idle']}`}>
               {session?.status ?? '…'}
             </span>
           </div>
-          <p className="text-[10px] text-white/30 font-mono truncate">
+          <p className="text-[10px] text-slate-500 font-mono truncate">
             {session?.cwd} · {session?.cmd}
           </p>
         </div>
@@ -142,7 +146,7 @@ export function ChatPage() {
             onClick={() => {
               setViewMode(v => v === 'chat' ? 'terminal' : 'chat');
             }}
-            className="tap flex items-center justify-center text-white/30 hover:text-white/60 transition-colors"
+            className="tap flex items-center justify-center text-slate-500 hover:text-violet-600 transition-colors"
             title={viewMode === 'chat' ? 'Switch to terminal' : 'Switch to chat'}
           >
             {viewMode === 'chat'
@@ -153,7 +157,7 @@ export function ChatPage() {
 
         <button
           onClick={() => setConfirmKill(true)}
-          className="tap flex items-center justify-center text-white/25 hover:text-red-400 transition-colors"
+          className="tap flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors"
           aria-label="Kill session"
         >
           <X size={18} />
@@ -166,21 +170,21 @@ export function ChatPage() {
           which is blocking and unreliable in a standalone PWA) */}
       {confirmKill && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-8"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-violet-950/35 backdrop-blur-md px-8"
           onClick={() => setConfirmKill(false)}
         >
           <div
-            className="w-full max-w-xs bg-surface-overlay border border-white/10 rounded-2xl p-5"
+            className="glass-panel w-full max-w-xs rounded-[28px] p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-sm text-white/90 font-medium mb-1">Kill this session?</p>
-            <p className="text-xs text-white/40 mb-4">
+            <p className="text-sm text-slate-900 font-semibold mb-1">Kill this session?</p>
+            <p className="text-xs text-slate-500 mb-4">
               The terminal process will be terminated.
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setConfirmKill(false)}
-                className="flex-1 py-2.5 rounded-xl text-sm text-white/70 bg-white/5 active:scale-95 transition-transform"
+                className="glass-card flex-1 py-2.5 rounded-2xl text-sm text-slate-600 active:scale-95 transition-transform"
               >
                 Cancel
               </button>
@@ -189,7 +193,7 @@ export function ChatPage() {
                   if (sessionId) getSocket().emit('client:session:kill', { sessionId });
                   setConfirmKill(false);
                 }}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white bg-red-600 active:scale-95 transition-transform"
+                className="flex-1 py-2.5 rounded-2xl text-sm font-semibold text-white bg-red-500 active:scale-95 transition-transform"
               >
                 Kill
               </button>
@@ -215,7 +219,7 @@ export function ChatPage() {
             style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}
           >
             {loading && (
-              <div className="text-center py-3 text-white/20 text-xs">
+              <div className="text-center py-3 text-slate-400 text-xs">
                 Loading…
               </div>
             )}
@@ -256,8 +260,8 @@ export function ChatPage() {
                   align: 'end', behavior: 'smooth',
                 })
               }
-              className="absolute bottom-4 right-4 bg-indigo-600/90 text-white text-xs
-                         px-3 py-2 rounded-full shadow-lg active:scale-95 transition-transform"
+              className="lavender-button absolute bottom-4 right-4 text-xs
+                         px-3 py-2 rounded-full active:scale-95 transition-transform"
             >
               ↓ Latest
             </button>
@@ -285,4 +289,25 @@ export function ChatPage() {
       />
     </div>
   );
+}
+
+function isClaudeSession(session: ReturnType<typeof useSessionsStore.getState>['sessions'][number] | undefined): boolean {
+  return session?.cmd.split(/\s+/)[0]?.split('/').pop() === 'claude';
+}
+
+function isRawClaudeTerminalMessage(message: Message): boolean {
+  if (message.role !== 'cli') return false;
+  if (message.kind === 'approval' && !message.approvalOptions?.length) return true;
+  if (message.kind !== 'text') return false;
+  if (message.rawVt) return true;
+  const text = message.text;
+  return text.includes('accept edits on') ||
+    text.includes('claude.ai connector') ||
+    text.includes('esc to interrupt') ||
+    text.includes('shift+tab to cycle') ||
+    text.includes('Finagling') ||
+    text.includes('Crunched for') ||
+    text.includes('Cogitated for') ||
+    text.includes('Yes, I trust this folder') ||
+    text.includes('No, exit');
 }

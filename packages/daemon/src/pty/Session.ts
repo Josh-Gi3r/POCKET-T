@@ -43,6 +43,7 @@ export class Session extends EventEmitter {
   readonly cmd:  string;
   readonly cwd:  string;
   readonly pid:  number;
+  readonly startedAt: number;
 
   private readonly ptyProc:    pty.IPty;
   private readonly headless:   Terminal;
@@ -71,6 +72,7 @@ export class Session extends EventEmitter {
     this.name = name;
     this.cmd  = [cmd, ...args].join(' ');
     this.cwd  = cwd;
+    this.startedAt = Date.now();
 
     // Headless terminal for VT state tracking and snapshots
     this.headless = new Terminal({
@@ -90,6 +92,7 @@ export class Session extends EventEmitter {
       cwd,
       env: {
         ...process.env,
+        POCKET_T_SESSION_ID: id,
         TERM:        'xterm-256color',
         COLORTERM:   'truecolor',
         FORCE_COLOR: '1',
@@ -202,6 +205,13 @@ export class Session extends EventEmitter {
 
   kill(signal: string = 'SIGTERM') {
     try { this.ptyProc.kill(signal); } catch { /* already dead */ }
+    if (signal !== 'SIGKILL') {
+      setTimeout(() => {
+        if (this._status !== 'dead') {
+          try { this.ptyProc.kill('SIGKILL'); } catch { /* already dead */ }
+        }
+      }, 1000);
+    }
   }
 
   clearWaiting() {

@@ -17,9 +17,15 @@ export const useSessionsStore = create<SessionsStore>((set) => ({
 
   updateSession: (update) =>
     set((s) => ({
-      sessions: s.sessions.map((x) =>
-        x.id === update.id ? { ...x, ...update } : x
-      ),
+      sessions: update.status === 'dead'
+        ? s.sessions.filter((x) => x.id !== update.id)
+        : s.sessions.some((x) => x.id === update.id)
+          ? s.sessions.map((x) =>
+              x.id === update.id ? { ...x, ...update } : x
+            )
+          : isFullSession(update)
+            ? [...s.sessions, update]
+            : s.sessions,
     })),
 
   setDaemonOnline: (daemonId, online) =>
@@ -27,3 +33,15 @@ export const useSessionsStore = create<SessionsStore>((set) => ({
       daemonOnline: { ...s.daemonOnline, [daemonId]: online },
     })),
 }));
+
+function isFullSession(s: Partial<Session> & { id: string }): s is Session {
+  return typeof s.daemonId === 'string' &&
+    typeof s.accountId === 'string' &&
+    typeof s.name === 'string' &&
+    typeof s.cmd === 'string' &&
+    typeof s.cwd === 'string' &&
+    typeof s.status === 'string' &&
+    typeof s.lastOutput === 'string' &&
+    typeof s.lastActiveAt === 'number' &&
+    typeof s.seq === 'number';
+}

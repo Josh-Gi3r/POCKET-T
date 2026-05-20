@@ -53,23 +53,23 @@ export function InboxPage() {
   }, [filtered, grouped]);
 
   return (
-    <div className="flex flex-col app-h bg-surface">
-      <header className="flex items-center justify-between px-4 pt-safe pb-3 pt-3 border-b border-white/8 flex-shrink-0">
-        <div className="font-mono font-bold text-lg tracking-tight">
-          p<span className="text-white/30">ocket-t</span>
+    <div className="app-shell flex flex-col app-h">
+      <header className="glass-panel mx-3 mt-3 flex items-center justify-between px-4 pt-safe pb-3 pt-3 rounded-[28px] flex-shrink-0">
+        <div className="font-mono font-bold text-lg tracking-tight text-slate-900">
+          p<span className="text-violet-500/80">ocket-t</span>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             <span className={`w-2 h-2 rounded-full ${
               anyOnline ? 'bg-emerald-400' : 'bg-white/20'
             }`} />
-            <span className="text-xs text-white/30">
+            <span className="text-xs text-slate-500">
               {anyOnline ? 'Mac online' : 'No Mac'}
             </span>
           </div>
           <button
             onClick={() => navigate('/spawn')}
-            className="tap flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300 font-medium"
+            className="tap flex items-center gap-1 text-sm text-violet-600 hover:text-violet-500 font-semibold"
           >
             <Plus size={16} />
             New
@@ -81,20 +81,19 @@ export function InboxPage() {
       <InstallPrompt pushState={pushState} />
 
       {sessions.length > 4 && (
-        <div className="px-4 py-2 flex-shrink-0 border-b border-white/5">
+        <div className="px-4 py-3 flex-shrink-0">
           <div className="relative">
             <Search
               size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500/55"
             />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search sessions…"
               aria-label="Search sessions"
-              className="w-full bg-white/5 rounded-xl pl-9 pr-3 py-2 text-base
-                         text-white/85 placeholder:text-white/25
-                         focus:outline-none focus:ring-1 focus:ring-white/15"
+              className="soft-input w-full rounded-2xl pl-9 pr-3 py-2 text-base
+                         focus:outline-none focus:ring-2 focus:ring-violet-300/50"
             />
           </div>
         </div>
@@ -102,14 +101,14 @@ export function InboxPage() {
 
       {!anyOnline && sessions.length === 0 && <NoDaemonState />}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto px-3 pb-3">
         {anyOnline && sessions.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-white/30">
-            <span className="text-4xl">💤</span>
-            <p className="text-sm">No sessions running</p>
+          <div className="glass-card rounded-[28px] flex flex-col items-center justify-center h-full gap-3 text-slate-500">
+            <span className="text-4xl">+</span>
+            <p className="text-sm font-medium">No sessions running</p>
             <button
               onClick={() => navigate('/spawn')}
-              className="text-xs text-indigo-400 border border-indigo-500/30 px-4 py-2 rounded-full"
+              className="lavender-button text-xs font-semibold px-4 py-2 rounded-full"
             >
               Start a session
             </button>
@@ -117,7 +116,7 @@ export function InboxPage() {
         )}
 
         {sessions.length > 0 && filtered.length === 0 && (
-          <p className="text-center text-sm text-white/25 py-10">
+          <p className="text-center text-sm text-slate-500 py-10">
             No sessions match “{query}”.
           </p>
         )}
@@ -126,11 +125,11 @@ export function InboxPage() {
           <div key={daemonId || 'all'}>
             {grouped && (
               <div className="px-4 py-1.5 text-[10px] uppercase tracking-wide
-                              text-white/25 bg-white/[0.02] font-mono">
+                              text-slate-500/70 font-mono">
                 Mac · {daemonId.slice(0, 8)}
               </div>
             )}
-            <div className="divide-y divide-white/5">
+            <div className="flex flex-col gap-2">
               {rows.map((s) => (
                 <SessionRow
                   key={s.id}
@@ -160,32 +159,33 @@ function SessionRow({ session, onClick }: { session: Session; onClick: () => voi
 
   return (
     <button
-      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/3 active:bg-white/6 transition-colors text-left"
+      className="glass-card w-full flex items-center gap-3 px-4 py-3.5 rounded-[24px]
+                 hover:bg-white/65 active:scale-[0.99] transition text-left"
       onClick={onClick}
     >
       <div className="relative flex-shrink-0">
-        <div className="w-11 h-11 rounded-[10px] bg-white/8 border border-white/6 flex items-center justify-center font-mono text-xs font-medium text-white/60">
+        <div className="w-11 h-11 rounded-2xl bg-white/60 border border-white/80 flex items-center justify-center font-mono text-xs font-semibold text-violet-700 shadow-sm">
           {cmdBase.slice(0, 4)}
         </div>
-        <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-surface ${statusColor[session.status]}`} />
+        <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${statusColor[session.status]}`} />
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-0.5">
-          <span className="font-medium text-sm text-white/90 truncate">
+          <span className="font-semibold text-sm text-slate-900 truncate">
             {session.name}
           </span>
-          <span className="text-[10px] text-white/25 flex-shrink-0">
+          <span className="text-[10px] text-slate-500/70 flex-shrink-0">
             {timeAgo(session.lastActiveAt)}
           </span>
         </div>
-        <p className="text-xs text-white/35 truncate font-mono">
+        <p className="text-xs text-slate-500 truncate font-mono">
           {session.lastOutput || session.cmd}
         </p>
       </div>
 
       {session.status === 'waiting' && (
-        <span className="flex-shrink-0 text-[10px] font-semibold bg-amber-500/15 text-amber-400 px-2 py-1 rounded-full">
+        <span className="flex-shrink-0 text-[10px] font-semibold bg-amber-200/70 text-amber-700 px-2 py-1 rounded-full">
           REPLY
         </span>
       )}
@@ -196,26 +196,26 @@ function SessionRow({ session, onClick }: { session: Session; onClick: () => voi
 function NoDaemonState() {
   return (
     <div className="flex flex-col items-center justify-center flex-1 p-8 gap-4 text-center">
-      <div className="text-5xl">🖥️</div>
+      <div className="glass-card w-16 h-16 rounded-[24px] flex items-center justify-center text-3xl text-violet-600">⌘</div>
       <div>
-        <h2 className="text-base font-semibold text-white/80 mb-1">
+        <h2 className="text-base font-semibold text-slate-900 mb-1">
           Connect your Mac
         </h2>
-        <p className="text-sm text-white/40 leading-relaxed">
+        <p className="text-sm text-slate-500 leading-relaxed">
           Install the pocket-t daemon to start monitoring sessions.
         </p>
       </div>
-      <div className="bg-surface-raised border border-white/8 rounded-xl px-4 py-3 w-full text-left">
-        <p className="text-xs text-white/30 font-mono mb-2">Install:</p>
-        <code className="text-xs text-emerald-400 font-mono block">
+      <div className="glass-card rounded-[24px] px-4 py-3 w-full text-left">
+        <p className="text-xs text-slate-500 font-mono mb-2">Install:</p>
+        <code className="text-xs text-emerald-700 font-mono block">
           curl -fsSL install.pocket-t.ai | sh
         </code>
-        <p className="text-xs text-white/30 font-mono mt-3 mb-1">Then:</p>
-        <code className="text-xs text-indigo-400 font-mono block">
+        <p className="text-xs text-slate-500 font-mono mt-3 mb-1">Then:</p>
+        <code className="text-xs text-violet-700 font-mono block">
           pocket-t auth &lt;token&gt;
         </code>
       </div>
-      <p className="text-xs text-white/25">
+      <p className="text-xs text-slate-500">
         Get your token from the Dashboard tab
       </p>
     </div>

@@ -12,6 +12,7 @@ interface MessagesStore {
   loadHistory:    (sessionId: string, msgs: Message[]) => void;
   prependHistory: (sessionId: string, msgs: Message[]) => void;
   addChunk:       (sessionId: string, text: string, rawVt: string, seq: number) => void;
+  addRawVt:       (sessionId: string, rawVt: string) => void;
   addTurn:        (sessionId: string, role: Message['role'], kind: Message['kind'], text: string, seq: number) => void;
   commitStreaming: (sessionId: string, seq: number) => void;
   addUserMessage: (sessionId: string, text: string) => void;
@@ -58,6 +59,16 @@ export const useMessagesStore = create<MessagesStore>((set, get) => ({
       () => get().commitStreaming(sessionId, seq),
       DEBOUNCE_MS,
     );
+  },
+
+  addRawVt: (sessionId, rawVt) => {
+    if (!rawVt) return;
+    set((s) => ({
+      rawVtBySession: {
+        ...s.rawVtBySession,
+        [sessionId]: [...(s.rawVtBySession[sessionId] ?? []), rawVt],
+      },
+    }));
   },
 
   commitStreaming: (sessionId, seq) => {

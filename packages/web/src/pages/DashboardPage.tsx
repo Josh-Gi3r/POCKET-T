@@ -174,12 +174,12 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col app-h bg-surface">
-      <header className="flex items-center gap-3 px-4 pt-safe pb-3 pt-3 border-b border-white/8">
-        <button onClick={() => navigate(-1)} className="text-white/40">
+    <div className="app-shell flex flex-col app-h">
+      <header className="glass-panel mx-3 mt-3 flex items-center gap-3 px-4 pt-safe pb-3 pt-3 rounded-[28px]">
+        <button onClick={() => navigate(-1)} className="text-slate-500 hover:text-violet-600">
           <ChevronLeft size={20} />
         </button>
-        <h1 className="text-sm font-semibold">Dashboard</h1>
+        <h1 className="text-sm font-semibold text-slate-900">Dashboard</h1>
       </header>
 
       <ConnectionBar />
@@ -193,7 +193,7 @@ export function DashboardPage() {
 
         {/* Connect Mac */}
         <Section title="Connect your Mac">
-          <p className="text-xs text-white/40 mb-3 leading-relaxed">
+          <p className="text-xs text-slate-500 mb-3 leading-relaxed">
             Generate a one-time token (expires in 15 minutes), then run the
             install command on your Mac.
           </p>
@@ -201,22 +201,22 @@ export function DashboardPage() {
             <button
               onClick={generateToken}
               disabled={tokenLoading}
-              className="w-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 text-sm font-medium py-2.5 rounded-xl hover:bg-indigo-600/30 transition-colors disabled:opacity-50"
+              className="lavender-button w-full text-sm font-semibold py-2.5 rounded-2xl transition disabled:opacity-50"
             >
               {tokenLoading ? 'Generating…' : 'Generate install token'}
             </button>
           ) : (
             <div className="flex flex-col gap-2">
-              <div className="bg-surface-overlay rounded-xl p-3 border border-white/8">
-                <p className="text-[10px] text-white/30 mb-1.5">Run on your Mac:</p>
-                <code className="text-xs font-mono text-emerald-400 break-all leading-relaxed whitespace-pre">
+              <div className="bg-white/50 rounded-2xl p-3 border border-white/70">
+                <p className="text-[10px] text-slate-500 mb-1.5">Run on your Mac:</p>
+                <code className="text-xs font-mono text-emerald-700 break-all leading-relaxed whitespace-pre">
                   {`curl -fsSL https://install.pocket-t.ai | sh\npocket-t auth ${token}`}
                 </code>
               </div>
-              <button onClick={copyCmd} className="text-xs text-white/40">
+              <button onClick={copyCmd} className="text-xs text-violet-600 font-medium">
                 {copied ? '✓ Copied!' : 'Copy command'}
               </button>
-              <button onClick={() => setToken(null)} className="text-xs text-white/25">
+              <button onClick={() => setToken(null)} className="text-xs text-slate-500">
                 Generate new token
               </button>
             </div>
@@ -226,23 +226,23 @@ export function DashboardPage() {
         {/* Notifications */}
         <Section title="Notifications">
           {pushState === 'not-standalone' && (
-            <p className="text-xs text-amber-400/80 leading-relaxed">
+            <p className="text-xs text-amber-700 leading-relaxed">
               Add pocket-t to your Home Screen to enable push notifications.
             </p>
           )}
           {pushState === 'prompt' && (
             <div className="flex items-center justify-between">
-              <p className="text-xs text-white/40">Push notifications off</p>
-              <button onClick={enablePush} className="text-xs text-indigo-400 font-medium">
+              <p className="text-xs text-slate-500">Push notifications off</p>
+              <button onClick={enablePush} className="text-xs text-violet-600 font-semibold">
                 Enable
               </button>
             </div>
           )}
           {pushState === 'enabled' && (
-            <p className="text-xs text-emerald-400">✓ Push notifications enabled</p>
+            <p className="text-xs text-emerald-700">✓ Push notifications enabled</p>
           )}
           {pushState === 'denied' && (
-            <p className="text-xs text-red-400/70">
+            <p className="text-xs text-red-600/80">
               Blocked. Enable in Safari Settings → pocket-t.
             </p>
           )}
@@ -266,12 +266,12 @@ export function DashboardPage() {
 
         {/* Open source */}
         <Section title="Open source">
-          <p className="text-xs text-white/40 leading-relaxed mb-2">
+          <p className="text-xs text-slate-500 leading-relaxed mb-2">
             pocket-t is MIT licensed. Self-host the relay and daemon for free.
           </p>
           <a
             href="https://github.com/your-org/pocket-t"
-            className="text-xs text-indigo-400 hover:text-indigo-300"
+            className="text-xs text-violet-600 hover:text-violet-500 font-medium"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -281,7 +281,7 @@ export function DashboardPage() {
 
         <button
           onClick={logout}
-          className="text-sm text-red-400/60 hover:text-red-400 text-center py-2"
+            className="text-sm text-red-500/70 hover:text-red-500 text-center py-2"
         >
           Sign out
         </button>
@@ -294,9 +294,9 @@ export function DashboardPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-surface-raised border border-white/8 rounded-2xl overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-white/6">
-        <p className="text-[11px] font-semibold text-white/40 uppercase tracking-wide">
+    <div className="glass-card rounded-[28px] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/50">
+        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
           {title}
         </p>
       </div>
@@ -308,16 +308,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between py-1">
-      <span className="text-xs text-white/40">{label}</span>
-      <span className="text-xs text-white/80">{value}</span>
+      <span className="text-xs text-slate-500">{label}</span>
+      <span className="text-xs text-slate-800">{value}</span>
     </div>
   );
 }
 
 function PlanBadge({ plan }: { plan: string }) {
   const styles: Record<string, string> = {
-    free: 'bg-white/8 text-white/50',
-    pro:  'bg-purple-500/15 text-purple-400',
+    free: 'bg-white/60 text-slate-500',
+    pro:  'bg-purple-100 text-purple-700',
   };
   return (
     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase ${styles[plan] ?? styles.free}`}>
