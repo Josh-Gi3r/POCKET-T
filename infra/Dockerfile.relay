@@ -1,0 +1,35 @@
+FROM node:22-slim AS base
+WORKDIR /app
+RUN npm install -g pnpm@10
+
+# Workspace deps first (cached layer)
+FROM base AS deps
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/relay/package.json packages/relay/
+RUN pnpm install --frozen-lockfile --filter @pocket-t/relay... \
+ && pnpm install --frozen-lockfile --filter @pocket-t/shared
+
+# Build shared then relay
+FROM base AS build
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages ./packages
+COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
+COPY packages/relay packages/relay
+RUN pnpm --filter @pocket-t/shared build \
+ && pnpm --filter @pocket-t/relay build
+
+# Production runtime — pure ws-v3 hub, no Postgres, no Redis, no Stripe,
+# no Fastify, no Socket.IO. Just a WebSocket multiplexer between
+# daemons and browsers, both dialing OUT to us.
+FROM node:22-slim
+WORKDIR /app
+COPY --from=build /app/packages/relay/dist ./dist
+COPY --from=build /app/packages/relay/node_modules ./node_modules
+COPY --from=build /app/packages/shared/dist \
+  ./node_modules/@pocket-t/shared/dist
+RUN chown -R node:node /app
+USER node
+EXPOSE 4080
+CMD ["node", "dist/wsv3-hub.js"]

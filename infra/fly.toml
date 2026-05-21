@@ -1,0 +1,43 @@
+# Optional: deploy the pocket-t ws-v3 hub on Fly.io.
+#
+# This is the self-hosted relay you'd point your daemon at if you want
+# to control your Mac from another network. It's a dumb pipe — no
+# Postgres, no Redis, no auth state, no JWT, no Stripe. Tokens are
+# just shared strings (typically your daemonId).
+#
+# Deploy:
+#   fly launch --copy-config --name <your-app-name>
+#   fly deploy
+#
+# Then point your daemon at it:
+#   pt-registry serve --relay wss://<your-app>.fly.dev/ws/pt?role=daemon&t=<token>
+
+app            = "pocket-t-hub"
+primary_region = "sin"
+
+[build]
+  dockerfile = "infra/Dockerfile.relay"
+
+[[services]]
+  internal_port = 4080
+  protocol      = "tcp"
+
+  [services.concurrency]
+    type       = "connections"
+    hard_limit = 5000
+    soft_limit = 4000
+
+  [[services.ports]]
+    handlers    = ["tls", "http"]
+    port        = 443
+    force_https = true
+
+[env]
+  NODE_ENV          = "production"
+  POCKET_T_HUB_PORT = "4080"
+  POCKET_T_HUB_HOST = "0.0.0.0"
+
+[[vm]]
+  memory   = "256mb"
+  cpu_kind = "shared"
+  cpus     = 1
