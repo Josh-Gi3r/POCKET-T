@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # @pocket-t/shared only exports its dist, so build it before anything
+      # typechecks against it.
+      - name: Build shared
+        run: pnpm --filter @pocket-t/shared build
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Test
+        run: pnpm --filter @pocket-t/daemon test
+
+      - name: Build
+        run: pnpm -r build
+
+      - name: Lint
+        run: pnpm lint
