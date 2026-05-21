@@ -1,0 +1,2025 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Pocket-T — Your terminal, anywhere. Claude Code, Codex, any CLI.</title>
+<meta name="description" content="Pocket-T mirrors every terminal you open on your Mac to your phone — live. Tail logs, ssh into servers, drive a build, edit in vim, run network gear, or control Claude Code / Codex / Aider agents — from anywhere. Your actual terminal window, not a chat-bot relay. Free, open source, self-host or hosted." />
+
+<!-- Theme + iOS app-like behavior -->
+<meta name="theme-color" content="#0B0F12" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Pocket-T" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/branding/app-icon/app-icon-512.png" />
+<link rel="icon" type="image/svg+xml" href="/branding/signet/signet-on-dark.svg" />
+<link rel="icon" type="image/png" sizes="256x256" href="/branding/app-icon/app-icon-256.png" />
+
+<!-- Open Graph / X -->
+<meta property="og:title" content="Pocket-T — Your terminal, anywhere." />
+<meta property="og:description" content="Mirror every Mac terminal to your phone. Tail logs, ssh into servers, run vim, drive CLI agents — from anywhere. Free, open source." />
+<meta property="og:image" content="https://pocket-t.ai/branding/app-icon/app-icon-1024.png" />
+<meta property="og:url" content="https://pocket-t.ai" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@Josh_Gier" />
+<meta name="twitter:creator" content="@Josh_Gier" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --mint:#00F0B5;
+    --mint-2:#00C99A;
+    --mint-soft:rgba(0,240,181,.10);
+    --graphite:#0B0F12;
+    --graphite-2:#0F141A;
+    --slate:#1A1F26;
+    --slate-2:#23292F;
+    --offwhite:#F5F7FA;
+    --steel:#8B949E;
+    --steel-2:#C7CCD2;
+    --cobalt:#3B82F6;
+    --line:rgba(255,255,255,.06);
+    --line-2:rgba(255,255,255,.10);
+
+    --display:'Space Grotesk', system-ui, sans-serif;
+    --ui:'Inter', system-ui, sans-serif;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;scroll-padding-top:80px}
+  html,body{background:var(--graphite);color:var(--offwhite);font-family:var(--ui);-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+  body{overflow-x:hidden;font-size:15px;line-height:1.55}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--mint);color:var(--graphite)}
+
+  /* ============ Layout ============ */
+  .wrap{max-width:1380px;margin:0 auto;padding:0 28px}
+  section{position:relative}
+
+  /* ============ Background fx ============ */
+  .grain{position:absolute;inset:0;pointer-events:none;opacity:.04;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+  .glow{position:absolute;inset:0;pointer-events:none;
+    background:
+      radial-gradient(60% 50% at 50% 0%, rgba(0,240,181,.12), transparent 70%),
+      radial-gradient(40% 60% at 88% 28%, rgba(0,240,181,.06), transparent 70%);
+  }
+  .grid-bg{
+    position:absolute;inset:0;pointer-events:none;opacity:.4;
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px,transparent 1px);
+    background-size:64px 64px;
+    mask-image:radial-gradient(ellipse 60% 50% at 50% 0%, #000 30%, transparent 80%);
+  }
+
+  /* ============ Header ============ */
+  header.nav{
+    position:fixed;top:0;left:0;right:0;z-index:50;
+    background:rgba(11,15,18,.72);backdrop-filter:saturate(140%) blur(14px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:72px;padding:0 28px;max-width:1380px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:600;letter-spacing:-.015em;font-size:22px;color:#fff}
+  .brand .sig{
+    width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  }
+  .brand .sig svg{width:100%;height:100%;display:block}
+  .brand .t-mint{color:var(--mint)}
+  .nav-links{display:flex;align-items:center;gap:28px;font-size:13.5px;color:var(--steel-2)}
+  .nav-links a{transition:color .15s}
+  .nav-links a:hover{color:var(--offwhite)}
+  .nav-links .sep{width:1px;height:14px;background:var(--line-2)}
+  .nav-links .gh{color:var(--mint);font-weight:500}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:9px 16px;border-radius:10px;font-size:13.5px;font-weight:600;
+    transition:transform .15s,background .15s,border-color .15s,box-shadow .15s;
+    border:1px solid transparent;
+  }
+  .btn.primary{background:var(--mint);color:var(--graphite);box-shadow:0 6px 24px -10px rgba(0,240,181,.6)}
+  .btn.primary:hover{background:#1cf3bc;box-shadow:0 10px 32px -10px rgba(0,240,181,.7);transform:translateY(-1px)}
+  .btn.ghost{border-color:var(--line-2);color:var(--offwhite)}
+  .btn.ghost:hover{border-color:rgba(255,255,255,.25)}
+  .btn.lg{padding:13px 22px;font-size:14.5px;border-radius:12px}
+  .menu-btn{display:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--line-2);align-items:center;justify-content:center;color:var(--steel-2);cursor:pointer;background:transparent}
+
+  /* ============ Hero ============ */
+  .hero{padding:128px 0 96px;overflow:hidden}
+  .hero-grid{display:grid;grid-template-columns:1fr auto;gap:60px;align-items:center}
+  .pill{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    padding:7px 12px;border-radius:999px;
+    background:var(--mint-soft);border:1px solid rgba(0,240,181,.25);color:var(--mint);
+    margin-bottom:28px;
+  }
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 3px rgba(0,240,181,.18);animation:pulse 2.4s ease-out infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(0,240,181,.5)}100%{box-shadow:0 0 0 12px rgba(0,240,181,0)}}
+  h1.hero-h{
+    font-family:var(--display);font-weight:600;font-size:80px;line-height:.98;letter-spacing:-.035em;
+  }
+  h1.hero-h .accent{color:var(--mint)}
+  .hero-sub{margin-top:22px;font-size:18px;line-height:1.55;color:var(--steel-2);max-width:560px}
+  .hero-sub code{
+    font-family:var(--mono);font-size:.9em;background:var(--slate);padding:2px 7px;border-radius:6px;color:#fff;border:1px solid var(--line-2);
+  }
+  .hero-sub strong{color:#fff;font-weight:600}
+  .hero-cta{margin-top:36px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .src-link{display:inline-flex;align-items:center;gap:8px;color:var(--steel-2);font-size:13.5px;font-weight:500;padding:9px 14px;transition:color .15s}
+  .src-link:hover{color:#fff}
+  .src-link .arr{color:var(--steel);transition:transform .15s}
+  .src-link:hover .arr{transform:translate(2px,-2px);color:var(--mint)}
+  /* AI install link variant — same shape, mint accent so it reads as
+     "this is for an AI to do, not you" */
+  .src-link.ai-link{color:var(--mint);position:relative}
+  .src-link.ai-link:hover{color:#1cf3bc}
+  .src-link.ai-link .arr{color:var(--mint)}
+  .src-link.ai-link svg{filter:drop-shadow(0 0 6px rgba(0,240,181,.35))}
+  .hero-facts{margin-top:32px;display:grid;grid-template-columns:1fr 1fr;gap:14px 28px;color:var(--steel);font-size:13.5px;max-width:560px}
+  .hero-facts .f{display:flex;align-items:center;gap:10px}
+  .hero-facts .f .d{width:6px;height:6px;border-radius:50%;background:var(--mint)}
+
+  /* ============ Signet SVG (used everywhere) ============ */
+  .signet{display:block}
+
+  /* ============ HERO DEVICE (iPhone 17 Pro Max) ============ */
+  .stage{position:relative;display:flex;align-items:center;justify-content:center;gap:32px;padding-left:8px}
+
+  .mac{
+    width:560px;background:#0E1318;
+    border:1px solid var(--line-2);border-radius:14px;overflow:hidden;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.02);
+    display:flex;flex-direction:column;
+  }
+  .mac-titlebar{
+    display:flex;align-items:center;gap:7px;padding:10px 14px;
+    border-bottom:1px solid var(--line);background:#0A0E12;position:relative;
+  }
+  .mac-titlebar .d{width:11px;height:11px;border-radius:50%}
+  .mac-titlebar .r{background:#FF5F57}.mac-titlebar .y{background:#FEBC2E}.mac-titlebar .g{background:#28C840}
+  .mac-title{
+    position:absolute;left:50%;transform:translateX(-50%);
+    font-family:var(--mono);font-size:11px;color:var(--steel-2);letter-spacing:.01em;white-space:nowrap;
+  }
+  .mac-title .t-host{color:var(--mint)}
+  .mac-title b{color:#fff;font-weight:600}
+
+  .claude-term{
+    font-family:var(--mono);font-size:12.5px;line-height:1.6;
+    color:var(--steel-2);padding:18px 18px 12px;display:flex;flex-direction:column;gap:12px;
+    min-height:340px;
+  }
+  .claude-head{display:flex;align-items:flex-start;gap:12px}
+  .mascot{width:40px;height:40px;flex:none;image-rendering:pixelated}
+  .mascot svg{width:100%;height:100%;display:block;shape-rendering:crispEdges}
+  .head-info{font-size:11.5px;line-height:1.5;padding-top:2px;flex:1;min-width:0}
+  .hi-name{color:#fff;white-space:nowrap}
+  .hi-name b{font-weight:600}
+  .hi-name .hi-ver{color:var(--steel);font-weight:400}
+  .hi-model{color:var(--steel-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hi-dir{color:var(--steel);white-space:nowrap}
+
+  .claude-rule{
+    height:1px;background:
+      repeating-linear-gradient(90deg, var(--steel) 0 6px, transparent 6px 10px);
+    opacity:.35;
+  }
+
+  .claude-body{
+    flex:1;display:grid;
+    /* stack all states in same cell, fade between */
+    grid-template-areas:"stack";min-height:170px;position:relative;
+  }
+  .cstate{
+    grid-area:stack;display:flex;flex-direction:column;gap:6px;
+    opacity:0;transform:translateY(6px);transition:opacity .35s ease, transform .35s ease;
+    pointer-events:none;
+  }
+  .stage[data-beat="0"] .cs-0,
+  .stage[data-beat="1"] .cs-1,
+  .stage[data-beat="2"] .cs-2,
+  .stage[data-beat="3"] .cs-3{opacity:1;transform:none}
+
+  .prompt-row{display:flex;align-items:baseline;gap:8px;color:var(--mint)}
+  .prompt-arrow{color:var(--mint);font-weight:600}
+  .prompt-text{font-size:12.5px}
+  .caret{display:inline-block;width:7px;height:13px;background:var(--mint);vertical-align:-2px;margin-left:2px;animation:bk 1.1s steps(1) infinite}
+
+  .msg{font-size:12.5px;line-height:1.6}
+  .msg.user{color:#fff;font-weight:500}
+  .msg.user .from-tag{color:var(--mint);font-size:10.5px;font-weight:500;margin-left:8px;letter-spacing:.04em;background:rgba(0,240,181,.08);border:1px solid rgba(0,240,181,.25);padding:1px 7px;border-radius:999px}
+  .msg.claude{color:var(--steel-2)}
+  .msg.claude code{color:#fff;background:transparent}
+  .msg .bullet{color:var(--steel);margin-right:6px}
+  .msg .bullet.mint{color:var(--mint)}
+  .msg .bullet.ok{color:var(--mint)}
+  .msg.muted{color:var(--steel)}
+  .msg .ok-text{color:var(--mint)}
+  .msg .dim{color:#5A6573}
+  .msg b{color:#fff;font-weight:500}
+
+  .tool-call{
+    margin-top:6px;padding:10px 12px;border-radius:8px;
+    background:rgba(0,240,181,.06);border:1px solid rgba(0,240,181,.25);
+  }
+  .tc-head{color:var(--steel-2);margin-bottom:8px}
+  .tc-head b{color:#fff;font-weight:500}
+  .tc-q{font-size:11.5px;color:var(--steel-2);margin-bottom:8px}
+  .tc-q .muted{color:var(--steel)}
+  .tc-opts{display:flex;flex-direction:column;gap:3px;font-size:11.5px}
+  .opt{color:var(--steel)}
+  .opt .opt-num{color:var(--steel);margin-right:6px;display:inline-block;min-width:14px}
+  .opt.sel{color:#fff;background:rgba(0,240,181,.10);padding:2px 8px;margin:0 -8px;border-radius:5px}
+  .opt.sel .opt-num{color:var(--mint)}
+
+  .code-diff{
+    margin:4px 0;padding:8px 10px;border-radius:6px;background:#0A0E12;border:1px solid var(--line);
+    font-size:11.5px;
+  }
+  .cd-row{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:baseline}
+  .cd-n{color:#3D4651;text-align:right}
+  .cd-del{color:#FF6B6B;background:rgba(255,107,107,.06);padding:0 4px}
+  .cd-add{color:var(--mint);background:rgba(0,240,181,.06);padding:0 4px}
+
+  .claude-foot{
+    display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:11px;
+    color:var(--steel);
+  }
+  .claude-foot .mint{color:var(--mint)}
+  .claude-foot .muted{color:var(--steel)}
+  .claude-foot .warn{color:#FF8C42}
+  .ff-l,.ff-r{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ff-l{flex:1;min-width:0}
+
+  /* iPhone 17 Pro Max */
+  .iphone-wrap{position:relative}
+  .iphone-glow{position:absolute;inset:-40px;background:radial-gradient(closest-side, rgba(0,240,181,.18), transparent 70%);filter:blur(8px);pointer-events:none}
+  .iphone{
+    position:relative;width:300px;aspect-ratio:9.6/20;
+    border-radius:58px;
+    padding:5px;
+    background:
+      linear-gradient(140deg, #4a5562 0%, #1c2128 18%, #3a424c 35%, #14181d 55%, #2f363f 78%, #1a1f25 100%);
+    box-shadow:
+      0 50px 120px -30px rgba(0,0,0,.7),
+      0 20px 50px -20px rgba(0,240,181,.18),
+      inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .iphone::before{
+    /* titanium edge highlight */
+    content:"";position:absolute;inset:0;border-radius:58px;pointer-events:none;
+    background:linear-gradient(140deg, transparent 0%, rgba(255,255,255,.12) 30%, transparent 50%, rgba(255,255,255,.04) 75%, transparent 100%);
+    mix-blend-mode:overlay;
+  }
+  .iphone .bezel{
+    position:relative;height:100%;border-radius:53px;
+    background:#000;
+    padding:3px;
+    overflow:hidden;
+  }
+  .iphone .screen{
+    position:relative;height:100%;border-radius:50px;overflow:hidden;
+    background:var(--graphite);
+    display:flex;flex-direction:column;
+  }
+  /* Dynamic island */
+  .di{
+    position:absolute;top:11px;left:50%;transform:translateX(-50%);
+    width:118px;height:34px;background:#000;border-radius:20px;z-index:20;
+    display:flex;align-items:center;justify-content:space-between;padding:0 10px;
+  }
+  .di .cam{width:9px;height:9px;border-radius:50%;background:#0a0a0a;box-shadow:inset 0 0 0 1px #1c1c1c,inset 0 0 4px rgba(0,240,181,.3)}
+  .di .sens{width:6px;height:6px;border-radius:50%;background:#070707}
+  .iphone .status{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:18px 28px 6px;font-family:var(--ui);font-size:14px;font-weight:600;color:#fff;
+    z-index:10;
+  }
+  .iphone .status .icons{display:flex;gap:5px;align-items:center}
+  .iphone .status .icons svg{width:16px;height:11px}
+
+  /* phone app body */
+  .papp{flex:1;display:flex;flex-direction:column;padding:0;gap:0;overflow:hidden;min-height:0}
+  .papp .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
+  .papp .ht{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:-.015em;color:#fff}
+  .papp .hs{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--steel);margin-top:3px;font-family:var(--mono);letter-spacing:.02em}
+  .papp .hs .live{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 3px rgba(0,240,181,.18);animation:pulse 2.4s ease-out infinite}
+  .papp .menu{width:22px;height:18px;display:flex;flex-direction:column;justify-content:space-between}
+  .papp .menu span{height:2px;background:var(--steel-2);border-radius:1px;display:block}
+  .papp .search{
+    background:var(--graphite-2);border:1px solid var(--line-2);border-radius:12px;
+    padding:10px 12px;display:flex;justify-content:space-between;align-items:center;
+    font-size:12.5px;color:var(--steel);
+  }
+  .papp .search .kbd{font-family:var(--mono);background:var(--slate);padding:2px 6px;border-radius:5px;color:var(--steel-2);font-size:10.5px;letter-spacing:.04em}
+  .papp .sect{font-size:9.5px;font-weight:600;color:var(--steel);letter-spacing:.18em;text-transform:uppercase;margin-top:6px;padding:0 2px}
+
+  .pbody{display:flex;flex-direction:column;gap:6px;flex:1;overflow:hidden}
+  .row{
+    display:grid;grid-template-columns:30px 1fr auto;gap:11px;align-items:center;
+    padding:9px 4px;border-bottom:1px solid rgba(255,255,255,.04);
+  }
+  .row:last-child{border-bottom:0}
+  .row .ic{width:30px;height:30px;border-radius:8px;background:var(--graphite-2);border:1px solid var(--line-2);display:flex;align-items:center;justify-content:center}
+  .row .nm{font-size:13.5px;font-weight:500;color:#fff;letter-spacing:-.005em;line-height:1.2}
+  .row .sub{font-family:var(--mono);font-size:10.5px;color:var(--steel);margin-top:2px;letter-spacing:.02em}
+  .row .ch{color:var(--steel);font-size:14px}
+  .row .live-d{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 3px rgba(0,240,181,.15)}
+  .row .cost{font-family:var(--mono);font-size:10.5px;color:var(--mint);background:rgba(0,240,181,.08);border:1px solid rgba(0,240,181,.2);padding:2px 7px;border-radius:999px}
+
+  .approval{
+    margin-top:auto;border:1px solid rgba(0,240,181,.35);background:rgba(0,240,181,.06);
+    border-radius:12px;padding:11px 12px;
+  }
+  .approval .q{font-family:var(--mono);font-size:10.5px;color:var(--steel-2);margin-bottom:9px}
+  .approval .q b{color:#fff;font-weight:600}
+  .approval .actions{display:flex;gap:7px}
+  .approval button{flex:1;font-family:var(--ui);font-size:11.5px;font-weight:600;padding:9px;border-radius:9px;border:0;cursor:default}
+  .approval .ok{background:var(--mint);color:var(--graphite)}
+  .approval .ko{background:rgba(255,255,255,.06);color:var(--steel-2)}
+
+  /* Claude row — status switches per beat */
+  .row.claude-row{position:relative}
+  .claude-sub{position:relative;min-height:14px}
+  .cs-st{display:none;font-family:var(--mono);font-size:10.5px;color:var(--steel);letter-spacing:.02em}
+  .stage[data-beat="0"] .cs-st-0,
+  .stage[data-beat="1"] .cs-st-1,
+  .stage[data-beat="2"] .cs-st-2,
+  .stage[data-beat="3"] .cs-st-3{display:inline-flex;align-items:center}
+  .stage[data-beat="1"] .cs-st-1{color:#FF8C42}
+  .stage[data-beat="3"] .cs-st-3{color:var(--mint)}
+
+  .row-right{position:relative;display:flex;align-items:center;justify-content:flex-end;min-width:46px}
+  .rr{display:none;align-items:center;justify-content:center}
+  .stage[data-beat="0"] .rr-0,
+  .stage[data-beat="1"] .rr-1,
+  .stage[data-beat="2"] .rr-2,
+  .stage[data-beat="3"] .rr-3{display:inline-flex}
+  .warn-pulse{
+    width:20px;height:20px;border-radius:50%;background:#FF8C42;color:#0B0F12;
+    font-family:var(--ui);font-weight:800;font-size:12px;line-height:1;
+    box-shadow:0 0 0 0 rgba(255,140,66,.5);animation:warn-p 1.6s ease-out infinite;
+  }
+  @keyframes warn-p{0%{box-shadow:0 0 0 0 rgba(255,140,66,.55)}100%{box-shadow:0 0 0 12px rgba(255,140,66,0)}}
+  .cost-pill{
+    font-family:var(--mono);font-size:10.5px;color:var(--mint);
+    background:rgba(0,240,181,.08);border:1px solid rgba(0,240,181,.25);
+    padding:2px 8px;border-radius:999px;font-weight:600;
+  }
+
+  /* Panel stack — beat-driven swap */
+  .phone-stack{
+    margin-top:auto;display:grid;grid-template-areas:"stack";
+    min-height:128px;
+  }
+  .pstate{
+    grid-area:stack;
+    opacity:0;transform:translateY(6px);
+    transition:opacity .35s ease, transform .35s ease;
+    pointer-events:none;display:flex;flex-direction:column;
+  }
+  .stage[data-beat="0"] .ps-0,
+  .stage[data-beat="1"] .ps-1,
+  .stage[data-beat="2"] .ps-2,
+  .stage[data-beat="3"] .ps-3{opacity:1;transform:none}
+
+  /* Beat 0 — hint */
+  .ps-0 .hint{
+    display:flex;align-items:center;gap:8px;
+    padding:14px;border-radius:12px;
+    background:rgba(255,255,255,.03);border:1px dashed var(--line-2);
+    font-size:11.5px;color:var(--steel);line-height:1.5;
+  }
+  .ps-0 .hint svg{flex:none;color:var(--steel)}
+
+  /* Beat 1 — approval */
+  .ps-1{
+    border:1px solid rgba(255,140,66,.35);background:rgba(255,140,66,.06);
+    border-radius:12px;padding:9px 11px;
+  }
+  .ap-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-family:var(--mono);font-size:10px;letter-spacing:.04em}
+  .ap-vendor{color:#FF8C42;font-weight:600;text-transform:uppercase}
+  .ap-time{color:var(--steel)}
+  .ap-q{font-family:var(--mono);font-size:10.5px;color:var(--steel-2);margin-bottom:9px;line-height:1.4}
+  .ap-q b{color:#fff;font-weight:600}
+  .ap-actions{display:flex;gap:7px}
+  .ap-actions button{
+    flex:1;font-family:var(--ui);font-size:11.5px;font-weight:600;padding:8px;
+    border-radius:9px;border:0;cursor:default;position:relative;overflow:hidden;
+  }
+  .ap-ok{background:var(--mint);color:var(--graphite)}
+  .ap-no{background:rgba(255,255,255,.06);color:var(--steel-2)}
+  .stage[data-beat="1"] .ap-ok::after{
+    content:"";position:absolute;inset:0;background:rgba(255,255,255,.55);
+    transform:scale(.2);opacity:0;border-radius:9px;
+    animation:tap 1.7s ease-out .4s;
+  }
+  @keyframes tap{0%{opacity:.6;transform:scale(.2)}60%{opacity:0;transform:scale(1.5)}100%{opacity:0}}
+
+  /* Beat 2 — typing reply */
+  .ps-2{gap:8px}
+  .ip-bubble{
+    align-self:flex-end;max-width:75%;
+    background:var(--mint);color:var(--graphite);font-size:12px;font-weight:500;
+    padding:7px 11px;border-radius:14px 14px 4px 14px;
+  }
+  .ip-input{
+    display:flex;align-items:center;gap:7px;
+    background:var(--graphite-2);border:1px solid var(--line-2);border-radius:18px;
+    padding:6px 6px 6px 12px;
+  }
+  .ip-text{
+    flex:1;font-size:12px;color:#fff;font-family:var(--ui);
+    white-space:nowrap;overflow:hidden;
+  }
+  .ip-text .caret{width:6px;height:11px;vertical-align:-1px}
+  .ip-send{
+    width:26px;height:26px;border-radius:50%;background:var(--mint);color:var(--graphite);
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:none;
+  }
+  .stage[data-beat="2"] .ip-send{animation:send-p 1.6s ease-out infinite}
+  @keyframes send-p{0%{box-shadow:0 0 0 0 rgba(0,240,181,.5)}100%{box-shadow:0 0 0 10px rgba(0,240,181,0)}}
+
+  /* Phone Claude Code header */
+  .ph-claude-head{display:flex;flex-direction:column;gap:6px;flex:none}
+  .phc-line{
+    font-family:var(--mono);font-size:10px;color:var(--steel-2);letter-spacing:.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .phc-line .phc-prompt{color:var(--mint);font-weight:600;margin-right:3px}
+  .phc-line b{color:#fff;font-weight:600}
+  .phc-info{display:flex;align-items:flex-start;gap:9px}
+  .phc-mascot{width:30px;height:30px;flex:none;image-rendering:pixelated}
+  .phc-mascot svg{width:100%;height:100%;display:block;shape-rendering:crispEdges}
+  .phc-meta{font-family:var(--mono);font-size:9.5px;line-height:1.45;color:var(--steel-2);min-width:0;flex:1;padding-top:1px}
+  .phc-meta b{color:#fff;font-weight:600}
+  .phc-ver{color:var(--steel)}
+  .phc-dim{color:var(--steel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .phc-rule{
+    height:1px;
+    background:repeating-linear-gradient(90deg, var(--steel) 0 5px, transparent 5px 8px);
+    opacity:.35;margin:2px 0 0;
+  }
+
+  /* ============ Phone — Pocket-T mobile UI (redesign) ============ */
+  .ph-chrome{
+    display:flex;align-items:center;gap:5px;
+    padding:6px 7px 7px;border-bottom:1px solid rgba(255,255,255,.06);
+    flex:none;
+  }
+  .ph-menu{
+    display:flex;flex-direction:column;justify-content:space-between;
+    width:16px;height:13px;background:transparent;border:0;cursor:default;padding:0;flex:none;
+  }
+  .ph-menu span{height:1.5px;background:var(--steel-2);border-radius:1px;display:block}
+
+  .ph-session{
+    font-family:var(--mono);font-size:10px;color:var(--steel-2);letter-spacing:.02em;flex:none;
+  }
+  .ph-cost{
+    display:flex;align-items:baseline;gap:3px;
+    background:rgba(0,0,0,.4);border:1px solid var(--line-2);border-radius:999px;
+    padding:3px 8px;font-family:var(--mono);flex:none;margin-left:2px;
+  }
+  .ph-amt{font-size:10px;font-weight:600;color:var(--mint)}
+
+  .ph-toggle{
+    display:flex;background:rgba(255,255,255,.05);border:1px solid var(--line-2);border-radius:999px;
+    padding:2px;font-size:9.5px;font-weight:500;margin-left:auto;flex:none;
+  }
+  .tt-opt{
+    padding:3px 7px;border-radius:999px;color:var(--steel);letter-spacing:.02em;
+  }
+  .tt-opt.active{background:var(--mint);color:var(--graphite);font-weight:600}
+
+  /* Body */
+  .papp .ph-body{
+    flex:1;display:flex;flex-direction:column;gap:7px;
+    padding:11px 10px 4px;overflow:hidden;min-height:0;
+  }
+  .ph-msg{
+    font-size:11px;line-height:1.45;display:flex;gap:7px;align-items:flex-start;
+  }
+  .ph-msg.ph-user{
+    background:rgba(255,255,255,.05);padding:7px 10px;border-radius:8px;color:#fff;
+    font-family:var(--mono);
+  }
+  .ph-msg.ph-claude{
+    font-family:var(--ui);color:var(--steel-2);padding:0 2px;
+  }
+  .ph-msg.ph-claude b{color:#fff;font-weight:600}
+  .ph-msg.ph-muted{color:var(--steel)}
+  .ph-msg.ph-indent{padding-left:10px;font-size:10.5px}
+  .ph-msg.from-phone{
+    border:1px solid rgba(0,240,181,.3);background:rgba(0,240,181,.06);
+  }
+  .ph-msg.from-phone > span:not(.ph-bullet):not(.from-tag){flex:1}
+  .ph-msg .from-tag{
+    margin-left:auto;font-size:8.5px;letter-spacing:.1em;font-weight:600;
+    color:var(--mint);background:rgba(0,240,181,.12);
+    padding:2px 7px;border-radius:999px;text-transform:uppercase;flex:none;
+  }
+  .ph-bullet{color:var(--steel);font-weight:500;flex:none;font-family:var(--mono)}
+  .ph-bullet.mint{color:var(--mint)}
+  .ph-think{
+    font-family:var(--mono);font-size:10px;color:var(--steel);padding:2px 4px;letter-spacing:.02em;
+  }
+  .ph-dim{color:#5A6573}
+
+  /* State swap — only active beat shows in phone body */
+  .ph-body .cstate{display:none;flex-direction:column;gap:7px;opacity:1;transform:none;pointer-events:auto}
+  .stage[data-beat="0"] .ph-body .cs-0,
+  .stage[data-beat="1"] .ph-body .cs-1,
+  .stage[data-beat="2"] .ph-body .cs-2,
+  .stage[data-beat="3"] .ph-body .cs-3{display:flex}
+
+  /* Hint (beat 0) */
+  .ph-hint{
+    display:flex;align-items:center;gap:7px;
+    padding:9px 11px;border-radius:9px;
+    background:rgba(255,255,255,.03);border:1px dashed var(--line-2);
+    font-size:10.5px;color:var(--steel);font-family:var(--mono);
+  }
+  .ph-hint svg{color:var(--steel);flex:none}
+
+  /* Tool call (beat 1) */
+  .ph-tool{
+    border:1px solid rgba(0,240,181,.35);background:rgba(0,240,181,.06);
+    border-radius:10px;padding:9px 11px;
+  }
+  .pt-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+  .pt-vendor{color:var(--mint);font-weight:600}
+  .pt-time{color:var(--steel)}
+  .pt-q{font-family:var(--mono);font-size:10.5px;color:var(--steel-2);margin-bottom:8px;line-height:1.4}
+  .pt-q b{color:#fff;font-weight:600}
+  .pt-actions{display:flex;gap:6px}
+  .pt-actions button{
+    flex:1;font-family:var(--ui);font-size:10.5px;font-weight:600;padding:7px;
+    border-radius:7px;border:0;cursor:default;position:relative;overflow:hidden;
+  }
+  .pt-ok{background:var(--mint);color:var(--graphite)}
+  .pt-no{background:rgba(255,255,255,.06);color:var(--steel-2)}
+  .stage[data-beat="1"] .pt-ok::after{
+    content:"";position:absolute;inset:0;background:rgba(255,255,255,.55);
+    transform:scale(.2);opacity:0;border-radius:7px;
+    animation:tap 1.7s ease-out .4s;
+  }
+
+  /* Diff (beat 2) */
+  .ph-diff{
+    background:#0A0E12;border:1px solid var(--line-2);border-radius:7px;
+    padding:7px 9px;font-family:var(--mono);font-size:10px;line-height:1.6;
+  }
+  .pd-row{display:block}
+  .pd-del{color:#FF6B6B;background:rgba(255,107,107,.06);padding:0 3px;display:inline-block;border-radius:3px}
+  .pd-add{color:var(--mint);background:rgba(0,240,181,.06);padding:0 3px;display:inline-block;border-radius:3px}
+
+  /* Success (beat 3) */
+  .ph-success{
+    border:1px solid rgba(0,240,181,.3);background:rgba(0,240,181,.06);
+    border-radius:10px;padding:9px 11px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .ps-ic{
+    width:26px;height:26px;border-radius:50%;background:var(--mint);color:var(--graphite);
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:none;
+  }
+  .ps-t{font-size:12px;font-weight:600;color:#fff;line-height:1.2}
+  .ps-m{font-family:var(--mono);font-size:9.5px;color:var(--steel);margin-top:2px}
+
+  /* Soft keys */
+  .ph-keys{
+    display:flex;gap:4px;padding:8px 7px;
+    background:rgba(0,0,0,.35);border-top:1px solid rgba(255,255,255,.06);
+    overflow:hidden;flex:none;
+  }
+  .kb{
+    flex:1;height:28px;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.05);border:1px solid var(--line-2);border-radius:6px;
+    font-family:var(--ui);font-size:10px;font-weight:500;color:var(--steel-2);
+    min-width:0;
+  }
+  .kb.send{
+    background:var(--mint);color:var(--graphite);font-weight:700;font-size:15px;
+    border-color:transparent;flex:1.4;
+  }
+
+  .tabbar{
+    margin:8px -16px 0;padding:10px 16px 14px;border-top:1px solid rgba(255,255,255,.06);
+    display:flex;justify-content:space-around;font-size:9.5px;color:var(--steel);
+    background:rgba(0,0,0,.2);
+  }
+  .tabbar .tb{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .tabbar .tb.active{color:var(--mint)}
+  .home-ind{height:5px;width:38%;background:#fff;border-radius:3px;margin:6px auto 8px;opacity:.9}
+
+  /* Connector pulse between mac and phone.
+     Sits as a flex item in the stage with width:0 — that lets it
+     visually overflow its box (the dot + pill render centered on the
+     mac/phone seam) without making the stage any wider. Tracks the
+     gap automatically at every breakpoint. */
+  .link{
+    align-self:center;flex:none;width:0;
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    z-index:5;pointer-events:none;position:relative;
+    overflow:visible;
+  }
+  .link .pl{width:10px;height:10px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 0 rgba(0,240,181,.45);animation:pulse2 2.2s ease-out infinite;flex:none}
+  @keyframes pulse2{0%{box-shadow:0 0 0 0 rgba(0,240,181,.5)}100%{box-shadow:0 0 0 18px rgba(0,240,181,0)}}
+  .link .lb{
+    font-family:var(--mono);font-size:10px;color:var(--steel);letter-spacing:.06em;
+    background:var(--graphite-2);border:1px solid var(--line-2);
+    padding:4px 9px;border-radius:999px;white-space:nowrap;flex:none;
+  }
+
+  .demo-meta{margin-top:28px;display:flex;align-items:center;gap:18px}
+  .beats{display:flex;gap:6px}
+  .beats i{width:18px;height:3px;border-radius:2px;background:rgba(255,255,255,.12);display:block;transition:background .3s}
+  .stage[data-beat="0"] .beats i:nth-child(1),
+  .stage[data-beat="1"] .beats i:nth-child(2),
+  .stage[data-beat="2"] .beats i:nth-child(3),
+  .stage[data-beat="3"] .beats i:nth-child(4){background:var(--mint)}
+  .cap{font-size:14px;color:var(--steel-2);transition:opacity .25s}
+  .cap b{color:#fff;font-weight:600}
+
+  /* ============ Marquee ============ */
+  .marquee-wrap{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(15,20,26,.5);padding:18px 0;overflow:hidden}
+  .marquee{display:flex;white-space:nowrap;font-family:var(--mono);font-size:13px;color:var(--steel);animation:scroll 38s linear infinite;gap:48px}
+  .marquee .dot{color:var(--mint)}
+  @keyframes scroll{to{transform:translateX(-50%)}}
+
+  /* ============ Section heading ============ */
+  .sect-head{max-width:760px;margin-bottom:56px}
+  .sect-eyebrow{font-family:var(--mono);font-size:11px;color:var(--mint);letter-spacing:.18em;text-transform:uppercase;margin-bottom:14px;display:inline-block}
+  h2{font-family:var(--display);font-weight:600;font-size:48px;line-height:1.05;letter-spacing:-.025em}
+  h2 .accent{color:var(--mint)}
+  .sect-lead{margin-top:18px;font-size:17px;line-height:1.55;color:var(--steel-2);max-width:640px}
+
+  section.bordered{border-top:1px solid var(--line);padding:104px 0}
+
+  /* ============ Difference cards ============ */
+  .diff{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .card{
+    border-radius:18px;padding:32px;
+    background:rgba(15,20,26,.5);border:1px solid var(--line-2);
+  }
+  .card.bad{}
+  .card.good{
+    border-color:rgba(0,240,181,.25);
+    background:rgba(0,240,181,.035);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+  }
+  .card h3{font-family:var(--display);font-weight:600;font-size:18px;letter-spacing:-.01em;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+  .card h3 .badge{
+    width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-weight:700;font-size:13px;
+    background:rgba(255,255,255,.05);color:var(--steel);
+  }
+  .card.good h3 .badge{background:var(--mint-soft);border:1px solid rgba(0,240,181,.3);color:var(--mint)}
+  .card ul{list-style:none;display:flex;flex-direction:column;gap:14px;font-size:14px;line-height:1.55;color:var(--steel-2)}
+  .card.bad ul li{color:var(--steel)}
+  .card ul li{display:grid;grid-template-columns:18px 1fr;gap:10px;align-items:flex-start}
+  .card ul li .m{color:var(--steel);font-family:var(--mono);font-size:12px;margin-top:2px}
+  .card.good ul li .m{color:var(--mint);font-size:14px;margin-top:0}
+  .card.good ul li strong{color:#fff;font-weight:600}
+
+  /* ============ How it works ============ */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .step{
+    background:rgba(15,20,26,.5);border:1px solid var(--line-2);border-radius:18px;padding:28px;
+    transition:transform .2s,border-color .2s;
+  }
+  .step:hover{transform:translateY(-2px);border-color:rgba(0,240,181,.25)}
+  .step .num{font-family:var(--mono);font-size:11px;color:var(--mint);letter-spacing:.14em;margin-bottom:14px}
+  .step h3{font-family:var(--display);font-weight:600;font-size:20px;letter-spacing:-.01em;margin-bottom:8px}
+  .step h3 code{font-family:var(--mono);color:var(--mint);font-size:.85em;background:rgba(0,240,181,.08);padding:2px 7px;border-radius:6px;border:1px solid rgba(0,240,181,.15)}
+  .step p{color:var(--steel-2);font-size:14px;line-height:1.6}
+  .step p code{font-family:var(--mono);color:var(--mint);font-size:.92em}
+
+  /* ============ Code block ============ */
+  .code{
+    font-family:var(--mono);font-size:13px;line-height:1.85;
+    background:var(--graphite-2);border:1px solid var(--line-2);border-radius:14px;
+    padding:22px 26px;color:var(--steel-2);
+    white-space:pre;overflow-x:auto;margin:0;
+    display:block;
+  }
+  .code .cm{color:#5A6573}
+  .code .kw{color:var(--mint)}
+  .code .st{color:#fff}
+
+  .inline-code{font-family:var(--mono);font-size:.9em;background:var(--slate);padding:2px 7px;border-radius:6px;color:#fff;border:1px solid var(--line-2)}
+  .inline-code.mint{color:var(--mint);background:rgba(0,240,181,.08);border-color:rgba(0,240,181,.2)}
+
+  /* ============ Install grid ============ */
+  .install-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:24px;align-items:stretch}
+  .install-code{margin:0;height:100%;font-size:13.5px;padding:28px 30px}
+  .qr-term{
+    background:var(--graphite-2);border:1px solid var(--line-2);border-radius:14px;overflow:hidden;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.5);
+    display:flex;flex-direction:column;
+  }
+  .qr-term .bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--line);background:#0E131A;flex:none}
+  .qr-term .bar .d{width:11px;height:11px;border-radius:50%}
+  .qr-term .bar .r{background:#FF5F57}.qr-term .bar .y{background:#FEBC2E}.qr-term .bar .g{background:#28C840}
+  .qr-term .bar .ti{margin-left:8px;font-family:var(--mono);font-size:11.5px;color:var(--steel)}
+  .qr-term .bar .ti b{color:var(--steel-2);font-weight:500}
+  .qr-body{padding:22px 24px 22px;font-family:var(--mono);font-size:12.5px;line-height:1.85;color:var(--steel-2);flex:1;display:flex;flex-direction:column}
+  .qr-line{display:block}
+  .qr-mut{color:#5A6573;margin-top:14px}
+  .qr-ok{color:var(--mint);margin-right:6px}
+  .qr-ac{color:var(--mint);margin-right:6px;animation:pulseFade 1.6s ease-in-out infinite}
+  @keyframes pulseFade{0%,100%{opacity:.4}50%{opacity:1}}
+  .qr-url{color:var(--mint);font-size:12.5px;margin:6px 0 16px;word-break:break-all;line-height:1.5}
+  .qr-code{
+    display:grid;grid-template-columns:repeat(29, 1fr);gap:0;
+    width:200px;height:200px;background:#fff;padding:10px;border-radius:8px;
+    margin:4px 0 14px;align-self:flex-start;
+  }
+  .qr-code i{display:block;background:transparent}
+  .qr-code i.on{background:#0B0F12}
+
+  /* Install notes row */
+  .install-notes{margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .note{
+    background:rgba(15,20,26,.4);border:1px solid var(--line-2);border-radius:14px;
+    padding:22px 24px;display:grid;grid-template-columns:130px 1fr;gap:24px;align-items:start;
+  }
+  .note-k{font-family:var(--mono);font-size:11px;color:var(--mint);letter-spacing:.14em;text-transform:uppercase;padding-top:4px}
+  .note-v{font-size:13.5px;line-height:1.65;color:var(--steel-2)}
+  .note-modes{display:flex;flex-direction:column;gap:10px}
+  .note-modes .mode{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .note-modes .mode-d{color:var(--steel);font-size:12.5px}
+
+  /* ============ Works with grid ============ */
+  .works{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .work{
+    padding:18px 20px;border-radius:12px;
+    background:rgba(15,20,26,.5);border:1px solid var(--line-2);
+    font-size:14px;font-weight:500;transition:all .2s;
+    display:flex;align-items:center;gap:10px;
+  }
+  .work:hover{border-color:rgba(0,240,181,.3);transform:translateY(-2px);background:rgba(15,20,26,.8)}
+  .work .dot{width:7px;height:7px;border-radius:50%;background:var(--steel);flex:none}
+  .work.live .dot{background:var(--mint);box-shadow:0 0 0 3px rgba(0,240,181,.15)}
+  .work.any{border-color:rgba(0,240,181,.3);background:rgba(0,240,181,.04);color:var(--mint)}
+  .work.any .dot{background:var(--mint)}
+
+  /* ============ Bento ============ */
+  .bento{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .bento .b{
+    background:rgba(15,20,26,.5);border:1px solid var(--line-2);border-radius:18px;padding:28px;
+    transition:transform .2s,border-color .2s;display:flex;flex-direction:column;gap:10px;
+  }
+  .bento .b:hover{transform:translateY(-2px);border-color:rgba(0,240,181,.22)}
+  .bento .b h3{font-family:var(--display);font-weight:600;font-size:20px;letter-spacing:-.01em}
+  .bento .b p{font-size:14px;line-height:1.6;color:var(--steel-2)}
+  .bento .b p code, .bento .b p strong{color:#fff}
+  .bento .b p code{font-family:var(--mono);font-size:.92em;background:var(--slate);padding:1px 6px;border-radius:5px}
+  .bento .b.span-2{grid-column:span 2}
+  .bento .b.span-3{grid-column:span 3}
+  .bento .b.tinted{background:rgba(0,240,181,.04);border-color:rgba(0,240,181,.22)}
+  .bento .b .ic{
+    width:44px;height:44px;border-radius:12px;background:var(--mint-soft);border:1px solid rgba(0,240,181,.25);
+    display:flex;align-items:center;justify-content:center;color:var(--mint);margin-bottom:8px;
+  }
+  .bento .b .tag{font-family:var(--mono);font-size:10.5px;color:var(--mint);letter-spacing:.14em;text-transform:uppercase}
+
+  /* Replay card */
+  .bento .b.replay{padding:0;overflow:hidden}
+  .replay-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:0}
+  .replay-grid > div:first-child{padding:36px 36px 32px;display:flex;flex-direction:column;justify-content:center}
+  .replay-viz{
+    border-left:1px solid var(--line-2);background:var(--graphite-2);
+    display:flex;flex-direction:column;
+  }
+  .rv-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--line);background:#0E131A}
+  .rv-bar .d{width:11px;height:11px;border-radius:50%}
+  .rv-bar .r{background:#FF5F57}.rv-bar .y{background:#FEBC2E}.rv-bar .g{background:#28C840}
+  .rv-bar .rv-ti{margin-left:8px;font-family:var(--mono);font-size:11.5px;color:var(--steel)}
+  .rv-body{flex:1;padding:18px 20px;font-family:var(--mono);font-size:12.5px;line-height:2;color:var(--steel-2)}
+  .rv-ln{display:flex;align-items:baseline;gap:14px}
+  .rv-mut{color:#5A6573;font-size:10.5px;letter-spacing:.04em;min-width:36px}
+  .rv-mint{color:var(--mint)}
+  .rv-cm{color:#8aa0b5}
+  .rv-scrub{padding:14px 20px 18px;border-top:1px solid var(--line);background:#0B0F12}
+  .rv-track{position:relative;height:4px;background:var(--slate);border-radius:2px}
+  .rv-fill{position:absolute;left:0;top:0;bottom:0;width:67%;background:var(--mint);border-radius:2px}
+  .rv-thumb{position:absolute;left:67%;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 3px rgba(0,240,181,.2)}
+  .rv-times{margin-top:10px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--steel)}
+
+  /* ============ Skins ============ */
+  .skins{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .skin{
+    border-radius:14px;overflow:hidden;border:1px solid var(--line-2);background:rgba(15,20,26,.5);
+    transition:transform .2s,border-color .2s,box-shadow .2s;
+  }
+  .skin:hover{transform:translateY(-3px);border-color:rgba(0,240,181,.3);box-shadow:0 16px 36px -16px rgba(0,240,181,.35)}
+  .skin .prev{height:120px;position:relative}
+  .skin .prev .term{position:absolute;top:14px;left:14px;right:14px;border-radius:8px;padding:9px 10px;font-family:var(--mono);font-size:10.5px;min-height:auto}
+  .skin .prev .cost{position:absolute;bottom:12px;left:14px;font-family:var(--mono);font-size:10.5px;padding:2px 8px;border-radius:999px;font-weight:600}
+  .skin .meta{padding:14px 16px;background:rgba(11,15,18,.6)}
+  .skin .nm{font-size:13.5px;font-weight:500;color:#fff}
+  .skin .ds{font-size:11.5px;color:var(--steel);margin-top:3px}
+  .skin.cta{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:184px;padding:24px;border-color:rgba(0,240,181,.3);background:rgba(0,240,181,.04);text-align:center;gap:10px;text-decoration:none}
+  .skin.cta:hover{background:rgba(0,240,181,.08)}
+  .skin.cta .plus{width:44px;height:44px;border-radius:12px;background:var(--mint-soft);border:1px solid rgba(0,240,181,.3);display:flex;align-items:center;justify-content:center;color:var(--mint);font-size:22px;font-weight:300}
+  .skin.cta .lb{font-size:14px;color:#fff;font-weight:500}
+  .skin.cta .sb{font-size:12px;color:var(--steel);max-width:18ch}
+
+  /* ============ FAQ ============ */
+  .faq{max-width:780px;margin:0 auto}
+  details{border-top:1px solid var(--line-2)}
+  details:last-of-type{border-bottom:1px solid var(--line-2)}
+  details summary{
+    list-style:none;cursor:pointer;padding:22px 4px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    font-family:var(--display);font-weight:500;font-size:18px;letter-spacing:-.005em;color:var(--steel-2);
+    transition:color .15s;
+  }
+  details summary::-webkit-details-marker{display:none}
+  details summary:hover{color:#fff}
+  details[open] summary{color:#fff}
+  details summary .chev{color:var(--steel);transition:transform .2s,color .2s;font-size:14px}
+  details[open] summary .chev{transform:rotate(180deg);color:var(--mint)}
+  details .body{padding:0 4px 24px;color:var(--steel-2);font-size:15px;line-height:1.7;max-width:64ch}
+  details .body code{font-family:var(--mono);font-size:.9em;color:#fff;background:var(--slate);padding:1px 6px;border-radius:5px}
+  details .body a{color:var(--mint)}
+  details .body em{color:#fff;font-style:normal;font-weight:500}
+
+  /* ============ CTA section ============ */
+  .endcta{padding:128px 0;text-align:center;border-top:1px solid var(--line);position:relative;overflow:hidden}
+  .endcta .glow{background:radial-gradient(60% 50% at 50% 50%, rgba(0,240,181,.14), transparent 70%)}
+  .endcta h2{font-size:64px;line-height:1.02;letter-spacing:-.03em}
+  .endcta .b{margin-top:36px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+
+  /* ============ Footer ============ */
+  footer{padding:48px 0;border-top:1px solid var(--line);background:rgba(8,11,14,.6)}
+  footer .inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px;color:var(--steel);font-size:13.5px}
+  footer .brand{font-size:14.5px}
+  footer .links{display:flex;gap:28px}
+  footer a:hover{color:#fff}
+
+  /* ============ Mobile drawer ============ */
+  .mobile-drawer{
+    position:fixed; top:0; right:0; bottom:0; width:84vw; max-width:340px; z-index:60;
+    background:var(--graphite-2); border-left:1px solid var(--line-2);
+    transform:translateX(100%); transition:transform 280ms cubic-bezier(.32,.72,0,1);
+    display:flex; flex-direction:column; padding:80px 28px 24px;
+    overflow-y:auto;
+  }
+  .mobile-drawer.open{transform:translateX(0); box-shadow:-24px 0 60px -12px rgba(0,0,0,.55)}
+  .mobile-drawer a{
+    padding:14px 0; font-family:var(--display); font-weight:500; font-size:18px;
+    color:var(--steel-2); border-bottom:1px solid var(--line-2);
+    transition:color .15s;
+  }
+  .mobile-drawer a:hover, .mobile-drawer a:active{color:#fff}
+  .mobile-drawer .gh{color:var(--mint)}
+  .mobile-drawer .cta{margin-top:24px;border-bottom:0;padding:14px 18px;border-radius:10px;background:var(--mint);color:var(--graphite);font-weight:600;text-align:center}
+  .drawer-backdrop{
+    position:fixed; inset:0; z-index:55; background:rgba(0,0,0,.5);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    opacity:0; pointer-events:none; transition:opacity 220ms ease;
+  }
+  .drawer-backdrop.show{opacity:1; pointer-events:auto}
+
+  /* ============ Responsive ============ */
+  /* Hero column needs a sane floor so the headline never gets squeezed
+     to nothing when the auto-sized stage steals room on mid-width screens. */
+  .hero-grid{grid-template-columns:minmax(420px, 1fr) auto}
+
+  /* Wide desktop ≥1440: full-size stage (mac 560 + phone 300) fits the
+     1380 wrap with room for the headline. */
+
+  /* Mid-desktop: 1100–1440 — shrink mac/phone proportionally so the
+     iPhone always sits fully inside the viewport, not bled off-right,
+     and the headline never bleeds off-left. Math at 1240 viewport:
+     wrap=1184 - col=380 - 36 gap - mac=440 - 22 - phone=240 = 66 spare
+     for the (width:0) connector and edge breathing room. */
+  @media (max-width:1440px){
+    .hero-grid{grid-template-columns:minmax(400px, 1fr) auto;gap:40px}
+    .mac{width:480px}
+    .iphone{width:266px}
+    .claude-term{padding:14px 14px 10px;min-height:300px;font-size:11.5px}
+    .stage{gap:22px}
+    h1.hero-h{font-size:72px}
+  }
+  @media (max-width:1280px){
+    .hero-grid{grid-template-columns:minmax(360px, 1fr) auto;gap:32px}
+    .mac{width:440px}
+    .iphone{width:248px}
+    .stage{gap:20px}
+    h1.hero-h{font-size:62px}
+    .hero-sub{font-size:17px}
+  }
+  @media (max-width:1180px){
+    .hero-grid{grid-template-columns:minmax(340px, 1fr) auto;gap:28px}
+    .mac{width:400px}
+    .iphone{width:230px}
+    .stage{gap:18px}
+    h1.hero-h{font-size:58px}
+  }
+
+  /* Tablet: ≤1100px — stack hero, two-col grids */
+  @media (max-width:1100px){
+    .hero-grid{grid-template-columns:1fr;gap:48px}
+    .stage{flex-direction:column;align-items:center;padding-left:0;gap:24px}
+    .mac{width:100%;max-width:520px}
+    .iphone{width:300px}
+    .link{display:none}
+    .diff,.steps,.bento,.works,.skins{grid-template-columns:1fr 1fr}
+    .bento .b.span-2,.bento .b.span-3{grid-column:span 2}
+    .replay-grid{grid-template-columns:1fr}
+    .replay-viz{border-left:0;border-top:1px solid var(--line-2)}
+    .install-grid{grid-template-columns:1fr;gap:24px}
+    .install-notes{grid-template-columns:1fr}
+    h1.hero-h{font-size:64px}
+    h2{font-size:40px}
+    .endcta h2{font-size:48px}
+  }
+
+  /* Sticky mobile bottom CTA — the "feels like an iOS app" touch.
+     Hidden on desktop, only appears below 768px once user has scrolled
+     past the hero. */
+  .mobile-cta{
+    display:none;
+    position:fixed;left:0;right:0;bottom:0;z-index:55;
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom)) 16px;
+    background:linear-gradient(to top, var(--graphite) 70%, rgba(11,15,18,0));
+    pointer-events:none;
+    opacity:0;transform:translateY(8px);
+    transition:opacity .22s ease, transform .22s ease;
+  }
+  .mobile-cta.show{opacity:1;transform:none;pointer-events:auto}
+  .mobile-cta .b{
+    display:flex;gap:10px;
+    max-width:520px;margin:0 auto;
+  }
+  .mobile-cta .b a{
+    flex:1;min-height:50px;border-radius:14px;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    font-family:var(--ui);font-weight:600;font-size:15px;
+    text-decoration:none;
+    box-shadow:0 12px 30px -10px rgba(0,0,0,.6), 0 8px 24px -10px rgba(0,240,181,.55);
+  }
+  .mobile-cta .b .a-primary{background:var(--mint);color:var(--graphite)}
+  .mobile-cta .b .a-ghost{
+    background:rgba(255,255,255,.04);border:1px solid var(--line-2);color:#fff;
+    box-shadow:0 8px 24px -10px rgba(0,0,0,.5);
+    flex:none;width:50px;
+  }
+
+  /* Phone: ≤768px — drop the Mac mockup, show phone solo. The hero
+     story stays intact (the iPhone still cycles through the 4 beats)
+     but it fits a phone screen now. */
+  @media (max-width:768px){
+    /* allow viewport to use safe-area on notched devices */
+    body{padding:env(safe-area-inset-top) 0 0}
+    header.nav{padding-top:env(safe-area-inset-top)}
+    .nav-inner{height:64px;padding:0 20px}
+    .mobile-cta{display:block}
+    /* leave room at the page bottom so the sticky CTA never covers
+       the end-of-page content or footer */
+    footer{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+    .brand{font-size:20px}
+    .brand .sig{width:30px;height:30px}
+    .nav-links{display:none}
+    .menu-btn{display:inline-flex}
+    .btn.primary{padding:8px 14px;font-size:13px}
+
+    .wrap{padding:0 20px}
+    .hero{padding:96px 0 56px}
+    .hero-grid{gap:32px}
+    .pill{font-size:10px;padding:6px 10px;margin-bottom:20px}
+
+    h1.hero-h{font-size:44px;line-height:1.02;letter-spacing:-.03em}
+    .hero-sub{font-size:16px;margin-top:16px}
+    .hero-sub code{font-size:.92em;padding:1px 5px}
+    .hero-cta{margin-top:24px;gap:10px;flex-direction:column;align-items:stretch}
+    .btn.lg{padding:14px 18px;font-size:14px;width:100%;justify-content:center;min-height:48px}
+    .src-link{justify-content:center;padding:12px 14px}
+    .hero-facts{margin-top:24px;grid-template-columns:1fr;gap:10px;font-size:13px}
+
+    /* Stage: hide the Mac mockup, keep iPhone (with the beats). The
+       caption underneath still rotates so the value-prop story works
+       from the phone alone. */
+    .stage{display:block}
+    .mac{display:none}
+    .link{display:none}
+    .iphone-wrap{margin:0 auto;display:flex;justify-content:center}
+    .iphone{width:280px}
+    .demo-meta{justify-content:center;margin-top:24px;flex-wrap:wrap;text-align:center;gap:14px}
+    .demo-meta .cap{text-align:center}
+
+    /* Marquee — make font + speed comfortable */
+    .marquee{font-size:12px;animation-duration:48s}
+
+    /* Section heads */
+    section.bordered{padding:64px 0}
+    .sect-head{margin-bottom:32px}
+    .sect-eyebrow{font-size:10px;margin-bottom:10px}
+    h2{font-size:30px;line-height:1.08}
+    .sect-lead{font-size:15px;margin-top:14px}
+
+    /* Cards */
+    .card{padding:22px}
+    .card h3{font-size:16px;margin-bottom:14px}
+    .card ul{gap:11px;font-size:13.5px}
+    .step{padding:22px}
+    .step h3{font-size:18px}
+    .step p{font-size:13.5px}
+
+    /* Code blocks scroll horizontally on small screens; never force
+       a horizontal page scroll. */
+    .code, .install-code, pre{font-size:12px;padding:18px;line-height:1.7}
+    .code{white-space:pre;overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+    /* Works-with: 2 cols, smaller tiles */
+    .works{grid-template-columns:1fr 1fr;gap:8px}
+    .work{padding:14px 14px;font-size:13px;gap:8px}
+
+    /* Bento: 1 col, full-width spans */
+    .bento{gap:12px}
+    .diff,.steps,.bento{grid-template-columns:1fr}
+    .bento .b{padding:22px}
+    .bento .b.span-2,.bento .b.span-3{grid-column:span 1}
+    .bento .b h3{font-size:18px}
+    .bento .b p{font-size:13.5px}
+
+    /* Skins: 2 cols, smaller previews */
+    .skins{grid-template-columns:1fr 1fr;gap:10px}
+    .skin .prev{height:96px}
+    .skin .meta{padding:11px 12px}
+    .skin .nm{font-size:13px}
+    .skin .ds{font-size:11px}
+    .skin.cta{min-height:140px}
+
+    /* Install — code + qr stack neatly */
+    .qr-term{font-size:11px}
+    .qr-body{padding:18px 18px}
+    .qr-url{font-size:11px}
+    .qr-code{width:160px;height:160px}
+    .note{grid-template-columns:1fr;gap:10px;padding:18px}
+
+    /* FAQ */
+    details summary{font-size:16px;padding:18px 4px}
+    details .body{font-size:14px;padding:0 4px 20px}
+
+    /* End CTA */
+    .endcta{padding:80px 0}
+    .endcta h2{font-size:30px}
+    .endcta .b{flex-direction:column;align-items:stretch;gap:10px}
+
+    /* Footer stacks */
+    footer{padding:32px 0}
+    footer .inner{flex-direction:column;align-items:flex-start;gap:16px}
+    footer .links{gap:18px;font-size:13px;flex-wrap:wrap}
+  }
+
+  /* Tiny phones: ≤380px — iPhone SE, narrow Androids */
+  @media (max-width:380px){
+    .wrap{padding:0 16px}
+    h1.hero-h{font-size:38px}
+    .iphone{width:260px}
+    .skins{grid-template-columns:1fr}
+    .works{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<header class="nav">
+  <div class="nav-inner">
+    <a href="https://github.com/Josh-Gi3r/POCKET-T/blob/main/docs/skins.md" class="brand">
+      <span class="sig">
+        <!-- signet (no chrome) -->
+        <svg viewBox="0 0 200 200" fill="none">
+          <defs><linearGradient id="navg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#00F0B5"/><stop offset="1" stop-color="#00C99A"/></linearGradient></defs>
+          <path d="M40 38 H160 a8 8 0 0 1 8 8 V70 H32 V46 a8 8 0 0 1 8-8z" stroke="url(#navg)" stroke-width="12" fill="none"/>
+          <path d="M32 70 H168 V128 L100 168 L32 128 Z" stroke="url(#navg)" stroke-width="12" fill="none" stroke-linejoin="round"/>
+          <path d="M82 102 L96 112 L82 122" stroke="#F5F7FA" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M106 122 H124" stroke="#F5F7FA" stroke-width="14" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span>Pocke<span class="t-mint">t</span><span class="t-mint">-T</span></span>
+    </a>
+    <nav class="nav-links">
+      <a href="#difference">The difference</a>
+      <a href="#how">How it works</a>
+      <a href="#skins">Skins</a>
+      <a href="#install">Install</a>
+      <a href="#faq">FAQ</a>
+      <span class="sep"></span>
+      <a href="https://x.com/Josh_Gier" target="_blank" rel="noopener" aria-label="Follow @Josh_Gier on X">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" style="vertical-align:-2px"><path d="M18.244 2H21.5l-7.42 8.48L22.78 22H16l-5.31-6.93L4.6 22H1.34l7.94-9.08L1.22 2H8.17l4.79 6.34L18.244 2zm-1.14 18h1.8L7.02 4H5.14l11.964 16z"/></svg>
+      </a>
+      <a href="https://github.com/Josh-Gi3r/POCKET-T" target="_blank" rel="noopener" class="gh">GitHub ↗</a>
+    </nav>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a href="#install" class="btn primary">Get started</a>
+      <button class="menu-btn" id="menu-btn" aria-label="Open menu" aria-expanded="false">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ============ MOBILE DRAWER ============ -->
+<div class="drawer-backdrop" id="drawer-backdrop" aria-hidden="true"></div>
+<aside class="mobile-drawer" id="mobile-drawer" aria-hidden="true" aria-label="Mobile menu">
+  <a href="#difference">The difference</a>
+  <a href="#how">How it works</a>
+  <a href="#skins">Skins</a>
+  <a href="#install">Install</a>
+  <a href="#faq">FAQ</a>
+  <a href="https://github.com/Josh-Gi3r/POCKET-T" target="_blank" rel="noopener" class="gh">GitHub ↗</a>
+  <a href="https://x.com/Josh_Gier" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" style="vertical-align:-2px;margin-right:8px"><path d="M18.244 2H21.5l-7.42 8.48L22.78 22H16l-5.31-6.93L4.6 22H1.34l7.94-9.08L1.22 2H8.17l4.79 6.34L18.244 2zm-1.14 18h1.8L7.02 4H5.14l11.964 16z"/></svg>Follow @Josh_Gier
+  </a>
+  <a href="#install" class="cta">Get started</a>
+</aside>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="grain"></div>
+  <div class="glow"></div>
+  <div class="grid-bg"></div>
+
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="pill"><span class="dot"></span>open source · free · self-host or hosted</div>
+
+        <h1 class="hero-h">Your terminal.<br/><span class="accent">Anywhere.</span></h1>
+
+        <p class="hero-sub">
+          Set Terminal.app's shell to <code>pt</code>. From then on <strong>every terminal you open</strong> appears on your phone as a live session. Drive a build, tail a log, <code>ssh</code> into a server or network switch, run <code>vim</code>, restart a dev server, control a bot — or approve Claude / Codex / Aider tool calls and watch live $-burn. <strong>Any CLI.</strong>
+        </p>
+
+        <div class="hero-cta">
+          <a href="#install" class="btn primary lg">Get started</a>
+          <a href="#difference" class="btn ghost lg">See why it's different</a>
+          <a href="https://github.com/Josh-Gi3r/POCKET-T" target="_blank" rel="noopener" class="src-link">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            <span>View source</span>
+            <span class="arr">↗</span>
+          </a>
+          <a href="https://github.com/Josh-Gi3r/POCKET-T/blob/main/AGENTS.md" target="_blank" rel="noopener" class="src-link ai-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M12 2v4"/><circle cx="9" cy="13" r="1.2" fill="currentColor"/><circle cx="15" cy="13" r="1.2" fill="currentColor"/><path d="M9 17h6"/></svg>
+            <span>Install via AI</span>
+            <span class="arr">↗</span>
+          </a>
+        </div>
+
+        <div class="hero-facts">
+          <div class="f"><span class="d"></span>Every shell, automatically</div>
+          <div class="f"><span class="d"></span>Works with vim, htop, ssh, tmux</div>
+          <div class="f"><span class="d"></span>Bubbles + $-meter for agents</div>
+          <div class="f"><span class="d"></span>Themeable · MIT · self-host</div>
+        </div>
+      </div>
+
+      <!-- =========== STAGE: Mac + iPhone =========== -->
+      <div class="stage" id="stage" data-beat="1">
+
+        <!-- MAC TERMINAL — Claude Code CLI -->
+        <div class="mac">
+          <div class="mac-titlebar">
+            <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+            <span class="mac-title">[<span class="t-host">operator@pocket-t</span> ~ % <b>claude</b>]</span>
+          </div>
+
+          <div class="claude-term">
+
+            <!-- Header — always visible -->
+            <div class="claude-head">
+              <div class="mascot" aria-hidden="true">
+                <svg viewBox="0 0 36 36" fill="none">
+                  <!-- pixel robot body -->
+                  <rect x="6" y="4"  width="24" height="20" rx="2" fill="#D67449"/>
+                  <rect x="9" y="7"  width="18" height="14" rx="1" fill="#B85A30"/>
+                  <!-- eyes -->
+                  <rect x="12" y="11" width="4" height="4" fill="#FFE7C2"/>
+                  <rect x="20" y="11" width="4" height="4" fill="#FFE7C2"/>
+                  <rect x="13" y="12" width="2" height="2" fill="#3D1B0A"/>
+                  <rect x="21" y="12" width="2" height="2" fill="#3D1B0A"/>
+                  <!-- mouth -->
+                  <rect x="14" y="17" width="8" height="2" fill="#3D1B0A"/>
+                  <!-- antenna -->
+                  <rect x="17" y="1"  width="2" height="3" fill="#D67449"/>
+                  <rect x="16" y="0"  width="4" height="2" fill="#D67449"/>
+                  <!-- arms / base -->
+                  <rect x="4"  y="10" width="2" height="8" fill="#A04820"/>
+                  <rect x="30" y="10" width="2" height="8" fill="#A04820"/>
+                  <rect x="8"  y="24" width="20" height="3" fill="#A04820"/>
+                  <rect x="11" y="27" width="4" height="3" fill="#7A3214"/>
+                  <rect x="21" y="27" width="4" height="3" fill="#7A3214"/>
+                </svg>
+              </div>
+              <div class="head-info">
+                <div class="hi-name"><b>Claude Code</b> <span class="hi-ver">v2.1.147</span></div>
+                <div class="hi-model">Opus 4.7 · 1M ctx · Max</div>
+                <div class="hi-dir">~/pocket-t-relay</div>
+              </div>
+            </div>
+
+            <div class="claude-rule"></div>
+
+            <!-- Body — switches per beat -->
+            <div class="claude-body">
+
+              <!-- BEAT 0 — idle / ready -->
+              <div class="cstate cs-0">
+                <div class="prompt-row">
+                  <span class="prompt-arrow">&gt;</span>
+                  <span class="prompt-text muted">Try "fix the failing test" or "deploy to staging"</span>
+                </div>
+              </div>
+
+              <!-- BEAT 1 — user asked, tool call awaiting approval -->
+              <div class="cstate cs-1">
+                <div class="msg user">&gt; run the test suite and fix what breaks</div>
+                <div class="msg claude"><span class="bullet">⏺</span> Reading <code>src/session.ts</code>…</div>
+                <div class="msg claude"><span class="bullet">⏺</span> Found 1 failing test in connection handling.</div>
+                <div class="tool-call">
+                  <div class="tc-head"><span class="bullet mint">●</span> Bash(<b>npm test</b>)</div>
+                  <div class="tc-q">Do you want to run this command? <span class="muted">(esc to skip)</span></div>
+                  <div class="tc-opts">
+                    <div class="opt sel"><span class="opt-num">❯</span> Yes</div>
+                    <div class="opt"><span class="opt-num">2.</span> Yes, and don't ask again</div>
+                    <div class="opt"><span class="opt-num">3.</span> No, tell Claude what to do differently</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- BEAT 2 — typed back from phone, edit applied -->
+              <div class="cstate cs-2">
+                <div class="msg user from-phone">&gt; <span>fix the failing test</span> <span class="from-tag">↑ from phone</span></div>
+                <div class="msg claude"><span class="bullet mint">●</span> Edit(<b>src/session.ts</b>)</div>
+                <div class="code-diff">
+                  <div class="cd-row"><span class="cd-n">87</span><span class="cd-del">- if (this.state == 'idle')</span></div>
+                  <div class="cd-row"><span class="cd-n">87</span><span class="cd-add">+ if (this.state === 'idle')</span></div>
+                </div>
+                <div class="msg claude"><span class="bullet">⏺</span> Re-running tests<span class="caret"></span></div>
+              </div>
+
+              <!-- BEAT 3 — success -->
+              <div class="cstate cs-3">
+                <div class="msg claude"><span class="bullet mint">●</span> Bash(<b>npm test</b>)</div>
+                <div class="msg claude muted">&nbsp;&nbsp;⎿&nbsp;&nbsp;<span class="ok-text">✓ 18 passing</span> <span class="dim">(642ms)</span></div>
+                <div class="msg claude"><span class="bullet ok">✓</span> All tests pass. <span class="muted">28s · 2 files edited · $0.42</span></div>
+                <div class="prompt-row" style="margin-top:6px">
+                  <span class="prompt-arrow">&gt;</span>
+                  <span class="caret"></span>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="claude-rule"></div>
+
+            <!-- Footer — always visible -->
+            <div class="claude-foot">
+              <span class="ff-l">»&nbsp;accept edits <span class="mint">on</span> <span class="muted">(shift+tab to cycle)</span> · <span class="mint">←</span> <span class="muted">for agents</span></span>
+              <span class="ff-r"><span class="warn">2 claude.ai connectors need auth</span> · <span class="mint">/mcp</span></span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- LIVE LINK -->
+        <div class="link"><span class="pl"></span><span class="lb">mirrored live · pocket-t</span></div>
+
+        <!-- IPHONE 17 PRO MAX -->
+        <div class="iphone-wrap">
+          <div class="iphone-glow"></div>
+          <div class="iphone">
+            <div class="bezel">
+              <div class="screen">
+                <div class="di">
+                  <span class="sens"></span>
+                  <span class="cam"></span>
+                </div>
+
+                <div class="status">
+                  <span>9:41</span>
+                  <span class="icons">
+                    <svg viewBox="0 0 18 12" fill="#fff"><rect x="0" y="6" width="3" height="6" rx="1"/><rect x="5" y="3" width="3" height="9" rx="1"/><rect x="10" y="0" width="3" height="12" rx="1"/></svg>
+                    <svg viewBox="0 0 16 12" fill="#fff"><path d="M8 11.5 a1.5 1.5 0 1 0 0-3 a1.5 1.5 0 0 0 0 3z M3 7.5 a7 7 0 0 1 10 0 l-1.5 1.5 a5 5 0 0 0-7 0z M0 4 a11 11 0 0 1 16 0 l-1.5 1.5 a9 9 0 0 0-13 0z"/></svg>
+                    <svg viewBox="0 0 26 12" fill="none"><rect x="1" y="1" width="22" height="10" rx="2.5" stroke="#fff" stroke-opacity=".6"/><rect x="3" y="3" width="16" height="6" rx="1" fill="#00F0B5"/><rect x="24" y="4" width="1.5" height="4" rx=".5" fill="#fff" fill-opacity=".5"/></svg>
+                  </span>
+                </div>
+
+                <div class="papp">
+                  <!-- App chrome — hamburger + session + cost + view toggle -->
+                  <div class="ph-chrome">
+                    <button class="ph-menu" aria-label="Sessions">
+                      <span></span><span></span><span></span>
+                    </button>
+                    <div class="ph-session">pt-7c39</div>
+                    <div class="ph-cost">
+                      <span class="ph-amt">$0.42</span>
+                    </div>
+                    <div class="ph-toggle">
+                      <span class="tt-opt active">Term</span>
+                      <span class="tt-opt">Bub</span>
+                    </div>
+                  </div>
+
+                  <!-- Conversation body — switches per beat -->
+                  <div class="ph-body">
+
+                    <!-- Claude Code session header (mirrors Mac) -->
+                    <div class="ph-claude-head">
+                      <div class="phc-line"><span class="phc-prompt">&gt;</span> operator@pocket-t ~ % <b>claude</b></div>
+                      <div class="phc-info">
+                        <div class="phc-mascot" aria-hidden="true">
+                          <svg viewBox="0 0 36 36" fill="none">
+                            <rect x="6" y="4"  width="24" height="20" rx="2" fill="#D67449"/>
+                            <rect x="9" y="7"  width="18" height="14" rx="1" fill="#B85A30"/>
+                            <rect x="12" y="11" width="4" height="4" fill="#FFE7C2"/>
+                            <rect x="20" y="11" width="4" height="4" fill="#FFE7C2"/>
+                            <rect x="13" y="12" width="2" height="2" fill="#3D1B0A"/>
+                            <rect x="21" y="12" width="2" height="2" fill="#3D1B0A"/>
+                            <rect x="14" y="17" width="8" height="2" fill="#3D1B0A"/>
+                            <rect x="17" y="1"  width="2" height="3" fill="#D67449"/>
+                            <rect x="16" y="0"  width="4" height="2" fill="#D67449"/>
+                            <rect x="4"  y="10" width="2" height="8" fill="#A04820"/>
+                            <rect x="30" y="10" width="2" height="8" fill="#A04820"/>
+                            <rect x="8"  y="24" width="20" height="3" fill="#A04820"/>
+                            <rect x="11" y="27" width="4" height="3" fill="#7A3214"/>
+                            <rect x="21" y="27" width="4" height="3" fill="#7A3214"/>
+                          </svg>
+                        </div>
+                        <div class="phc-meta">
+                          <div><b>Claude Code</b> <span class="phc-ver">v2.1.147</span></div>
+                          <div class="phc-dim">Opus 4.7 · 1M ctx · Max</div>
+                          <div class="phc-dim">~/pocket-t-relay</div>
+                        </div>
+                      </div>
+                      <div class="phc-rule"></div>
+                    </div>
+
+                    <!-- Persistent ambient log -->
+                    <div class="ph-msg ph-claude ph-muted">
+                      <span class="ph-bullet">○</span>
+                      <span>What are we working on?</span>
+                    </div>
+                    <div class="ph-think">* Cogitated for 1s</div>
+
+                    <!-- BEAT 0 — idle hint -->
+                    <div class="cstate cs-0">
+                      <div class="ph-hint">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8 V12 L15 14"/></svg>
+                        <span>session live · mirrored from Mac</span>
+                      </div>
+                    </div>
+
+                    <!-- BEAT 1 — tool call awaiting approval -->
+                    <div class="cstate cs-1">
+                      <div class="ph-msg ph-user">
+                        <span class="ph-bullet">&gt;</span>
+                        <span>run the test suite and fix what breaks</span>
+                      </div>
+                      <div class="ph-msg ph-claude">
+                        <span class="ph-bullet">○</span>
+                        <span>Found 1 failing test.</span>
+                      </div>
+                      <div class="ph-tool">
+                        <div class="pt-head">
+                          <span class="pt-vendor">claude</span>
+                          <span class="pt-time">now</span>
+                        </div>
+                        <div class="pt-q">Allow <b>Bash(npm test)</b>?</div>
+                        <div class="pt-actions">
+                          <button class="pt-ok">Approve</button>
+                          <button class="pt-no">Deny</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- BEAT 2 — typed reply from phone -->
+                    <div class="cstate cs-2">
+                      <div class="ph-msg ph-user from-phone">
+                        <span class="ph-bullet">&gt;</span>
+                        <span>fix the failing test</span>
+                        <span class="from-tag">phone</span>
+                      </div>
+                      <div class="ph-msg ph-claude">
+                        <span class="ph-bullet mint">●</span>
+                        <span>Edit(<b>src/session.ts</b>)</span>
+                      </div>
+                      <div class="ph-diff">
+                        <div class="pd-row"><span class="pd-del">- if (state == 'idle')</span></div>
+                        <div class="pd-row"><span class="pd-add">+ if (state === 'idle')</span></div>
+                      </div>
+                    </div>
+
+                    <!-- BEAT 3 — success -->
+                    <div class="cstate cs-3">
+                      <div class="ph-msg ph-claude">
+                        <span class="ph-bullet mint">●</span>
+                        <span>Bash(<b>npm test</b>)</span>
+                      </div>
+                      <div class="ph-msg ph-claude ph-muted ph-indent">⎿ ✓ 18 passing <span class="ph-dim">(642ms)</span></div>
+                      <div class="ph-success">
+                        <div class="ps-ic">✓</div>
+                        <div class="ps-txt">
+                          <div class="ps-t">All tests pass</div>
+                          <div class="ps-m">28s · 2 files · $0.42</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Soft-key bar (always visible) -->
+                  <div class="ph-keys">
+                    <div class="kb">Esc</div>
+                    <div class="kb">Tab</div>
+                    <div class="kb">Ctrl</div>
+                    <div class="kb">↑</div>
+                    <div class="kb">↓</div>
+                    <div class="kb">←</div>
+                    <div class="kb">→</div>
+                    <div class="kb send">+</div>
+                  </div>
+                  <div class="home-ind"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-meta" style="margin-top:36px">
+      <div class="beats"><i></i><i></i><i></i><i></i></div>
+      <div class="cap" id="cap"><b>Approve tool calls</b> from anywhere — it hits the real agent.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MARQUEE ============ -->
+<div class="marquee-wrap">
+  <div class="marquee">
+    <span>Claude Code</span><span class="dot">·</span>
+    <span>Claude CLI</span><span class="dot">·</span>
+    <span>Codex</span><span class="dot">·</span>
+    <span>Aider</span><span class="dot">·</span>
+    <span>Gemini CLI</span><span class="dot">·</span>
+    <span>OpenClaw</span><span class="dot">·</span>
+    <span>Hermes</span><span class="dot">·</span>
+    <span>NanoClaw</span><span class="dot">·</span>
+    <span>Cursor</span><span class="dot">·</span>
+    <span>Claude Desktop</span><span class="dot">·</span>
+    <span>any CLI · MCP</span><span class="dot">·</span>
+    <span>Claude Code</span><span class="dot">·</span>
+    <span>Claude CLI</span><span class="dot">·</span>
+    <span>Codex</span><span class="dot">·</span>
+    <span>Aider</span><span class="dot">·</span>
+    <span>Gemini CLI</span><span class="dot">·</span>
+    <span>OpenClaw</span><span class="dot">·</span>
+    <span>Hermes</span><span class="dot">·</span>
+    <span>NanoClaw</span><span class="dot">·</span>
+    <span>Cursor</span><span class="dot">·</span>
+    <span>Claude Desktop</span><span class="dot">·</span>
+    <span>any CLI · MCP</span><span class="dot">·</span>
+  </div>
+</div>
+
+<!-- ============ DIFFERENCE ============ -->
+<section id="difference" class="bordered">
+  <div class="wrap">
+    <div class="sect-head">
+      <span class="sect-eyebrow">§ The difference</span>
+      <h2>A bot relays commands.<br/>Pocket-T <span class="accent">is the terminal.</span></h2>
+      <p class="sect-lead">Telegram-bot setups type a command into a black box and hope. You don't see the screen, you can't scroll, you can't approve a tool call mid-run, and it only knows the one shell you wired it to. Pocket-T isn't a relay. It's your actual terminal window — every one of them — on your phone.</p>
+    </div>
+
+    <div class="diff">
+      <div class="card bad">
+        <h3><span class="badge">✕</span>A Telegram / chat bot</h3>
+        <ul>
+          <li><span class="m">—</span>You type a command blind and wait for whatever it decides to echo back.</li>
+          <li><span class="m">—</span>One wired-up shell. Open a new terminal? The bot has no idea it exists.</li>
+          <li><span class="m">—</span>No live screen. No scrollback. No cursor. No TUI.</li>
+          <li><span class="m">—</span>An agent asks to run a tool — it just stalls. You can't approve from your phone.</li>
+          <li><span class="m">—</span>A wrapper around your shell. Not your shell.</li>
+        </ul>
+      </div>
+
+      <div class="card good">
+        <h3><span class="badge">&gt;_</span>Pocket-T</h3>
+        <ul>
+          <li><span class="m">✓</span><span><strong>Every</strong> terminal you open shows up automatically — Terminal.app, iTerm2, Ghostty, all of them.</span></li>
+          <li><span class="m">✓</span><span>You see the <strong>real rendered screen</strong>, live — output as it happens, not a summary.</span></li>
+          <li><span class="m">✓</span><span>Tap a tool-call approval and it goes straight through to the running agent.</span></li>
+          <li><span class="m">✓</span><span>Type back into the real session. Start new ones from your phone.</span></li>
+          <li><span class="m">✓</span><span>No wrappers. No extra commands. Just your normal terminals — elsewhere.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how" class="bordered">
+  <div class="wrap">
+    <div class="sect-head">
+      <span class="sect-eyebrow">§ How it works</span>
+      <h2>Three steps.<br/>Then never think about it again.</h2>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="num">01</div>
+        <h3>Install</h3>
+        <p>One line. A small daemon and a native shell proxy go on your Mac. Nothing intrusive, nothing in your way.</p>
+      </div>
+      <div class="step">
+        <div class="num">02</div>
+        <h3>Point Terminal at <code>pt</code></h3>
+        <p>Terminal.app → Settings → Profiles → Shell → <code>/usr/local/bin/pt</code>. New windows on that profile are Pocket-T sessions immediately. iTerm2, Ghostty, WezTerm: same idea.</p>
+      </div>
+      <div class="step">
+        <div class="num">03</div>
+        <h3>Scan the QR on your phone</h3>
+        <p>Start the daemon with <code>--tunnel</code> and a public URL + QR code prints in your terminal. Scan it. Your Mac terminals are now on your phone — LTE, hotel WiFi, anywhere.</p>
+      </div>
+    </div>
+
+    <pre class="code" style="margin-top:32px"><span class="cm"># clone, install, expose to your phone — under two minutes</span>
+<span class="kw">git</span> clone https://github.com/Josh-Gi3r/POCKET-T
+<span class="kw">cd</span> pocket-t &amp;&amp; <span class="kw">bash</span> install.sh
+<span class="kw">pnpm</span> --filter @pocket-t/daemon pt-registry serve <span class="st">--tunnel</span>
+<span class="cm"># scan the QR code, open the URL on your phone, done</span></pre>
+  </div>
+</section>
+
+<!-- ============ WORKS WITH ============ -->
+<section id="works" class="bordered">
+  <div class="wrap">
+    <div class="sect-head">
+      <span class="sect-eyebrow">§ Works with</span>
+      <h2>If it runs in a terminal,<br/>it runs in your <span class="accent">pocket.</span></h2>
+      <p class="sect-lead">Pocket-T doesn't integrate with anything — it captures the terminal itself. So it works with every CLI agent and tool, including ones that don't exist yet. Claude gets <strong style="color:#fff;font-weight:500">full agent-aware bubbles + live cost meter</strong> today; other CLIs get a clean terminal view + sidebar vendor badge while their dedicated parsers ship.</p>
+    </div>
+
+    <div class="works">
+      <div class="work live"><span class="dot"></span>Claude Code</div>
+      <div class="work live"><span class="dot"></span>Claude CLI</div>
+      <div class="work live"><span class="dot"></span>Codex</div>
+      <div class="work live"><span class="dot"></span>Aider</div>
+      <div class="work"><span class="dot"></span>Gemini CLI</div>
+      <div class="work"><span class="dot"></span>OpenClaw</div>
+      <div class="work"><span class="dot"></span>Hermes</div>
+      <div class="work"><span class="dot"></span>NanoClaw</div>
+      <div class="work"><span class="dot"></span>Cursor</div>
+      <div class="work"><span class="dot"></span>Claude Desktop</div>
+      <div class="work"><span class="dot"></span>MCP servers</div>
+      <div class="work any"><span class="dot"></span>…anything else</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BENTO ============ -->
+<section class="bordered">
+  <div class="wrap">
+    <div class="bento">
+      <div class="b span-2">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9 H21"/><path d="M8 13 L11 15 L8 17"/><path d="M13 17 H16"/></svg>
+        </div>
+        <h3>It's the real screen — not a transcript</h3>
+        <p>Pocket-T streams the rendered terminal, so a full-screen TUI agent looks like what's actually on your Mac. Scrollback, prompts, the lot. You're looking at the session, not a bot's paraphrase of it.</p>
+      </div>
+      <div class="b">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12 L11 14 L15 9"/><circle cx="12" cy="12" r="9"/></svg>
+        </div>
+        <h3>Approve from anywhere</h3>
+        <p>An agent asks to run a destructive tool — approve or deny it from your phone, on the train, in a meeting. Tap goes straight to the running agent.</p>
+      </div>
+      <div class="b">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7 V12 L15.5 14"/></svg>
+        </div>
+        <span class="tag">Live</span>
+        <h3>Live cost meter</h3>
+        <p>A Claude session burns through tokens — Pocket-T shows you the dollar count, live, in a pill at the top. Sonnet, Opus, Haiku, the lot. <strong>No one else ships this.</strong></p>
+      </div>
+      <div class="b">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="13" height="10" rx="2"/><rect x="9" y="11" width="12" height="8" rx="2"/></svg>
+        </div>
+        <h3>Agent-aware bubbles</h3>
+        <p>Run Claude Code — see <strong>chat</strong>, <strong>thinking</strong>, <strong>tool calls</strong> and <strong>results</strong> as separate cards, on top of the same live terminal. Flip back to raw bytes anytime.</p>
+      </div>
+      <div class="b">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6 L20 6 M4 12 L20 12 M4 18 L14 18"/><path d="M17 16 L20 18 L17 20" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>Type back into the session</h3>
+        <p>From your phone, keyboard straight into the live PTY. Soft-key shortcuts for <code>Esc</code>, <code>Ctrl</code>, <code>Tab</code> and arrows. Paste long prompts. Send <code>^C</code> when an agent's gone off the rails.</p>
+      </div>
+      <div class="b span-3 replay">
+        <div class="replay-grid">
+          <div>
+            <div class="ic">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M10 8 L16 12 L10 16 Z"/></svg>
+            </div>
+            <h3>Replay every session</h3>
+            <p>Every <code>pt</code> session writes an <strong>asciinema v2</strong> cast file to <code>~/.pocket-t/recordings/</code>. Replay with <code>pt-registry replay</code>, share it in a PR, or open it in any asciinema player. Forever-history is on by default.</p>
+          </div>
+          <div class="replay-viz">
+            <div class="rv-bar">
+              <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+              <span class="rv-ti">recording-3f2a1c.cast — 04:18</span>
+            </div>
+            <div class="rv-body">
+              <div class="rv-ln"><span class="rv-mut">00:02</span> <span class="rv-mint">❯</span> claude</div>
+              <div class="rv-ln"><span class="rv-mut">00:14</span> <span class="rv-mint">❯</span> fix the failing test</div>
+              <div class="rv-ln"><span class="rv-mut">01:42</span> <span class="rv-cm">⏺ Edited src/session.ts</span></div>
+              <div class="rv-ln"><span class="rv-mut">02:51</span> <span class="rv-mint">✓</span> npm test · 18 passed</div>
+            </div>
+            <div class="rv-scrub">
+              <div class="rv-track"><div class="rv-fill"></div><div class="rv-thumb"></div></div>
+              <div class="rv-times"><span>00:00</span><span>02:51 / 04:18</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="b span-3 tinted">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+          <h3>Free. Open source. Yours.</h3>
+          <span class="tag">MIT</span>
+        </div>
+        <p>Daemon, native shell proxy, relay, web app — every piece is MIT licensed and on GitHub. Self-host the relay on your own box and your own domain, or use the hosted one. Your data, your terms.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SKINS ============ -->
+<section id="skins" class="bordered">
+  <div class="wrap">
+    <div class="sect-head">
+      <span class="sect-eyebrow">§ Pocket Skins</span>
+      <h2>Your terminal,<br/><span class="accent">your way.</span></h2>
+      <p class="sect-lead">Themes that re-paint the entire Pocket-T UI — sidebar, bubbles, terminal pane, cost pill, approval cards. A skin is a small block of CSS variables; ship one in an afternoon, send a PR, watch people use it.</p>
+      <p class="sect-lead" style="font-size:14.5px;color:var(--steel);margin-top:8px">Seven ship built-in. The contribution guide is one short doc.</p>
+    </div>
+
+    <div class="skins">
+      <!-- Operator (default) -->
+      <div class="skin">
+        <div class="prev" style="background:#0B0F12">
+          <div class="term" style="background:#0F141A;border:1px solid #1A1F26"><span style="color:#00F0B5">❯ claude</span></div>
+          <div class="cost" style="background:#00F0B5;color:#0B0F12">$0.42</div>
+        </div>
+        <div class="meta"><div class="nm">Operator</div><div class="ds">Default · graphite + mint</div></div>
+      </div>
+      <!-- Halloween -->
+      <div class="skin">
+        <div class="prev" style="background:#1a0a00">
+          <div class="term" style="background:#200d04;border:1px solid #4a2a10"><span style="color:#ff6a00">❯ claude</span></div>
+          <div class="cost" style="background:#ff6a00;color:#1a0a00">$0.42</div>
+        </div>
+        <div class="meta"><div class="nm">Halloween</div><div class="ds">Brown + pumpkin orange</div></div>
+      </div>
+      <!-- Nokia -->
+      <div class="skin">
+        <div class="prev" style="background:#051a0a">
+          <div class="term" style="background:#082010;border:1px solid #1f3a14"><span style="color:#95e600">❯ claude</span></div>
+          <div class="cost" style="background:#95e600;color:#051a0a">$0.42</div>
+        </div>
+        <div class="meta"><div class="nm">Nokia</div><div class="ds">Pixel-green nostalgia</div></div>
+      </div>
+      <!-- Christmas -->
+      <div class="skin">
+        <div class="prev" style="background:#0a1612">
+          <div class="term" style="background:#0d1f17;border:1px solid #1f3a2c"><span style="color:#f5c542">❯ claude</span></div>
+          <div class="cost" style="background:#c0392b;color:#fff7e1">$0.42</div>
+        </div>
+        <div class="meta"><div class="nm">Christmas</div><div class="ds">Pine + cranberry + gold</div></div>
+      </div>
+      <!-- Cyberpunk -->
+      <div class="skin">
+        <div class="prev" style="background:#0d0420">
+          <div class="term" style="background:#15082e;border:1px solid #2a1660"><span style="color:#00ffe7">❯ claude</span></div>
+          <div class="cost" style="background:#ff2a92;color:#fff">$0.42</div>
+        </div>
+        <div class="meta"><div class="nm">Cyberpunk</div><div class="ds">Magenta + cyan, all volume</div></div>
+      </div>
+      <!-- Forest -->
+      <div class="skin">
+        <div class="prev" style="background:#131c12">
+          <div class="term" style="background:#1a2418;border:1px solid #2a3520"><span style="color:#c9d68a">❯ claude</span></div>
+          <div class="cost" style="background:#6b9a44;color:#131c12">$0.42</div>
+        </div>
+        <div class="meta"><div class="nm">Forest</div><div class="ds">Moss + sage, easy on eyes</div></div>
+      </div>
+      <!-- Paper -->
+      <div class="skin">
+        <div class="prev" style="background:#f7f3eb">
+          <div class="term" style="background:#f0e8d8;border:1px solid #e0d8c8"><span style="color:#2a2520">❯ claude</span></div>
+          <div class="cost" style="background:#00C99A;color:#fff">$0.42</div>
+        </div>
+        <div class="meta"><div class="nm">Paper</div><div class="ds">Daylight + ink + mint</div></div>
+      </div>
+      <!-- Ship-a-skin CTA -->
+      <a href="https://github.com/Josh-Gi3r/POCKET-T/blob/main/docs/skins.md" target="_blank" rel="noopener" class="skin cta">
+        <div class="plus">+</div>
+        <div class="lb">Ship a skin</div>
+        <div class="sb">CSS variables only · one PR · your name on the gallery</div>
+      </a>
+    </div>
+
+    <div style="margin-top:32px;font-size:14px;color:var(--steel)">
+      Read <a href="https://github.com/Josh-Gi3r/POCKET-T/blob/main/docs/skins.md" style="color:var(--mint)">the contribution guide</a> · try one now with <code style="font-family:var(--mono);color:#fff;background:var(--slate);padding:2px 7px;border-radius:5px">?theme=halloween</code> on the URL.
+    </div>
+  </div>
+</section>
+
+<!-- ============ INSTALL ============ -->
+<section id="install" class="bordered">
+  <div class="wrap">
+
+    <div class="sect-head" style="max-width:900px">
+      <span class="sect-eyebrow">§ Install</span>
+      <h2>Fresh Mac to phone-from-anywhere<br/>in <span class="accent">2 minutes.</span></h2>
+      <p class="sect-lead">One install script. One <code class="inline-code">--tunnel</code> flag. A QR code prints in your terminal. Scan it. Your Mac terminals are on your phone — any network, anywhere on earth.</p>
+    </div>
+
+    <div class="install-grid">
+      <!-- Left: Code block -->
+      <pre class="code install-code"><span class="cm"># 1 — clone + install (builds pt, signs it)</span>
+<span class="kw">git</span> clone https://github.com/Josh-Gi3r/POCKET-T
+<span class="kw">cd</span> pocket-t &amp;&amp; <span class="kw">bash</span> install.sh
+
+<span class="cm"># 2 — point Terminal.app's shell at pt</span>
+<span class="cm">#     Settings → Profiles → Shell → /usr/local/bin/pt</span>
+
+<span class="cm"># 3 — start the daemon with a tunnel for your phone</span>
+<span class="kw">pnpm</span> --filter @pocket-t/daemon pt-registry serve <span class="st">--tunnel</span>
+
+<span class="cm"># 4 — scan the QR code that prints in your terminal</span>
+<span class="cm">#     opens https://random-words.trycloudflare.com</span></pre>
+
+      <!-- Right: QR-in-terminal preview -->
+      <div class="qr-term">
+        <div class="bar">
+          <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+          <span class="ti">pt-registry — <b>serve --tunnel</b></span>
+        </div>
+        <div class="qr-body">
+          <div class="qr-line"><span class="qr-ok">✓</span> daemon listening on <span style="color:#fff">127.0.0.1:7700</span></div>
+          <div class="qr-line"><span class="qr-ok">✓</span> tunnel opened · cloudflared</div>
+          <div class="qr-line qr-mut"># scan to open on your phone:</div>
+          <div class="qr-url">https://emerald-forest-bridge-42.trycloudflare.com</div>
+          <div class="qr-code" id="qrCode"></div>
+          <div class="qr-line" style="margin-top:auto"><span class="qr-ac">●</span> waiting for first pairing… <span class="blink"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes row, full width -->
+    <div class="install-notes">
+      <div class="note">
+        <div class="note-k">Prerequisites</div>
+        <div class="note-v"><span>Rust toolchain · Node 22+ · pnpm. The installer checks for them and installs <code class="inline-code">cloudflared</code> via Homebrew.</span></div>
+      </div>
+      <div class="note">
+        <div class="note-k">Three modes</div>
+        <div class="note-v note-modes">
+          <span class="mode"><code class="inline-code mint">--tunnel</code><span class="mode-d">phone-from-anywhere (default)</span></span>
+          <span class="mode"><code class="inline-code">no flag</code><span class="mode-d">this Mac only · <code class="inline-code">127.0.0.1:7700</code></span></span>
+          <span class="mode"><code class="inline-code mint">--relay wss://your-hub</code><span class="mode-d">self-host a stable URL</span></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section id="faq" class="bordered">
+  <div class="wrap">
+    <div class="faq">
+      <span class="sect-eyebrow">§ FAQ</span>
+      <h2 style="margin-top:14px;margin-bottom:40px">Straight answers.</h2>
+
+      <details>
+        <summary><span>How is this different from an SSH app or a Telegram bot?</span><span class="chev">▾</span></summary>
+        <div class="body">An SSH app gives you one shell you opened by hand. A bot relays single commands into one wired-up process. Pocket-T captures <em>every</em> terminal automatically and shows you the real, live, rendered screen of each — with tool-call approvals and two-way input. You're not driving a relay; you're looking at your actual sessions.</div>
+      </details>
+      <details>
+        <summary><span>Do I have to launch terminals a special way?</span><span class="chev">▾</span></summary>
+        <div class="body">Set your Terminal.app profile's shell to <code>/usr/local/bin/pt</code> once. After that, every window on that profile is automatically a Pocket-T session — no wrapper command, no flag, no <code>pt &lt;cmd&gt;</code>. iTerm2, Ghostty, WezTerm: same idea, point them at <code>pt</code>.</div>
+      </details>
+      <details>
+        <summary><span>Is it really free?</span><span class="chev">▾</span></summary>
+        <div class="body">Yes. Daemon, native shell proxy, relay, web UI, skins — all MIT licensed and on GitHub. Phase 1 is open source and self-hosted only — there's no hosted relay we run for you and no paid tier. The whole product is what you clone from GitHub.</div>
+      </details>
+      <details>
+        <summary><span>Is it secure if the relay is public?</span><span class="chev">▾</span></summary>
+        <div class="body">The relay faces the internet, so it requires authentication — that's the lock on the door. Your phone, your account and your daemon are bound together; a stranger who finds the URL gets nothing. Self-host it and the relay is entirely yours.</div>
+      </details>
+      <details>
+        <summary><span>Can I see how much a Claude session is costing me?</span><span class="chev">▾</span></summary>
+        <div class="body">Yes. A live dollar pill in the toolbar shows cumulative cost per session — Sonnet, Opus, Haiku, the lot. Pocket-T reads token counts from Claude's own transcript file, so the meter is <em>exact</em>, not estimated.</div>
+      </details>
+      <details>
+        <summary><span>Can I theme it?</span><span class="chev">▾</span></summary>
+        <div class="body">Seven skins ship by default — Operator, Halloween, Nokia, Christmas, Cyberpunk, Forest, Paper. A skin is a small block of CSS variables; the <a href="https://github.com/Josh-Gi3r/POCKET-T/blob/main/docs/skins.md">contribution guide</a> walks through shipping a new one in an afternoon.</div>
+      </details>
+      <details>
+        <summary><span>What does it work with?</span><span class="chev">▾</span></summary>
+        <div class="body">Anything that runs in a terminal: Claude Code, Claude CLI, Codex, Aider, Gemini CLI, OpenClaw, Hermes, NanoClaw, Cursor's terminal, Claude Desktop's, plain shells, MCP servers — and whatever ships next, because it captures the terminal, not the tool. Claude gets full agent-aware bubbles + cost; the rest get a clean terminal + sidebar badge today, dedicated parsers as they land.</div>
+      </details>
+      <details>
+        <summary><span>Does it record sessions?</span><span class="chev">▾</span></summary>
+        <div class="body">Yes. Every <code>pt</code> session writes a standard asciinema v2 cast file to <code>~/.pocket-t/recordings/</code>. Replay with <code>pt-registry replay &lt;sessionId&gt;</code> or any asciinema player. Delete the folder anytime.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ END CTA ============ -->
+<section class="endcta">
+  <div class="glow"></div>
+  <div class="wrap" style="position:relative">
+    <h2>Start a build on your Mac.<br/>Finish it from your <span class="accent">pocket.</span></h2>
+    <div class="b">
+      <a href="#install" class="btn primary lg">Get started</a>
+      <a href="https://github.com/Josh-Gi3r/POCKET-T/blob/main/docs/skins.md" class="btn ghost lg">Read the source</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap inner">
+    <div class="brand" style="display:flex;align-items:center;gap:12px;font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:-.015em;color:#fff">
+      <span style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 200 200" width="36" height="36" fill="none">
+          <defs><linearGradient id="ftg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#00F0B5"/><stop offset="1" stop-color="#00C99A"/></linearGradient></defs>
+          <path d="M40 38 H160 a8 8 0 0 1 8 8 V70 H32 V46 a8 8 0 0 1 8-8z" stroke="url(#ftg)" stroke-width="12" fill="none"/>
+          <path d="M32 70 H168 V128 L100 168 L32 128 Z" stroke="url(#ftg)" stroke-width="12" fill="none" stroke-linejoin="round"/>
+          <path d="M82 102 L96 112 L82 122" stroke="#F5F7FA" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M106 122 H124" stroke="#F5F7FA" stroke-width="14" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span>Pocke<span style="color:var(--mint)">t-T</span></span>
+      <span style="margin-left:10px;color:var(--steel);font-family:var(--mono);font-size:12px;font-weight:400;letter-spacing:.04em">MIT · <a href="https://github.com/Josh-Gi3r/POCKET-T/blob/main/docs/skins.md" style="color:inherit">pocket-t.ai</a></span>
+    </div>
+    <nav class="links">
+      <a href="#difference">Difference</a>
+      <a href="#install">Install</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/Josh-Gi3r/POCKET-T">GitHub</a>
+      <a href="https://x.com/Josh_Gier" target="_blank" rel="noopener" aria-label="Follow @Josh_Gier on X">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" style="vertical-align:-2px;margin-right:6px"><path d="M18.244 2H21.5l-7.42 8.48L22.78 22H16l-5.31-6.93L4.6 22H1.34l7.94-9.08L1.22 2H8.17l4.79 6.34L18.244 2zm-1.14 18h1.8L7.02 4H5.14l11.964 16z"/></svg>@Josh_Gier
+      </a>
+    </nav>
+  </div>
+</footer>
+
+<!-- ============ STICKY MOBILE CTA BAR ============ -->
+<div class="mobile-cta" id="mobile-cta" aria-hidden="true">
+  <div class="b">
+    <a href="#install" class="a-primary" aria-label="Get started">Get started</a>
+    <a href="https://github.com/Josh-Gi3r/POCKET-T" target="_blank" rel="noopener" class="a-ghost" aria-label="View on GitHub">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.635 22.41c.575.105.785-.25.785-.555 0-.273-.01-.997-.015-1.957-3.2.695-3.875-1.542-3.875-1.542-.523-1.33-1.278-1.685-1.278-1.685-1.045-.715.08-.7.08-.7 1.155.082 1.762 1.187 1.762 1.187 1.027 1.76 2.695 1.252 3.353.957.103-.744.402-1.252.732-1.54-2.555-.29-5.243-1.277-5.243-5.683 0-1.255.45-2.282 1.187-3.087-.119-.292-.515-1.462.112-3.05 0 0 .967-.31 3.17 1.18a11 11 0 0 1 5.768 0c2.2-1.49 3.167-1.18 3.167-1.18.63 1.588.235 2.758.115 3.05.74.805 1.185 1.832 1.185 3.087 0 4.418-2.693 5.39-5.255 5.673.413.355.78 1.057.78 2.13 0 1.538-.013 2.778-.013 3.157 0 .308.207.667.79.553A11.5 11.5 0 0 0 12 .5z"/></svg>
+    </a>
+  </div>
+</div>
+
+<script>
+  // ============ Mobile drawer ============
+  (function(){
+    const btn      = document.getElementById('menu-btn');
+    const drawer   = document.getElementById('mobile-drawer');
+    const backdrop = document.getElementById('drawer-backdrop');
+    if (!btn || !drawer || !backdrop) return;
+    function open(){
+      drawer.classList.add('open');
+      backdrop.classList.add('show');
+      btn.setAttribute('aria-expanded', 'true');
+      drawer.setAttribute('aria-hidden', 'false');
+      backdrop.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+    function close(){
+      drawer.classList.remove('open');
+      backdrop.classList.remove('show');
+      btn.setAttribute('aria-expanded', 'false');
+      drawer.setAttribute('aria-hidden', 'true');
+      backdrop.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+    btn.addEventListener('click', () => {
+      drawer.classList.contains('open') ? close() : open();
+    });
+    backdrop.addEventListener('click', close);
+    // Tap a link in the drawer → smooth-scroll + close
+    drawer.querySelectorAll('a').forEach(a => a.addEventListener('click', close));
+    // Esc closes
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  })();
+
+  // ============ Sticky mobile CTA bar ============
+  // Show the floating Get-started + GitHub bar once the user has
+  // scrolled past the hero (so it doesn't double up with the hero CTA).
+  (function(){
+    const bar = document.getElementById('mobile-cta');
+    if (!bar) return;
+    const trigger = 480;
+    let last = null;
+    function check(){
+      const should = window.scrollY > trigger;
+      if (should !== last){
+        bar.classList.toggle('show', should);
+        bar.setAttribute('aria-hidden', should ? 'false' : 'true');
+        last = should;
+      }
+    }
+    window.addEventListener('scroll', check, { passive: true });
+    check();
+  })();
+
+  // Demo loop
+  (function(){
+    const stage = document.getElementById('stage');
+    const cap   = document.getElementById('cap');
+    if(!stage) return;
+    const caps = [
+      '<b>Every terminal you open</b> — mirrored to your phone, live.',
+      '<b>Tool calls fire on your phone.</b> Approve from the train.',
+      '<b>Type back from anywhere.</b> Into the real session.',
+      '<b>All tests pass.</b> $0.42, 28s. You never opened your laptop.',
+    ];
+    function set(i){
+      stage.dataset.beat = i;
+      cap.style.opacity = 0;
+      setTimeout(()=>{ cap.innerHTML = caps[i]; cap.style.opacity = 1; }, 180);
+    }
+    set(0);
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let n=0;
+    setInterval(()=>{ n=(n+1)%4; set(n); }, 3600);
+  })();
+
+  // QR-ish dot pattern (decorative, not a real scannable code)
+  (function(){
+    const el = document.getElementById('qrCode');
+    if(!el) return;
+    const N = 29;
+    // deterministic pseudo-random fill
+    let seed = 1337;
+    function rnd(){ seed = (seed * 9301 + 49297) % 233280; return seed/233280; }
+    const cells = new Array(N*N).fill(0);
+    for(let i=0;i<cells.length;i++) cells[i] = rnd() > 0.52 ? 1 : 0;
+    // place 3 finder squares (top-left, top-right, bottom-left)
+    function placeFinder(cx, cy){
+      for(let y=0;y<7;y++) for(let x=0;x<7;x++){
+        const v = (x===0||x===6||y===0||y===6) ? 1 :
+                  (x>=2 && x<=4 && y>=2 && y<=4) ? 1 : 0;
+        cells[(cy+y)*N + (cx+x)] = v;
+      }
+      // clear 1px gutter around
+      for(let y=-1;y<=7;y++) for(let x=-1;x<=7;x++){
+        if(x===-1||x===7||y===-1||y===7){
+          const yy=cy+y, xx=cx+x;
+          if(yy>=0&&yy<N&&xx>=0&&xx<N) cells[yy*N+xx]=0;
+        }
+      }
+    }
+    placeFinder(0,0);
+    placeFinder(N-7,0);
+    placeFinder(0,N-7);
+    // tiny alignment block
+    function placeAlign(cx, cy){
+      for(let y=0;y<5;y++) for(let x=0;x<5;x++){
+        const v = (x===0||x===4||y===0||y===4) ? 1 : (x===2&&y===2)?1:0;
+        cells[(cy+y)*N + (cx+x)] = v;
+      }
+    }
+    placeAlign(N-9, N-9);
+    let html = '';
+    for(const c of cells) html += c ? '<i class="on"></i>' : '<i></i>';
+    el.innerHTML = html;
+  })();
+</script>
+
+</body>
+</html>
