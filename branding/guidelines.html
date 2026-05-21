@@ -1,0 +1,1335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pocket-T — Brand Guidelines v1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --mint:#00F0B5;
+    --mint-2:#00C99A;
+    --graphite:#0B0F12;
+    --slate:#1A1F26;
+    --slate-2:#2A323D;
+    --offwhite:#F5F7FA;
+    --paper:#FBFCFD;
+    --steel:#8B949E;
+    --steel-2:#C7CCD2;
+    --cobalt:#3B82F6;
+    --ink:#0B0F12;
+    --line:#E5E8EC;
+    --line-dark:#23292F;
+
+    --display:'Space Grotesk', system-ui, sans-serif;
+    --ui:'Inter', system-ui, sans-serif;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--paper);color:var(--ink);font-family:var(--ui);-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+  body{font-size:15px;line-height:1.5}
+  a{color:inherit}
+  img{max-width:100%;display:block}
+
+  /* ============== LAYOUT ============== */
+  .page{
+    width:100%;
+    max-width:1440px;
+    margin:0 auto;
+    padding:80px 72px;
+    border-bottom:1px solid var(--line);
+    position:relative;
+  }
+  .page.dark{background:var(--graphite);color:var(--offwhite);border-bottom:1px solid var(--line-dark)}
+  .page.ink{background:var(--ink);color:var(--offwhite)}
+  .page.tint{background:#F1F4F7}
+  .page-head{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    padding-bottom:28px;margin-bottom:56px;border-bottom:1px solid var(--line);
+    gap:48px;
+  }
+  .page.dark .page-head, .page.ink .page-head{border-color:var(--line-dark)}
+  .eyebrow{
+    font-family:var(--ui);font-weight:600;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mint-2);
+  }
+  .page.dark .eyebrow,.page.ink .eyebrow{color:var(--mint)}
+  .page-title{
+    font-family:var(--display);font-weight:600;font-size:48px;line-height:1.02;letter-spacing:-.02em;margin-top:10px;
+  }
+  .page-kicker{
+    max-width:420px;color:var(--steel);font-size:14px;line-height:1.55;
+  }
+  .page-marker{
+    font-family:var(--mono);font-size:12px;color:var(--steel);letter-spacing:.04em;
+  }
+  .prompt{color:var(--mint);font-family:var(--mono);font-weight:500}
+
+  /* ============== UTILITIES ============== */
+  .grid{display:grid;gap:32px}
+  .g-2{grid-template-columns:1fr 1fr}
+  .g-3{grid-template-columns:repeat(3,1fr)}
+  .g-4{grid-template-columns:repeat(4,1fr)}
+  .g-6{grid-template-columns:repeat(6,1fr)}
+  .label{
+    font-family:var(--ui);font-size:10.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--steel);
+  }
+  .hr{height:1px;background:var(--line);margin:48px 0}
+  .page.dark .hr,.page.ink .hr{background:var(--line-dark)}
+
+  /* ============== COVER ============== */
+  .cover{
+    min-height:920px;padding:64px 72px 72px;display:flex;flex-direction:column;justify-content:space-between;
+    background:
+      radial-gradient(1200px 700px at 88% -10%, rgba(0,240,181,.10), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(59,130,246,.08), transparent 60%),
+      var(--graphite);
+    color:var(--offwhite);
+    position:relative;overflow:hidden;
+  }
+  .cover-top{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:12px;color:var(--steel-2);letter-spacing:.06em}
+  .cover-top .dot{width:8px;height:8px;border-radius:50%;background:var(--mint);display:inline-block;margin-right:8px;box-shadow:0 0 0 4px rgba(0,240,181,.15)}
+  .cover-mid{display:grid;grid-template-columns:1.2fr .8fr;gap:56px;align-items:center}
+  .cover h1{
+    font-family:var(--display);font-weight:600;font-size:128px;line-height:.92;letter-spacing:-.035em;
+    display:flex;align-items:center;gap:20px;white-space:nowrap;
+  }
+  .cover h1 .word{display:inline}
+  .cover h1 .ct{color:var(--mint)}
+  .cover .sub{margin-top:20px;font-family:var(--display);font-weight:500;font-size:32px;color:var(--mint);letter-spacing:-.01em}
+  .cover .copy{margin-top:24px;max-width:560px;font-size:16.5px;line-height:1.55;color:var(--steel-2)}
+  .cover-meta{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line-dark);
+    padding-top:24px;font-family:var(--mono);font-size:12px;color:var(--steel-2);letter-spacing:.04em;
+  }
+  .cover-meta div span{display:block;color:var(--steel);font-size:10.5px;letter-spacing:.18em;margin-bottom:6px}
+
+  .signet-hero{
+    aspect-ratio:1/1;width:100%;max-width:340px;justify-self:end;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+  }
+
+  /* ============== SIGNET SVG ============== */
+  .signet{display:block}
+
+  /* ============== INDEX ============== */
+  .toc{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--line)}
+  .toc a{
+    display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+    padding:22px 4px;border-bottom:1px solid var(--line);text-decoration:none;
+  }
+  .toc .n{font-family:var(--mono);color:var(--steel);font-size:12px;letter-spacing:.04em;min-width:42px}
+  .toc .t{font-family:var(--display);font-weight:500;font-size:22px;letter-spacing:-.01em;flex:1}
+  .toc .p{font-family:var(--mono);color:var(--steel);font-size:12px}
+  .toc a:hover .t{color:var(--mint-2)}
+
+  /* ============== ESSENCE ============== */
+  .pull{
+    font-family:var(--display);font-weight:500;font-size:64px;line-height:1.02;letter-spacing:-.025em;
+    max-width:1100px;text-wrap:balance;
+  }
+  .pull em{font-style:normal;color:var(--mint-2)}
+  .principle{
+    border-top:1px solid var(--line);padding-top:24px;display:grid;grid-template-columns:24px 1fr;gap:16px;align-items:start;
+  }
+  .principle .num{font-family:var(--mono);color:var(--mint-2);font-size:12px;letter-spacing:.04em}
+  .principle h3{font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:-.01em;margin-bottom:8px}
+  .principle p{color:#3C4651;font-size:14px;line-height:1.55;max-width:36ch}
+
+  /* ============== LOGO SHOWCASE ============== */
+  .logo-card{
+    background:var(--paper);border:1px solid var(--line);border-radius:20px;
+    padding:48px;display:flex;align-items:center;justify-content:center;min-height:240px;position:relative;overflow:hidden;
+  }
+  .logo-card.dark{background:var(--graphite);border-color:var(--line-dark);color:var(--offwhite)}
+  .logo-card .label{position:absolute;top:18px;left:20px}
+  .logo-card .size{position:absolute;bottom:14px;right:18px;font-family:var(--mono);color:var(--steel);font-size:11px}
+
+  .wordmark{
+    font-family:var(--display);font-weight:600;letter-spacing:-.025em;display:inline-flex;align-items:center;gap:14px;
+    font-size:64px;line-height:1;white-space:nowrap;
+  }
+  .wordmark .prompt{font-size:.55em;color:var(--mint);letter-spacing:0;transform:translateY(-.04em)}
+  .wordmark.sm{font-size:28px}.wordmark.sm .prompt{font-size:.6em}
+  .wordmark.xs{font-size:18px}.wordmark.xs .prompt{font-size:.7em}
+  .wordmark.lg{font-size:80px}
+  .wordmark.stacked{flex-direction:column;align-items:flex-start;gap:14px}
+  .wordmark.stacked .prompt{transform:none;font-size:48px;line-height:1}
+
+  /* ============== CLEAR SPACE ============== */
+  .clear-space{
+    background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:0;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;min-height:300px;position:relative;
+  }
+  .cs-frame{
+    position:relative;padding:48px 48px;background:
+      repeating-linear-gradient(45deg,transparent 0 6px,#E8ECF0 6px 7px);
+    border-radius:8px;
+  }
+  .cs-frame .inner{background:#fff;padding:20px 28px;display:flex;align-items:center;justify-content:center}
+  .cs-mark{
+    position:absolute;width:22px;height:22px;border:1px dashed #B8C0C8;
+  }
+  .cs-mark.tl{top:18px;left:18px}.cs-mark.tr{top:18px;right:18px}
+  .cs-mark.bl{bottom:18px;left:18px}.cs-mark.br{bottom:18px;right:18px}
+
+  /* ============== DO/DONT ============== */
+  .do-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:20px}
+  .do-card{
+    background:var(--paper);border:1px solid var(--line);border-radius:16px;
+    padding:28px 22px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px;
+    aspect-ratio:1/1.1;justify-content:space-between;
+  }
+  .do-icon{
+    width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:var(--ui);font-weight:700;color:#fff;flex:none;
+  }
+  .do-icon.yes{background:var(--mint-2)}
+  .do-icon.no{background:#E5484D}
+  .do-card .demo{flex:1;display:flex;align-items:center;justify-content:center;width:100%}
+  .do-card .note{font-size:12.5px;color:#3C4651;line-height:1.45;max-width:18ch}
+  .do-card .label{margin-top:0}
+
+  /* ============== COLORS ============== */
+  .swatch{
+    border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#fff;
+    display:flex;flex-direction:column;
+  }
+  .swatch .chip{height:180px;position:relative}
+  .swatch .meta{padding:16px 18px 18px;display:grid;grid-template-columns:1fr auto;row-gap:4px;font-size:12px}
+  .swatch .name{grid-column:1/-1;font-family:var(--display);font-weight:600;font-size:18px;letter-spacing:-.01em;margin-bottom:6px}
+  .swatch .k{color:var(--steel);font-family:var(--mono);font-size:11px;letter-spacing:.04em}
+  .swatch .v{font-family:var(--mono);font-size:11.5px;text-align:right}
+  .swatch .tag{
+    position:absolute;top:14px;left:14px;font-family:var(--mono);font-size:11px;
+    padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.85);color:#0B0F12;
+  }
+  .swatch.dark .tag{background:rgba(0,0,0,.55);color:#fff}
+
+  .ratio-bar{
+    display:flex;height:64px;border-radius:12px;overflow:hidden;border:1px solid var(--line);
+  }
+  .ratio-bar > div{display:flex;align-items:flex-end;padding:10px 14px;font-family:var(--mono);font-size:11px;color:#fff;letter-spacing:.04em}
+  .ratio-bar .light{color:var(--ink)}
+
+  /* ============== TYPOGRAPHY ============== */
+  .type-card{
+    border:1px solid var(--line);border-radius:20px;padding:36px 36px 32px;background:#fff;
+  }
+  .type-card .meta{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px}
+  .type-card .family{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:-.01em}
+  .type-card .role{font-family:var(--mono);color:var(--mint-2);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+  .type-spec{display:flex;gap:24px;font-family:var(--mono);font-size:11px;color:var(--steel);letter-spacing:.04em;margin-top:24px;border-top:1px solid var(--line);padding-top:18px}
+  .specimen{font-family:var(--display);font-weight:600;font-size:128px;line-height:.95;letter-spacing:-.03em}
+  .specimen.inter{font-family:var(--ui);font-weight:700;letter-spacing:-.025em}
+  .specimen.mono{font-family:var(--mono);font-weight:500;font-size:96px;letter-spacing:-.01em}
+  .alphabet{font-size:18px;color:var(--steel);font-family:var(--display);letter-spacing:.01em;margin-top:24px;word-spacing:2px}
+  .alphabet.inter{font-family:var(--ui)}
+  .alphabet.mono{font-family:var(--mono);font-size:14px}
+
+  .scale-row{display:grid;grid-template-columns:120px 1fr 200px;align-items:baseline;gap:24px;padding:18px 0;border-top:1px solid var(--line)}
+  .scale-row:last-child{border-bottom:1px solid var(--line)}
+  .scale-row .name{font-family:var(--mono);font-size:11px;color:var(--steel);letter-spacing:.14em;text-transform:uppercase}
+  .scale-row .sample{font-family:var(--display);font-weight:600;letter-spacing:-.02em}
+  .scale-row .sample.inter{font-family:var(--ui);font-weight:600}
+  .scale-row .specs{font-family:var(--mono);font-size:11.5px;color:var(--steel);text-align:right}
+
+  /* ============== APP ICON ============== */
+  .app-stack{
+    display:grid;grid-template-columns:1.3fr .9fr;gap:48px;align-items:center;
+  }
+  .icon-shell{
+    aspect-ratio:1/1;border-radius:28%;
+    background:linear-gradient(180deg,#16191D 0%,#0B0F12 100%);
+    border:1px solid #1E242B;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
+    position:relative;overflow:hidden;
+  }
+  .icon-shell::after{
+    content:"";position:absolute;inset:0;border-radius:28%;pointer-events:none;
+    background:radial-gradient(60% 40% at 50% 0%, rgba(255,255,255,.06), transparent 60%);
+  }
+  .icon-sizes{display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap}
+  .icon-sizes .i{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .icon-sizes .label{margin:0}
+
+  /* ============== UI MOCK ============== */
+  .device{
+    width:320px;aspect-ratio:9/19.5;border-radius:48px;
+    background:var(--graphite);border:10px solid #0B0F12;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.4), inset 0 0 0 1px #1A1F26;
+    overflow:hidden;position:relative;
+  }
+  .device .notch{
+    position:absolute;top:8px;left:50%;transform:translateX(-50%);
+    width:108px;height:28px;background:#000;border-radius:18px;z-index:2;
+  }
+  .device .screen{
+    position:absolute;inset:0;background:var(--graphite);color:var(--offwhite);
+    padding:14px 18px;display:flex;flex-direction:column;gap:14px;font-family:var(--ui);
+  }
+  .status{display:flex;justify-content:space-between;font-family:var(--ui);font-size:13px;font-weight:600;padding:0 4px 4px;color:#fff}
+  .app-head{display:flex;justify-content:space-between;align-items:flex-start;margin-top:30px}
+  .app-head .tt{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:-.01em}
+  .app-head .ts{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--steel);margin-top:4px}
+  .app-head .ts .live{width:7px;height:7px;border-radius:50%;background:var(--mint)}
+  .menu{width:22px;height:18px;display:flex;flex-direction:column;justify-content:space-between}
+  .menu span{height:2px;background:var(--steel-2);border-radius:1px;display:block}
+  .search{
+    background:#16191D;border:1px solid #23292F;border-radius:12px;padding:11px 12px;
+    display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--steel);
+  }
+  .search .kbd{font-family:var(--mono);background:#23292F;padding:2px 6px;border-radius:5px;color:#C7CCD2;font-size:10px}
+  .section-title{font-family:var(--ui);font-size:10px;font-weight:600;color:var(--steel);letter-spacing:.16em;text-transform:uppercase;margin-top:6px}
+  .row{
+    display:grid;grid-template-columns:30px 1fr auto;gap:12px;align-items:center;
+    padding:10px 0;border-bottom:1px solid #1A1F26;
+  }
+  .row .ic{width:30px;height:30px;border-radius:8px;background:#16191D;border:1px solid #23292F;display:flex;align-items:center;justify-content:center}
+  .row .nm{font-size:13.5px;font-weight:500;color:#fff;letter-spacing:-.01em}
+  .row .sub{font-family:var(--mono);font-size:10.5px;color:var(--steel);margin-top:1px}
+  .row .ch{color:var(--steel)}
+  .row .live{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 3px rgba(0,240,181,.15)}
+  .tabbar{
+    margin:auto -18px -14px;padding:10px 18px 12px;border-top:1px solid #1A1F26;display:flex;justify-content:space-around;
+    font-size:10px;color:var(--steel);
+  }
+  .tabbar .tb{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .tabbar .tb.active{color:var(--mint)}
+
+  /* ============== ICONOGRAPHY ============== */
+  .icon-card{
+    border:1px solid var(--line);border-radius:16px;padding:28px 18px 22px;background:#fff;
+    display:flex;flex-direction:column;align-items:center;gap:18px;aspect-ratio:1/1.1;justify-content:space-between;
+  }
+  .icon-card.dark{background:var(--graphite);border-color:var(--line-dark);color:var(--offwhite)}
+  .icon-card .nm{font-family:var(--mono);font-size:10.5px;color:var(--steel);letter-spacing:.14em;text-transform:uppercase}
+
+  /* ============== VOICE/TONE ============== */
+  .vt-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px}
+  .vt-col{}
+  .vt-col h3{font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:-.015em;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+  .vt-col h3 .dot{width:8px;height:8px;border-radius:50%}
+  .vt-col.yes h3 .dot{background:var(--mint-2)}
+  .vt-col.no h3 .dot{background:#E5484D}
+  .vt-line{
+    border-top:1px solid var(--line);padding:16px 0;font-family:var(--display);font-weight:500;font-size:18px;letter-spacing:-.005em;
+  }
+  .vt-line:last-child{border-bottom:1px solid var(--line)}
+  .vt-line .tag{font-family:var(--mono);font-size:10px;color:var(--steel);letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:4px;font-weight:600}
+
+  /* ============== TERMINAL CARD ============== */
+  .terminal{
+    background:var(--graphite);border:1px solid #1A1F26;border-radius:16px;overflow:hidden;
+    font-family:var(--mono);font-size:13px;line-height:1.7;color:#D1D5DB;
+  }
+  .terminal .bar{
+    display:flex;align-items:center;gap:6px;padding:11px 14px;border-bottom:1px solid #1A1F26;background:#0F141A;
+  }
+  .terminal .bar .d{width:11px;height:11px;border-radius:50%;background:#2A323D}
+  .terminal .bar .d.r{background:#FF5F57}.terminal .bar .d.y{background:#FEBC2E}.terminal .bar .d.g{background:#28C840}
+  .terminal .bar .ti{margin-left:10px;font-size:11px;color:var(--steel);letter-spacing:.04em}
+  .terminal .body{padding:18px 20px;min-height:140px}
+  .terminal .ln{display:block;white-space:pre-wrap}
+  .terminal .ok{color:var(--mint)}
+  .terminal .cm{color:#6B7785}
+  .terminal .pp{color:var(--mint)}
+  .terminal .ar{color:var(--cobalt)}
+  .terminal .caret{display:inline-block;width:9px;height:16px;background:var(--mint);vertical-align:-3px;margin-left:2px}
+
+  /* ============== FOOTER ============== */
+  .foot{
+    background:var(--ink);color:var(--steel-2);padding:64px 72px;
+  }
+  .foot .row{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:48px;align-items:start}
+  .foot h4{font-family:var(--display);font-weight:600;font-size:14px;color:#fff;margin-bottom:14px;letter-spacing:-.005em}
+  .foot ul{list-style:none;font-family:var(--mono);font-size:12px;line-height:2;color:var(--steel)}
+  .foot .word{font-family:var(--display);font-weight:600;font-size:48px;letter-spacing:-.025em;color:#fff;display:flex;align-items:center;gap:14px}
+  .foot .word .prompt{font-size:.55em;color:var(--mint)}
+  .foot .copy{margin-top:12px;font-size:13px;line-height:1.55;color:var(--steel);max-width:36ch}
+  .foot .meta{margin-top:48px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--steel);letter-spacing:.04em;padding-top:24px;border-top:1px solid #1A1F26}
+
+  /* ============== KBD ============== */
+  .kbd{
+    display:inline-flex;align-items:center;justify-content:center;
+    background:#16191D;border:1px solid #23292F;border-radius:8px;padding:8px 12px;
+    font-family:var(--mono);font-weight:500;font-size:14px;color:var(--offwhite);min-width:44px;
+  }
+
+  /* world map dots */
+  .map{
+    display:grid;grid-template-columns:repeat(36,1fr);grid-template-rows:repeat(14,1fr);gap:4px;
+    aspect-ratio:36/14;width:100%;
+  }
+  .map i{display:block;width:4px;height:4px;border-radius:50%;background:#2A323D}
+  .map i.on{background:var(--mint);box-shadow:0 0 0 2px rgba(0,240,181,.2)}
+  .map i.b{background:var(--cobalt)}
+
+</style>
+</head>
+<body>
+
+<!-- ====================================================== COVER ====================================================== -->
+<section class="page cover" data-screen-label="01 Cover">
+  <div class="cover-top">
+    <div><span class="dot"></span>POCKET-T BRAND SYSTEM</div>
+    <div>VERSION 1.0 &nbsp;·&nbsp; MAY 2026 &nbsp;·&nbsp; INTERNAL + PARTNER USE</div>
+    <div>BUILT FOR CONTROL · DESIGNED FOR ANYWHERE</div>
+  </div>
+
+  <div class="cover-mid">
+    <div>
+      <div class="eyebrow">Brand Guidelines</div>
+      <h1><span class="prompt" style="font-size:.18em">&gt;_</span><span class="word">Pocke<span class="ct">t-T</span></span></h1>
+      <div class="sub">Your terminal, anywhere.</div>
+      <p class="copy">Pocket-T is a browser-based, mobile-first control layer for terminals, remote machines, and AI command tools. This document is the single source of truth for how the brand looks, sounds, and behaves — across product, marketing, and partner surfaces.</p>
+    </div>
+
+    <div class="signet-hero">
+      <!-- Signet -->
+      <svg class="signet" width="200" height="200" viewBox="0 0 200 200" fill="none">
+        <defs>
+          <linearGradient id="mintGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#00F0B5"/>
+            <stop offset="1" stop-color="#00C99A"/>
+          </linearGradient>
+        </defs>
+        <!-- pocket flap -->
+        <path d="M40 38 H160 a8 8 0 0 1 8 8 V70 H32 V46 a8 8 0 0 1 8-8z" stroke="url(#mintGrad)" stroke-width="6" fill="none"/>
+        <!-- pocket body -->
+        <path d="M32 70 H168 V128 L100 168 L32 128 Z" stroke="url(#mintGrad)" stroke-width="6" fill="none" stroke-linejoin="round"/>
+        <!-- prompt -->
+        <path d="M80 96 L96 110 L80 124" stroke="#F5F7FA" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M104 124 H124" stroke="#F5F7FA" stroke-width="9" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="cover-meta">
+    <div><span>DOC</span>Brand Guidelines</div>
+    <div><span>FORMAT</span>Reference / Web</div>
+    <div><span>OWNERS</span>Brand · Design · Product</div>
+    <div><span>REV</span>1.0 — 22.05.2026</div>
+  </div>
+</section>
+
+<!-- ====================================================== TABLE OF CONTENTS ====================================================== -->
+<section class="page" data-screen-label="02 Index">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 00 — Contents</div>
+      <h2 class="page-title">Index</h2>
+    </div>
+    <div class="page-marker">PAGE 02 / 14</div>
+  </div>
+
+  <div class="toc">
+    <a href="#essence"><span class="n">01</span><span class="t">Brand Essence</span><span class="p">→ 03</span></a>
+    <a href="#logo"><span class="n">02</span><span class="t">Logo System</span><span class="p">→ 04</span></a>
+    <a href="#construction"><span class="n">03</span><span class="t">Construction &amp; Clear Space</span><span class="p">→ 05</span></a>
+    <a href="#dont"><span class="n">04</span><span class="t">Misuse</span><span class="p">→ 06</span></a>
+    <a href="#color"><span class="n">05</span><span class="t">Color System</span><span class="p">→ 07</span></a>
+    <a href="#type"><span class="n">06</span><span class="t">Typography</span><span class="p">→ 08</span></a>
+    <a href="#scale"><span class="n">07</span><span class="t">Type Scale</span><span class="p">→ 09</span></a>
+    <a href="#icon"><span class="n">08</span><span class="t">App Icon</span><span class="p">→ 10</span></a>
+    <a href="#iconography"><span class="n">09</span><span class="t">Iconography</span><span class="p">→ 11</span></a>
+    <a href="#ui"><span class="n">10</span><span class="t">Product UI</span><span class="p">→ 12</span></a>
+    <a href="#voice"><span class="n">11</span><span class="t">Voice &amp; Tone</span><span class="p">→ 13</span></a>
+    <a href="#motion"><span class="n">12</span><span class="t">Motion &amp; Imagery</span><span class="p">→ 14</span></a>
+  </div>
+</section>
+
+<!-- ====================================================== ESSENCE ====================================================== -->
+<section class="page" id="essence" data-screen-label="03 Essence">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 01 — Brand Essence</div>
+      <h2 class="page-title">A pocket for your terminal.<br/>Built for control.</h2>
+    </div>
+    <div class="page-kicker">Pocket-T is the calm, fast, operator-grade layer that puts terminals, servers, and AI command tools within a thumb's reach — without ever feeling like a compromise.</div>
+  </div>
+
+  <div class="pull">
+    Modern. Precise. <em>Operator-grade.</em><br/>
+    The control plane in your pocket — built for the people who actually ship the work.
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="grid g-4">
+    <div class="principle">
+      <div class="num">P/01</div>
+      <div>
+        <h3>Precise</h3>
+        <p>Every pixel, line, and label serves clarity. We strip the decorative; we sharpen the meaningful. If it isn't useful, it isn't there.</p>
+      </div>
+    </div>
+    <div class="principle">
+      <div class="num">P/02</div>
+      <div>
+        <h3>Reliable</h3>
+        <p>Built for uptime, security, and confidence. The brand should feel as stable as the sessions it carries — never noisy, never anxious.</p>
+      </div>
+    </div>
+    <div class="principle">
+      <div class="num">P/03</div>
+      <div>
+        <h3>Fast</h3>
+        <p>Optimized for speed and keyboard workflows. Type-first. Tap-second. Latency, both visual and literal, is the enemy.</p>
+      </div>
+    </div>
+    <div class="principle">
+      <div class="num">P/04</div>
+      <div>
+        <h3>Anywhere</h3>
+        <p>Browser-native, mobile-first, friction-zero. The brand reads at 32 × 32 pixels and at 32 meters tall. No exceptions.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== LOGO SYSTEM ====================================================== -->
+<section class="page" id="logo" data-screen-label="04 Logo System">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 02 — Logo System</div>
+      <h2 class="page-title">The mark, three ways.</h2>
+    </div>
+    <div class="page-kicker">Three official lockups cover every surface. Always pull from the master files; never re-create.</div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1.4fr 1fr 1fr">
+    <div class="logo-card">
+      <span class="label">Primary wordmark</span>
+      <div class="wordmark lg"><span class="prompt">&gt;_</span>Pocket-T</div>
+      <span class="size">A · Default</span>
+    </div>
+    <div class="logo-card">
+      <span class="label">Stacked wordmark</span>
+      <div class="wordmark lg stacked"><span class="prompt">&gt;_</span><span>Pocket-T</span></div>
+      <span class="size">B · Square crops</span>
+    </div>
+    <div class="logo-card">
+      <span class="label">Signet (monogram)</span>
+      <svg width="120" height="120" viewBox="0 0 200 200" fill="none">
+        <defs><linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#00F0B5"/><stop offset="1" stop-color="#00C99A"/></linearGradient></defs>
+        <path d="M40 38 H160 a8 8 0 0 1 8 8 V70 H32 V46 a8 8 0 0 1 8-8z" stroke="url(#g2)" stroke-width="8" fill="none"/>
+        <path d="M32 70 H168 V128 L100 168 L32 128 Z" stroke="url(#g2)" stroke-width="8" fill="none" stroke-linejoin="round"/>
+        <path d="M76 96 L96 110 L76 124" stroke="#0B0F12" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M108 124 H132" stroke="#0B0F12" stroke-width="10" stroke-linecap="round"/>
+      </svg>
+      <span class="size">C · Avatars · App icons</span>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="grid g-3">
+    <div class="logo-card">
+      <span class="label">Full color · Light</span>
+      <div class="wordmark"><span class="prompt">&gt;_</span>Pocket-T</div>
+    </div>
+    <div class="logo-card">
+      <span class="label">Monochrome · Black</span>
+      <div class="wordmark" style="color:#0B0F12"><span class="prompt" style="color:#0B0F12">&gt;_</span>Pocket-T</div>
+    </div>
+    <div class="logo-card dark">
+      <span class="label" style="color:var(--steel-2)">Reversed · Dark</span>
+      <div class="wordmark" style="color:#fff"><span class="prompt">&gt;_</span>Pocket-T</div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== CONSTRUCTION / CLEAR SPACE ====================================================== -->
+<section class="page tint" id="construction" data-screen-label="05 Construction">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 03 — Construction</div>
+      <h2 class="page-title">Clear space, sizing,<br/>and minimum scale.</h2>
+    </div>
+    <div class="page-kicker">Clear space protects the mark from clutter and preserves its impact. <em>X</em> equals the cap-height of the "T".</div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1.4fr 1fr">
+    <div class="clear-space">
+      <div class="cs-frame">
+        <div class="cs-mark tl"></div><div class="cs-mark tr"></div>
+        <div class="cs-mark bl"></div><div class="cs-mark br"></div>
+        <div class="inner">
+          <div class="wordmark"><span class="prompt">&gt;_</span>Pocket-T</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid" style="grid-template-columns:1fr;gap:24px">
+      <div style="background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px">
+        <div class="label" style="margin-bottom:18px">Minimum size · Digital</div>
+        <div class="wordmark xs"><span class="prompt">&gt;_</span>Pocket-T</div>
+        <div style="font-family:var(--mono);font-size:11.5px;color:var(--steel);margin-top:18px;letter-spacing:.04em">120 px width · 24 px cap-height</div>
+      </div>
+      <div style="background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px">
+        <div class="label" style="margin-bottom:18px">Minimum size · Print</div>
+        <div class="wordmark xs"><span class="prompt">&gt;_</span>Pocket-T</div>
+        <div style="font-family:var(--mono);font-size:11.5px;color:var(--steel);margin-top:18px;letter-spacing:.04em">20 mm width · 4 mm cap-height</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="grid g-4">
+    <div>
+      <div class="label" style="margin-bottom:10px">Alignment</div>
+      <p style="font-size:13.5px;line-height:1.55;color:#3C4651">The <span class="prompt">&gt;_</span> prompt always sits left of the wordmark, baseline-aligned. Never above, below, or trailing.</p>
+    </div>
+    <div>
+      <div class="label" style="margin-bottom:10px">Spacing</div>
+      <p style="font-size:13.5px;line-height:1.55;color:#3C4651">Gap between prompt and wordmark equals 0.45 × cap-height. Optical centering trumps numeric exactness.</p>
+    </div>
+    <div>
+      <div class="label" style="margin-bottom:10px">Weight</div>
+      <p style="font-size:13.5px;line-height:1.55;color:#3C4651">Wordmark locks to Space Grotesk SemiBold (600). Never Medium, Bold, or any italic.</p>
+    </div>
+    <div>
+      <div class="label" style="margin-bottom:10px">Background</div>
+      <p style="font-size:13.5px;line-height:1.55;color:#3C4651">Prefer Off-White or Deep Graphite. On mid-tone or photographic backgrounds, use the reversed lockup with a 24% scrim.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== DON'T ====================================================== -->
+<section class="page" id="dont" data-screen-label="06 Misuse">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 04 — Misuse</div>
+      <h2 class="page-title">What not to do.</h2>
+    </div>
+    <div class="page-kicker">Even small distortions erode trust. When in doubt, default to the master file and leave the mark alone.</div>
+  </div>
+
+  <div class="do-grid">
+    <div class="do-card">
+      <div class="do-icon yes">✓</div>
+      <div class="demo"><div class="wordmark sm"><span class="prompt">&gt;_</span>Pocket-T</div></div>
+      <span class="label">Full color, light bg</span>
+    </div>
+    <div class="do-card" style="background:var(--graphite);border-color:var(--line-dark);color:#fff">
+      <div class="do-icon yes">✓</div>
+      <div class="demo"><div class="wordmark sm" style="color:#fff"><span class="prompt">&gt;_</span>Pocket-T</div></div>
+      <span class="label" style="color:var(--steel-2)">Reversed, dark bg</span>
+    </div>
+    <div class="do-card">
+      <div class="do-icon yes">✓</div>
+      <div class="demo"><div class="wordmark sm"><span class="prompt">&gt;_</span>Pocket-T</div></div>
+      <span class="label">Clear space respected</span>
+    </div>
+
+    <div class="do-card">
+      <div class="do-icon no">✕</div>
+      <div class="demo"><div class="wordmark sm" style="transform:scaleX(1.4)"><span class="prompt">&gt;_</span>Pocket-T</div></div>
+      <span class="note">Don't stretch or distort the mark.</span>
+    </div>
+    <div class="do-card">
+      <div class="do-icon no">✕</div>
+      <div class="demo"><div class="wordmark sm" style="color:#3B82F6"><span class="prompt" style="color:#3B82F6">&gt;_</span>Pocket-T</div></div>
+      <span class="note">Don't recolor outside the palette.</span>
+    </div>
+    <div class="do-card">
+      <div class="do-icon no">✕</div>
+      <div class="demo"><div class="wordmark sm" style="text-shadow:0 0 10px #00F0B5,2px 2px 4px rgba(0,0,0,.3);background:linear-gradient(180deg,#fff,#ddd);padding:6px 12px;border-radius:8px"><span class="prompt">&gt;_</span>Pocket-T</div></div>
+      <span class="note">Don't add shadows, glows, or gradients.</span>
+    </div>
+  </div>
+
+  <div class="grid g-4" style="margin-top:32px">
+    <div class="do-card">
+      <div class="do-icon no">✕</div>
+      <div class="demo"><div class="wordmark sm" style="font-family:Georgia,serif;font-weight:700"><span class="prompt">&gt;_</span>Pocket-T</div></div>
+      <span class="note">Don't change the typeface.</span>
+    </div>
+    <div class="do-card">
+      <div class="do-icon no">✕</div>
+      <div class="demo"><div class="wordmark sm" style="text-transform:uppercase"><span class="prompt">&gt;_</span>POCKET-T</div></div>
+      <span class="note">Don't all-caps the wordmark.</span>
+    </div>
+    <div class="do-card">
+      <div class="do-icon no">✕</div>
+      <div class="demo" style="position:relative">
+        <div class="wordmark sm" style="opacity:.45"><span class="prompt">&gt;_</span>Pocket-T</div>
+      </div>
+      <span class="note">Don't reduce contrast or opacity.</span>
+    </div>
+    <div class="do-card">
+      <div class="do-icon no">✕</div>
+      <div class="demo"><div class="wordmark sm"><span class="prompt" style="margin-right:24px">&gt;_</span>Pocket-T</div></div>
+      <span class="note">Don't alter prompt spacing.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== COLOR ====================================================== -->
+<section class="page ink" id="color" data-screen-label="07 Color">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 05 — Color System</div>
+      <h2 class="page-title" style="color:#fff">Six colors. One feeling.</h2>
+    </div>
+    <div class="page-kicker" style="color:var(--steel-2)">Electric Mint is the brand's pulse. Deep Graphite is its body. Everything else is supporting cast — used sparingly, never decoratively.</div>
+  </div>
+
+  <div class="grid g-6">
+    <div class="swatch dark">
+      <div class="chip" style="background:#00F0B5"><span class="tag">PRIMARY</span></div>
+      <div class="meta" style="background:#fff;color:#0B0F12">
+        <div class="name">Electric Mint</div>
+        <div class="k">HEX</div><div class="v">#00F0B5</div>
+        <div class="k">RGB</div><div class="v">0 · 240 · 181</div>
+        <div class="k">OKLCH</div><div class="v">.87 .19 168</div>
+        <div class="k">PMS</div><div class="v">3385 C</div>
+      </div>
+    </div>
+    <div class="swatch dark">
+      <div class="chip" style="background:#0B0F12"><span class="tag">CANVAS</span></div>
+      <div class="meta" style="background:#fff;color:#0B0F12">
+        <div class="name">Deep Graphite</div>
+        <div class="k">HEX</div><div class="v">#0B0F12</div>
+        <div class="k">RGB</div><div class="v">11 · 15 · 18</div>
+        <div class="k">OKLCH</div><div class="v">.16 .01 240</div>
+        <div class="k">PMS</div><div class="v">Black 6 C</div>
+      </div>
+    </div>
+    <div class="swatch dark">
+      <div class="chip" style="background:#1A1F26"><span class="tag">SURFACE</span></div>
+      <div class="meta" style="background:#fff;color:#0B0F12">
+        <div class="name">Slate</div>
+        <div class="k">HEX</div><div class="v">#1A1F26</div>
+        <div class="k">RGB</div><div class="v">26 · 31 · 38</div>
+        <div class="k">OKLCH</div><div class="v">.24 .01 240</div>
+        <div class="k">PMS</div><div class="v">7547 C</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#F5F7FA;border-bottom:1px solid #E5E8EC"><span class="tag">PAPER</span></div>
+      <div class="meta" style="background:#fff;color:#0B0F12">
+        <div class="name">Off-White</div>
+        <div class="k">HEX</div><div class="v">#F5F7FA</div>
+        <div class="k">RGB</div><div class="v">245 · 247 · 250</div>
+        <div class="k">OKLCH</div><div class="v">.97 .005 240</div>
+        <div class="k">PMS</div><div class="v">Cool Gray 1 C</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="chip" style="background:#8B949E"><span class="tag">NEUTRAL</span></div>
+      <div class="meta" style="background:#fff;color:#0B0F12">
+        <div class="name">Steel</div>
+        <div class="k">HEX</div><div class="v">#8B949E</div>
+        <div class="k">RGB</div><div class="v">139 · 148 · 158</div>
+        <div class="k">OKLCH</div><div class="v">.65 .015 240</div>
+        <div class="k">PMS</div><div class="v">Cool Gray 7 C</div>
+      </div>
+    </div>
+    <div class="swatch dark">
+      <div class="chip" style="background:#3B82F6"><span class="tag">ACCENT</span></div>
+      <div class="meta" style="background:#fff;color:#0B0F12">
+        <div class="name">Cobalt Blue</div>
+        <div class="k">HEX</div><div class="v">#3B82F6</div>
+        <div class="k">RGB</div><div class="v">59 · 130 · 246</div>
+        <div class="k">OKLCH</div><div class="v">.65 .19 255</div>
+        <div class="k">PMS</div><div class="v">2727 C</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="grid" style="grid-template-columns:1.4fr 1fr;gap:48px">
+    <div>
+      <div class="label" style="color:var(--steel-2);margin-bottom:14px">Usage ratio</div>
+      <div class="ratio-bar">
+        <div style="background:#0B0F12;flex:55">55 · Graphite</div>
+        <div style="background:#1A1F26;flex:20">20 · Slate</div>
+        <div style="background:#F5F7FA;flex:13" class="light">13 · Off-White</div>
+        <div style="background:#00F0B5;flex:8" class="light">8 · Mint</div>
+        <div style="background:#8B949E;flex:3">3 · Steel</div>
+        <div style="background:#3B82F6;flex:1">1</div>
+      </div>
+      <p style="color:var(--steel);font-size:13px;margin-top:14px;line-height:1.55;max-width:60ch">Mint is reserved for live state, focus, and primary actions — never as a flat fill. Cobalt is reserved for links and informational badges. If a screen needs more than 8% mint, the screen is wrong, not the rule.</p>
+    </div>
+
+    <div>
+      <div class="label" style="color:var(--steel-2);margin-bottom:14px">Pairings &amp; contrast</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="padding:18px;background:#0B0F12;border:1px solid #1A1F26;border-radius:10px;color:#fff"><div style="font-family:var(--display);font-size:20px;font-weight:600">Aa</div><div style="font-family:var(--mono);font-size:10px;color:var(--steel);margin-top:6px">Graphite · White<br/>AAA · 18.6:1</div></div>
+        <div style="padding:18px;background:#0B0F12;border:1px solid #1A1F26;border-radius:10px;color:#00F0B5"><div style="font-family:var(--display);font-size:20px;font-weight:600">Aa</div><div style="font-family:var(--mono);font-size:10px;color:var(--steel);margin-top:6px">Graphite · Mint<br/>AAA · 13.2:1</div></div>
+        <div style="padding:18px;background:#F5F7FA;border:1px solid #E5E8EC;border-radius:10px;color:#0B0F12"><div style="font-family:var(--display);font-size:20px;font-weight:600">Aa</div><div style="font-family:var(--mono);font-size:10px;color:var(--steel);margin-top:6px">Off-White · Graphite<br/>AAA · 17.4:1</div></div>
+        <div style="padding:18px;background:#00F0B5;border:1px solid transparent;border-radius:10px;color:#0B0F12"><div style="font-family:var(--display);font-size:20px;font-weight:600">Aa</div><div style="font-family:var(--mono);font-size:10px;color:#0B0F12;margin-top:6px;opacity:.7">Mint · Graphite<br/>AAA · 12.1:1</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== TYPOGRAPHY ====================================================== -->
+<section class="page" id="type" data-screen-label="08 Typography">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 06 — Typography</div>
+      <h2 class="page-title">Three voices.<br/>No improvisation.</h2>
+    </div>
+    <div class="page-kicker">Space Grotesk for presence. Inter for clarity. JetBrains Mono for truth. Anything else dilutes the signal.</div>
+  </div>
+
+  <div class="type-card" style="margin-bottom:32px">
+    <div class="meta">
+      <div class="family">Space Grotesk</div>
+      <div class="role">Display · Wordmark</div>
+    </div>
+    <div class="specimen">Control <span style="color:var(--mint-2)">everything.</span></div>
+    <div class="alphabet">ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789 ·!?@&amp;</div>
+    <div class="type-spec">
+      <div>WEIGHTS · 400 · 500 · 600 · 700</div>
+      <div>TRACKING · −2% display · 0% body</div>
+      <div>USE · Wordmark · Display · H1–H3</div>
+      <div>LICENSE · OFL</div>
+    </div>
+  </div>
+
+  <div class="grid g-2" style="gap:32px">
+    <div class="type-card">
+      <div class="meta">
+        <div class="family">Inter</div>
+        <div class="role">Interface · Body</div>
+      </div>
+      <div class="specimen inter" style="font-size:84px">Build remotely.<br/>Ship&nbsp;confidently.</div>
+      <div class="alphabet inter">ABCDEFGHIJKLMN abcdefghijklmn 0123456789</div>
+      <div class="type-spec"><div>400 · 500 · 600 · 700</div><div>UI · H4 · Body · Labels</div></div>
+    </div>
+    <div class="type-card" style="background:var(--graphite);color:#fff;border-color:var(--line-dark)">
+      <div class="meta">
+        <div class="family" style="color:#fff">JetBrains Mono</div>
+        <div class="role" style="color:var(--mint)">Code · Data</div>
+      </div>
+      <div class="specimen mono" style="font-size:64px;color:#fff"><span class="prompt">&gt;_</span> operator@<br/>pocket-t ~ $<span class="caret" style="display:inline-block;width:14px;height:48px;background:var(--mint);vertical-align:-8px;margin-left:8px;animation:blink 1s steps(2) infinite"></span></div>
+      <div class="alphabet mono" style="color:var(--steel-2)">{ "host": "10.0.0.42", "status": "live" } &nbsp; → ← ⌘K $</div>
+      <div class="type-spec" style="border-color:var(--line-dark);color:var(--steel)"><div>400 · 500 · 600</div><div>Terminal · Hashes · Metadata · Kbd</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== TYPE SCALE ====================================================== -->
+<section class="page tint" id="scale" data-screen-label="09 Type Scale">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 07 — Type Scale</div>
+      <h2 class="page-title">A scale you can keep in your head.</h2>
+    </div>
+    <div class="page-kicker">A modular scale at 1.25× ratio, snapped to the 4px grid. Use the smallest size that does the job.</div>
+  </div>
+
+  <div style="background:#fff;border:1px solid var(--line);border-radius:20px;padding:32px 36px">
+    <div class="scale-row"><div class="name">Display / D1</div><div class="sample" style="font-size:96px;line-height:.95">Pocket-T</div><div class="specs">96 / 92 · −3% · 600</div></div>
+    <div class="scale-row"><div class="name">Display / D2</div><div class="sample" style="font-size:72px;line-height:.98">Your terminal</div><div class="specs">72 / 70 · −2.5% · 600</div></div>
+    <div class="scale-row"><div class="name">H1</div><div class="sample" style="font-size:48px;line-height:1.04">Control everything</div><div class="specs">48 / 50 · −2% · 600</div></div>
+    <div class="scale-row"><div class="name">H2</div><div class="sample" style="font-size:32px;line-height:1.1">Build remotely.</div><div class="specs">32 / 36 · −1.5% · 600</div></div>
+    <div class="scale-row"><div class="name">H3 / Inter</div><div class="sample inter" style="font-size:22px;line-height:1.25">Section heading</div><div class="specs">22 / 28 · −0.5% · 600</div></div>
+    <div class="scale-row"><div class="name">Body / L</div><div class="sample inter" style="font-size:17px;line-height:1.55;font-weight:400">A browser-based, mobile-first control layer for terminals and AI tools.</div><div class="specs">17 / 26 · 0% · 400</div></div>
+    <div class="scale-row"><div class="name">Body / M</div><div class="sample inter" style="font-size:15px;line-height:1.55;font-weight:400">Default UI body — readable at arm's length.</div><div class="specs">15 / 23 · 0% · 400</div></div>
+    <div class="scale-row"><div class="name">Caption / Mono</div><div class="sample" style="font-family:var(--mono);font-size:12px;line-height:1.5;letter-spacing:.04em">ssh · 10.0.0.42 · 24ms · OPERATOR-GRADE</div><div class="specs">12 / 18 · +4% · 500</div></div>
+  </div>
+</section>
+
+<!-- ====================================================== APP ICON ====================================================== -->
+<section class="page ink" id="icon" data-screen-label="10 App Icon">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 08 — App Icon</div>
+      <h2 class="page-title" style="color:#fff">A pocket, a prompt,<br/>a promise.</h2>
+    </div>
+    <div class="page-kicker" style="color:var(--steel-2)">The icon strips the signet to its essential gesture. It must work at 1024 px, 64 px, and 32 px without losing its silhouette.</div>
+  </div>
+
+  <div class="app-stack">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center">
+      <div class="icon-shell" style="border-radius:28%">
+        <svg width="55%" viewBox="0 0 200 200" fill="none">
+          <defs><linearGradient id="g3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#00F0B5"/><stop offset="1" stop-color="#00C99A"/></linearGradient></defs>
+          <path d="M40 38 H160 a8 8 0 0 1 8 8 V70 H32 V46 a8 8 0 0 1 8-8z" stroke="url(#g3)" stroke-width="8" fill="none"/>
+          <path d="M32 70 H168 V128 L100 168 L32 128 Z" stroke="url(#g3)" stroke-width="8" fill="none" stroke-linejoin="round"/>
+          <path d="M76 96 L96 110 L76 124" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M108 124 H132" stroke="#fff" stroke-width="10" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="icon-shell" style="border-radius:22%">
+        <svg width="55%" viewBox="0 0 200 200" fill="none">
+          <path d="M40 38 H160 a8 8 0 0 1 8 8 V70 H32 V46 a8 8 0 0 1 8-8z" stroke="url(#g3)" stroke-width="8" fill="none"/>
+          <path d="M32 70 H168 V128 L100 168 L32 128 Z" stroke="url(#g3)" stroke-width="8" fill="none" stroke-linejoin="round"/>
+          <path d="M76 96 L96 110 L76 124" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M108 124 H132" stroke="#fff" stroke-width="10" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <div>
+      <div class="label" style="color:var(--steel-2);margin-bottom:16px">Platform variants</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:14px;font-size:14px;color:var(--steel-2)">
+        <li style="display:flex;justify-content:space-between;border-bottom:1px solid #1A1F26;padding-bottom:14px"><span>iOS · App Icon</span><span style="font-family:var(--mono);font-size:12px">1024 × 1024 · squircle</span></li>
+        <li style="display:flex;justify-content:space-between;border-bottom:1px solid #1A1F26;padding-bottom:14px"><span>iPadOS · App Icon</span><span style="font-family:var(--mono);font-size:12px">1024 × 1024 · squircle</span></li>
+        <li style="display:flex;justify-content:space-between;border-bottom:1px solid #1A1F26;padding-bottom:14px"><span>macOS · App Icon</span><span style="font-family:var(--mono);font-size:12px">1024 × 1024 · squircle</span></li>
+        <li style="display:flex;justify-content:space-between;border-bottom:1px solid #1A1F26;padding-bottom:14px"><span>Android · Adaptive</span><span style="font-family:var(--mono);font-size:12px">432 × 432 + safe zone</span></li>
+        <li style="display:flex;justify-content:space-between;border-bottom:1px solid #1A1F26;padding-bottom:14px"><span>Web · Favicon</span><span style="font-family:var(--mono);font-size:12px">32 · 64 · 192 · 512</span></li>
+        <li style="display:flex;justify-content:space-between"><span>PWA · Maskable</span><span style="font-family:var(--mono);font-size:12px">512 × 512 · 20% safe</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="icon-sizes" style="justify-content:space-between">
+    <div class="i"><div class="icon-shell" style="width:104px;border-radius:24%"><svg width="55%" viewBox="0 0 200 200" fill="none"><path d="M40 38 H160 a8 8 0 0 1 8 8 V70 H32 V46 a8 8 0 0 1 8-8z" stroke="url(#g3)" stroke-width="9" fill="none"/><path d="M32 70 H168 V128 L100 168 L32 128 Z" stroke="url(#g3)" stroke-width="9" fill="none" stroke-linejoin="round"/><path d="M76 96 L96 110 L76 124" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/><path d="M108 124 H132" stroke="#fff" stroke-width="11" stroke-linecap="round"/></svg></div><div class="label" style="color:var(--steel-2)">104 px</div></div>
+    <div class="i"><div class="icon-shell" style="width:72px;border-radius:24%"><svg width="55%" viewBox="0 0 200 200" fill="none"><path d="M40 38 H160 a8 8 0 0 1 8 8 V70 H32 V46 a8 8 0 0 1 8-8z" stroke="url(#g3)" stroke-width="11" fill="none"/><path d="M32 70 H168 V128 L100 168 L32 128 Z" stroke="url(#g3)" stroke-width="11" fill="none" stroke-linejoin="round"/><path d="M76 96 L96 110 L76 124" stroke="#fff" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="M108 124 H132" stroke="#fff" stroke-width="13" stroke-linecap="round"/></svg></div><div class="label" style="color:var(--steel-2)">72 px</div></div>
+    <div class="i"><div class="icon-shell" style="width:48px;border-radius:22%"><svg width="60%" viewBox="0 0 200 200" fill="none"><path d="M40 38 H160 a8 8 0 0 1 8 8 V70 H32 V46 a8 8 0 0 1 8-8z" stroke="url(#g3)" stroke-width="14" fill="none"/><path d="M32 70 H168 V128 L100 168 L32 128 Z" stroke="url(#g3)" stroke-width="14" fill="none" stroke-linejoin="round"/></svg></div><div class="label" style="color:var(--steel-2)">48 px</div></div>
+    <div class="i"><div class="icon-shell" style="width:32px;border-radius:22%"><svg width="65%" viewBox="0 0 200 200" fill="none"><path d="M32 70 H168 V128 L100 168 L32 128 Z" stroke="url(#g3)" stroke-width="18" fill="none" stroke-linejoin="round"/></svg></div><div class="label" style="color:var(--steel-2)">32 px</div></div>
+    <div class="i"><div class="icon-shell" style="width:20px;border-radius:22%"><svg width="65%" viewBox="0 0 200 200" fill="none"><path d="M32 70 H168 V128 L100 168 L32 128 Z" stroke="url(#g3)" stroke-width="24" fill="none" stroke-linejoin="round"/></svg></div><div class="label" style="color:var(--steel-2)">20 px</div></div>
+    <div class="i" style="margin-left:auto;align-items:flex-end">
+      <div class="label" style="color:var(--steel-2);text-align:right">At &lt;24 px the prompt drops away.<br/>The pocket silhouette carries the brand.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== ICONOGRAPHY / VISUAL LANGUAGE ====================================================== -->
+<section class="page" id="iconography" data-screen-label="11 Iconography">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 09 — Visual Language</div>
+      <h2 class="page-title">Line-first. Geometric.<br/>Always 1.75 px on a 24-grid.</h2>
+    </div>
+    <div class="page-kicker">Six conceptual marks form Pocket-T's visual vocabulary. Use sparingly — one per screen, never as decoration.</div>
+  </div>
+
+  <div class="grid g-6">
+    <div class="icon-card dark">
+      <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#00F0B5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="12" width="48" height="40" rx="3"/>
+        <path d="M8 22 H56" stroke="#1A1F26"/>
+        <circle cx="14" cy="17" r="1.2" fill="#00F0B5"/>
+        <circle cx="18" cy="17" r="1.2" fill="#00F0B5"/>
+        <circle cx="22" cy="17" r="1.2" fill="#00F0B5"/>
+        <path d="M16 36 L22 41 L16 46" stroke="#F5F7FA"/>
+        <path d="M26 46 H36" stroke="#F5F7FA"/>
+      </svg>
+      <div class="nm">Terminal DNA</div>
+    </div>
+    <div class="icon-card">
+      <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#0B0F12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="32" cy="32" r="22"/>
+        <path d="M10 32 H54"/>
+        <path d="M32 10 C20 22 20 42 32 54 C44 42 44 22 32 10"/>
+      </svg>
+      <div class="nm">Anywhere Access</div>
+    </div>
+    <div class="icon-card">
+      <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#0B0F12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="10" y="14" width="44" height="10" rx="2"/>
+        <rect x="10" y="28" width="44" height="10" rx="2"/>
+        <rect x="10" y="42" width="44" height="10" rx="2"/>
+        <circle cx="16" cy="19" r="1.4" fill="#00C99A" stroke="none"/>
+        <circle cx="16" cy="33" r="1.4" fill="#00C99A" stroke="none"/>
+        <circle cx="16" cy="47" r="1.4" fill="#00C99A" stroke="none"/>
+      </svg>
+      <div class="nm">Servers / Hosts</div>
+    </div>
+    <div class="icon-card">
+      <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#0B0F12" stroke-width="2" stroke-linecap="round">
+        <circle cx="32" cy="40" r="3" fill="#00C99A" stroke="none"/>
+        <circle cx="32" cy="40" r="9"/>
+        <circle cx="32" cy="40" r="16" opacity=".5"/>
+        <circle cx="32" cy="40" r="23" opacity=".25"/>
+      </svg>
+      <div class="nm">Secure Signal</div>
+    </div>
+    <div class="icon-card">
+      <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#0B0F12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="10" y="14" width="44" height="36" rx="3"/>
+        <path d="M10 22 H54"/>
+        <circle cx="15" cy="18" r="1.2" fill="#FF5F57" stroke="none"/>
+        <circle cx="19" cy="18" r="1.2" fill="#FEBC2E" stroke="none"/>
+        <circle cx="23" cy="18" r="1.2" fill="#28C840" stroke="none"/>
+        <rect x="18" y="30" width="28" height="12" rx="6"/>
+        <path d="M24 36 H40" stroke="#8B949E"/>
+      </svg>
+      <div class="nm">Browser Native</div>
+    </div>
+    <div class="icon-card">
+      <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#0B0F12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 34 L26 26 L36 36 L50 22" />
+        <circle cx="14" cy="34" r="3" fill="#00C99A" stroke="none"/>
+        <circle cx="26" cy="26" r="3" fill="#3B82F6" stroke="none"/>
+        <circle cx="36" cy="36" r="3" fill="#8B949E" stroke="none"/>
+        <circle cx="50" cy="22" r="3" fill="#00C99A" stroke="none"/>
+      </svg>
+      <div class="nm">Connected</div>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:48px;align-items:center">
+    <div>
+      <div class="label" style="margin-bottom:14px">Keyboard-first</div>
+      <p style="font-size:14px;line-height:1.6;color:#3C4651;max-width:48ch;margin-bottom:24px">Power users move at the speed of their fingertips. We surface keys, shortcuts, and the prompt itself as first-class visual citizens.</p>
+      <div style="display:flex;gap:12px;align-items:center">
+        <span class="kbd">⌘</span>
+        <span class="kbd">K</span>
+        <span class="kbd" style="color:var(--mint);min-width:auto;padding:8px 14px"><span class="prompt">&gt;_</span></span>
+        <span class="kbd">↵</span>
+        <span class="kbd">⇧</span>
+        <span class="kbd">⌃</span>
+      </div>
+    </div>
+    <div>
+      <div class="label" style="margin-bottom:14px">Anywhere Access</div>
+      <div style="background:#0B0F12;border-radius:16px;padding:32px">
+        <div class="map" id="map"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== UI / PRODUCT ====================================================== -->
+<section class="page ink" id="ui" data-screen-label="12 Product UI">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 10 — Product Surface</div>
+      <h2 class="page-title" style="color:#fff">The brand, in motion.</h2>
+    </div>
+    <div class="page-kicker" style="color:var(--steel-2)">The product itself is our largest brand surface. Every interaction reinforces the same feeling: precise, fast, operator-grade.</div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:auto 1fr;gap:64px;align-items:center">
+
+    <div class="device">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="status"><span>9:41</span><span>● ▮▮ ▮</span></div>
+
+        <div class="app-head">
+          <div>
+            <div class="tt">Pocket-T</div>
+            <div class="ts"><span class="live"></span> Connected</div>
+          </div>
+          <div class="menu"><span></span><span></span><span></span></div>
+        </div>
+
+        <div class="search">
+          <span>Search hosts or jump to…</span>
+          <span class="kbd">⌘K</span>
+        </div>
+
+        <div class="section-title">Recent connections</div>
+
+        <div class="row">
+          <div class="ic">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00F0B5" stroke-width="2"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10 H20"/></svg>
+          </div>
+          <div><div class="nm">production-server</div><div class="sub">ssh · 10.0.0.23</div></div>
+          <div class="ch">›</div>
+        </div>
+        <div class="row">
+          <div class="ic">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#F5F7FA"><path d="M16 1c.5 2-1 4-3 4-1-2 1-4 3-4zM20 17c-1 2-2 4-4 4-1 0-2-1-4-1s-3 1-4 1c-2 0-4-3-5-6-1-4 1-8 4-8 1 0 2 1 4 1s3-1 4-1c2 0 4 1 5 4-3 2-3 5 0 6z"/></svg>
+          </div>
+          <div><div class="nm">mac-mini-studio</div><div class="sub">ssh · 10.0.0.42</div></div>
+          <div class="live"></div>
+        </div>
+        <div class="row">
+          <div class="ic">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2"><path d="M4 8 L12 4 L20 8 L12 12 Z"/><path d="M4 8 V16 L12 20 L20 16 V8"/><path d="M12 12 V20"/></svg>
+          </div>
+          <div><div class="nm">build-runner-01</div><div class="sub">ssh · 10.0.0.57</div></div>
+          <div class="ch">›</div>
+        </div>
+        <div class="row">
+          <div class="ic"><span style="font-family:var(--mono);color:#00F0B5;font-size:11px">&gt;_</span></div>
+          <div><div class="nm">claude CLI</div><div class="sub">stdio</div></div>
+          <div class="live"></div>
+        </div>
+        <div class="row">
+          <div class="ic"><span style="font-family:var(--mono);color:#00F0B5;font-size:11px">&gt;_</span></div>
+          <div><div class="nm">codex</div><div class="sub">stdio</div></div>
+          <div class="live"></div>
+        </div>
+
+        <div class="tabbar">
+          <div class="tb active">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00F0B5" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+            Hosts
+          </div>
+          <div class="tb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B949E" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/></svg>Sessions</div>
+          <div class="tb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B949E" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8 V13 M12 16 V16.5"/></svg>Snippets</div>
+          <div class="tb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B949E" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1 V4 M12 20 V23 M1 12 H4 M20 12 H23 M4 4 L6 6 M18 18 L20 20 M4 20 L6 18 M18 6 L20 4"/></svg>Settings</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="terminal" style="margin-bottom:32px">
+        <div class="bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="ti">operator@pocket-t — ~/projects/edge</span></div>
+        <div class="body">
+          <span class="ln"><span class="cm"># Pocket-T is the calm in the loop.</span></span>
+          <span class="ln"><span class="pp">operator@pocket-t</span> ~ $ ssh prod</span>
+          <span class="ln"><span class="ok">✓</span> session resumed · 24ms · keys verified</span>
+          <span class="ln"><span class="pp">operator@prod</span> ~ $ deploy --safe</span>
+          <span class="ln"><span class="ar">→</span> ship 1f3a2c · 6 hosts · 12.4s</span>
+          <span class="ln"><span class="ok">✓</span> done.<span class="caret"></span></span>
+        </div>
+      </div>
+
+      <div class="grid g-2" style="gap:24px">
+        <div style="background:#0F141A;border:1px solid #1A1F26;border-radius:14px;padding:22px">
+          <div class="label" style="color:var(--steel-2);margin-bottom:12px">Spacing</div>
+          <div style="font-family:var(--mono);font-size:13px;color:#fff;line-height:2">4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--steel);margin-top:6px">All UI snaps to the 4 px grid.</div>
+        </div>
+        <div style="background:#0F141A;border:1px solid #1A1F26;border-radius:14px;padding:22px">
+          <div class="label" style="color:var(--steel-2);margin-bottom:12px">Radii</div>
+          <div style="display:flex;align-items:flex-end;gap:10px">
+            <div style="width:36px;height:36px;background:#1A1F26;border-radius:6px"></div>
+            <div style="width:36px;height:36px;background:#1A1F26;border-radius:10px"></div>
+            <div style="width:36px;height:36px;background:#1A1F26;border-radius:14px"></div>
+            <div style="width:36px;height:36px;background:#1A1F26;border-radius:20px"></div>
+            <div style="width:36px;height:36px;background:#1A1F26;border-radius:50%"></div>
+          </div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--steel);margin-top:10px">6 · 10 · 14 · 20 · full</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ====================================================== VOICE / TONE ====================================================== -->
+<section class="page" id="voice" data-screen-label="13 Voice">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 11 — Voice &amp; Tone</div>
+      <h2 class="page-title">How Pocket-T sounds.</h2>
+    </div>
+    <div class="page-kicker">We talk like a senior engineer who respects your time. Direct, precise, never patronizing. Confidence without volume.</div>
+  </div>
+
+  <div class="vt-grid">
+    <div class="vt-col yes">
+      <h3><span class="dot"></span>We say</h3>
+      <div class="vt-line"><span class="tag">Tagline</span>Your terminal, anywhere.</div>
+      <div class="vt-line"><span class="tag">Hero</span>Control everything. From anywhere.</div>
+      <div class="vt-line"><span class="tag">Onboarding</span>Connect a host. We'll handle the rest.</div>
+      <div class="vt-line"><span class="tag">Empty state</span>No sessions yet. Try ⌘K to jump to a host.</div>
+      <div class="vt-line"><span class="tag">Success</span>Deployed. 6 hosts in 12.4 s.</div>
+      <div class="vt-line"><span class="tag">Error</span>Lost the connection at 10.0.0.42. Retrying.</div>
+    </div>
+    <div class="vt-col no">
+      <h3><span class="dot"></span>We don't say</h3>
+      <div class="vt-line"><span class="tag">Tagline</span>The world's #1 AI-powered terminal experience.</div>
+      <div class="vt-line"><span class="tag">Hero</span>Unleash the power of remote computing!</div>
+      <div class="vt-line"><span class="tag">Onboarding</span>Welcome aboard! Let's get you set up. 🚀</div>
+      <div class="vt-line"><span class="tag">Empty state</span>Looks like there's nothing here yet… 👀</div>
+      <div class="vt-line"><span class="tag">Success</span>🎉 Awesome! Deploy succeeded!</div>
+      <div class="vt-line"><span class="tag">Error</span>Oops! Something went wrong. 😢</div>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="grid g-4">
+    <div>
+      <div class="label" style="margin-bottom:10px">Direct</div>
+      <p style="font-size:13.5px;line-height:1.55;color:#3C4651">Lead with the verb. Cut the throat-clearing. Engineers don't have time for "We are excited to announce…"</p>
+    </div>
+    <div>
+      <div class="label" style="margin-bottom:10px">Precise</div>
+      <p style="font-size:13.5px;line-height:1.55;color:#3C4651">Real numbers, real names, real units. "24 ms" beats "fast." "12 hosts" beats "many."</p>
+    </div>
+    <div>
+      <div class="label" style="margin-bottom:10px">Calm</div>
+      <p style="font-size:13.5px;line-height:1.55;color:#3C4651">No exclamation marks in product. No emojis in chrome. No surprises in error states.</p>
+    </div>
+    <div>
+      <div class="label" style="margin-bottom:10px">Operator-grade</div>
+      <p style="font-size:13.5px;line-height:1.55;color:#3C4651">We assume our user is smart, busy, and pays attention. We earn their trust by being worth their attention.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== MOTION / IMAGERY ====================================================== -->
+<section class="page tint" id="motion" data-screen-label="14 Motion">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">§ 12 — Motion &amp; Imagery</div>
+      <h2 class="page-title">Movement with intent.</h2>
+    </div>
+    <div class="page-kicker">Motion confirms state, never decorates. Imagery favors device, surface, and operator hand over abstract metaphors.</div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:32px">
+
+    <div style="background:#fff;border:1px solid var(--line);border-radius:20px;padding:32px">
+      <div class="label" style="margin-bottom:18px">Motion principles</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:18px;font-size:14.5px;line-height:1.5">
+        <li style="display:grid;grid-template-columns:80px 1fr;gap:18px;align-items:baseline">
+          <span style="font-family:var(--mono);color:var(--mint-2);font-size:12px;letter-spacing:.04em">120 ms</span>
+          <span>Hover &amp; focus. The smallest acknowledgements.</span>
+        </li>
+        <li style="display:grid;grid-template-columns:80px 1fr;gap:18px;align-items:baseline">
+          <span style="font-family:var(--mono);color:var(--mint-2);font-size:12px;letter-spacing:.04em">180 ms</span>
+          <span>Standard transitions. Sheets, drawers, popovers.</span>
+        </li>
+        <li style="display:grid;grid-template-columns:80px 1fr;gap:18px;align-items:baseline">
+          <span style="font-family:var(--mono);color:var(--mint-2);font-size:12px;letter-spacing:.04em">280 ms</span>
+          <span>Page-level. Route changes, splash dismissal.</span>
+        </li>
+        <li style="display:grid;grid-template-columns:80px 1fr;gap:18px;align-items:baseline">
+          <span style="font-family:var(--mono);color:var(--mint-2);font-size:12px;letter-spacing:.04em">EASE</span>
+          <span>cubic-bezier(.2, .8, .2, 1) — the only curve we ship.</span>
+        </li>
+        <li style="display:grid;grid-template-columns:80px 1fr;gap:18px;align-items:baseline">
+          <span style="font-family:var(--mono);color:var(--mint-2);font-size:12px;letter-spacing:.04em">PULSE</span>
+          <span>Live state — 1.6 s breath, 12% scale, mint glow.</span>
+        </li>
+      </ul>
+    </div>
+
+    <div style="background:var(--graphite);border:1px solid var(--line-dark);border-radius:20px;padding:32px;color:#fff">
+      <div class="label" style="color:var(--steel-2);margin-bottom:18px">Live state pulse</div>
+      <div style="display:flex;gap:32px;align-items:center;justify-content:center;height:160px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="width:18px;height:18px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 0 rgba(0,240,181,.45);animation:pulse 1.6s ease-out infinite"></div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--steel-2)">CONNECTED</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="width:18px;height:18px;border-radius:50%;background:#FEBC2E;box-shadow:0 0 0 4px rgba(254,188,46,.18)"></div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--steel-2)">SYNCING</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <div style="width:18px;height:18px;border-radius:50%;background:#8B949E"></div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--steel-2)">IDLE</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#fff;border:1px solid var(--line);border-radius:20px;padding:32px">
+      <div class="label" style="margin-bottom:14px">Imagery — yes</div>
+      <ul style="list-style:none;color:#3C4651;font-size:14px;line-height:1.8">
+        <li>· Hands on device, top-down, neutral background</li>
+        <li>· Single device shots, Off-White or Graphite ground</li>
+        <li>· Real UI in real situations — café, train, desk</li>
+        <li>· Wide letterboxing, generous negative space</li>
+        <li>· Color story: graphite, mint accent, daylight</li>
+      </ul>
+    </div>
+
+    <div style="background:#fff;border:1px solid var(--line);border-radius:20px;padding:32px">
+      <div class="label" style="margin-bottom:14px">Imagery — no</div>
+      <ul style="list-style:none;color:#3C4651;font-size:14px;line-height:1.8">
+        <li>· Stock "developer at computer" photography</li>
+        <li>· Saturated gradients, glowing 3D abstracts</li>
+        <li>· AI-generated humans or skin</li>
+        <li>· Cluttered desk scenes, busy backgrounds</li>
+        <li>· Heroes of a server rack or stock cityscape</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<!-- ====================================================== FOOTER ====================================================== -->
+<section class="foot" data-screen-label="15 Footer">
+  <div class="row">
+    <div>
+      <div class="word"><span class="prompt">&gt;_</span>Pocket-T</div>
+      <p class="copy">A browser-based, mobile-first control layer for terminals, remote machines, and AI command tools. Built for operators who move fast and demand precision.</p>
+    </div>
+    <div>
+      <h4>Brand</h4>
+      <ul>
+        <li>brand@pocket-t.app</li>
+        <li>Master files · /brand</li>
+        <li>Logo kit · /brand/logo</li>
+        <li>Press kit · /brand/press</li>
+      </ul>
+    </div>
+    <div>
+      <h4>System</h4>
+      <ul>
+        <li>Design tokens</li>
+        <li>Component library</li>
+        <li>Motion specs</li>
+        <li>Icon set</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Document</h4>
+      <ul>
+        <li>v1.0 · 22 May 2026</li>
+        <li>Owners · Brand, Design, Product</li>
+        <li>Next review · Q3 2026</li>
+        <li>Internal + partner use</li>
+      </ul>
+    </div>
+  </div>
+  <div class="meta">
+    <span>POCKET-T BRAND GUIDELINES · V1.0</span>
+    <span>BUILT FOR CONTROL · DESIGNED FOR ANYWHERE</span>
+    <span>© 2026 POCKET-T</span>
+  </div>
+</section>
+
+<style>
+@keyframes pulse{
+  0%   { box-shadow: 0 0 0 0 rgba(0,240,181,.55); transform:scale(1) }
+  70%  { box-shadow: 0 0 0 14px rgba(0,240,181,0); transform:scale(1.08) }
+  100% { box-shadow: 0 0 0 0 rgba(0,240,181,0); transform:scale(1) }
+}
+@keyframes blink{
+  to { opacity: 0 }
+}
+</style>
+
+<script>
+// Build the dotted world map
+(function(){
+  const map = document.getElementById('map');
+  if(!map) return;
+  // Rough world-map dot pattern (36 cols × 14 rows). 1 = dot, 2 = mint, 3 = blue
+  const m = [
+    "000001111100000000000000000000000000",
+    "000111223111110001111000000001100000",
+    "001113313221110011311111110011111000",
+    "011111111111111111111121111111111100",
+    "011111111111111111111111111111110000",
+    "001111111111111111211111121111100000",
+    "000011111111111121121311111111200000",
+    "000011111111111111111111121111100000",
+    "000011111111111111111111111121100000",
+    "000001111111111111111111111111000000",
+    "000001111111111111121111111110000000",
+    "000000111111111111111111121100000000",
+    "000000011111111111111121110000000000",
+    "000000000111111111111111100000000000",
+  ];
+  let html = "";
+  for(const row of m){
+    for(const c of row){
+      if(c === '0') html += '<i style="opacity:0"></i>';
+      else if(c === '2') html += '<i class="on"></i>';
+      else if(c === '3') html += '<i class="b"></i>';
+      else html += '<i></i>';
+    }
+  }
+  map.innerHTML = html;
+})();
+</script>
+
+</body>
+</html>
