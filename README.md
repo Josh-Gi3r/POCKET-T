@@ -113,7 +113,7 @@ Anything not matching a `pocket` subcommand is passed through to the underlying 
 - 💰 **Live cost meter** — Cumulative USD per session in a toolbar pill. Sonnet, Opus, Haiku, GPT-5, Grok 4. Exact, from token counts, not estimated.
 - ✋ **Tool-call approval from the phone** — Claude PreToolUse hooks surface as approve / deny cards with Web Notification push.
 - 📱 **Native phone UX** — Slide-out sidebar drawer, touch keyboard row (Esc, Ctrl, Tab, arrows, brackets), spawn-from-phone, FAB shortcut, safe-area-inset support for notched iPhones.
-- 🎬 **Session recording** — Every session writes a standard `asciinema v2` cast file. Replay with `pt-registry replay <id>` or any asciinema player.
+- 🎬 **Session recording** — Every session writes a standard `asciinema v2` cast file. Replay with `pocket replay <id>` or any asciinema player.
 - 🎨 **7 built-in skins** — Operator (default), Halloween, Nokia, Christmas, Cyberpunk, Forest, Paper. New skins are pure CSS-variable blocks — ship one in a PR.
 - 🔄 **Detach & resume** — A 60-second grace window means a transient `pt` restart doesn't drop the session. Reconnect with the same session ID and history continues.
 - ⚡ **Zero configuration** — `--tunnel` gives a public URL via Cloudflare Quick Tunnel. No signup, no card, no relay to deploy.

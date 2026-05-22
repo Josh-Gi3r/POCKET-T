@@ -190,7 +190,7 @@ If any of these fail, see Common failures below.
 | `cargo build` fails | Rust toolchain too old. `rustup update stable`. |
 | Session never shows in browser | Daemon not running, or the browser is on the wrong URL. Re-print the URL with `Ctrl-L` in the daemon's terminal. |
 | Cloudflare URL works on Wi-Fi, not LTE | Edge DNS hiccup. Wait 60 seconds or restart the daemon for a fresh URL. |
-| `pt-registry: command not found` | You ran the daemon command from outside the repo. `cd` back into `POCKET-T` first, or use the full pnpm filter. |
+| `pocket: command not found` | `install.sh` never finished, or `/usr/local/bin` is not on `$PATH`. Re-run `bash install.sh` from the repo root. |
 
 ---
 
