@@ -1560,7 +1560,7 @@
     <pre class="code" style="margin-top:32px"><span class="cm"># clone, install, expose to your phone — under two minutes</span>
 <span class="kw">git</span> clone https://github.com/Josh-Gi3r/POCKET-T
 <span class="kw">cd</span> pocket-t &amp;&amp; <span class="kw">bash</span> install.sh
-<span class="kw">pnpm</span> --filter @pocket-t/daemon pt-registry serve <span class="st">--tunnel</span>
+<span class="kw">pocket</span>
 <span class="cm"># scan the QR code, open the URL on your phone, done</span></pre>
   </div>
 </section>
@@ -1769,8 +1769,8 @@
 <span class="cm"># 2 — point Terminal.app's shell at pt</span>
 <span class="cm">#     Settings → Profiles → Shell → /usr/local/bin/pt</span>
 
-<span class="cm"># 3 — start the daemon with a tunnel for your phone</span>
-<span class="kw">pnpm</span> --filter @pocket-t/daemon pt-registry serve <span class="st">--tunnel</span>
+<span class="cm"># 3 — open any non-pt terminal and run:</span>
+<span class="kw">pocket</span>
 
 <span class="cm"># 4 — scan the QR code that prints in your terminal</span>
 <span class="cm">#     opens https://random-words.trycloudflare.com</span></pre>

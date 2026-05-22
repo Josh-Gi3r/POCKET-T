@@ -116,11 +116,13 @@ see the change happen and learn how to undo it later.
 
 ## 4. Start the daemon
 
-From the repo root, in a terminal **outside** the new pt profile (or in a
-plain `/bin/zsh` invocation), run:
+`install.sh` installs a global `pocket` launcher in `/usr/local/bin/`.
+You do **not** need to be in the repo directory to run it — but the
+terminal you start it from must **not** be going through `pt` (open a
+fresh `/bin/zsh`, or any non-`pt` terminal profile).
 
 ```bash
-pnpm --filter @pocket-t/daemon pt-registry serve --tunnel
+pocket
 ```
 
 The daemon will print:
@@ -138,10 +140,22 @@ daemon is running. Do not share it in screenshots, chats, or public posts.
 LAN-only mode (no public tunnel, only reachable on the same Wi-Fi):
 
 ```bash
-pnpm --filter @pocket-t/daemon pt-registry serve
+pocket serve
 ```
 
 This prints a `http://<mac-lan-ip>:<port>` URL instead.
+
+Other useful subcommands:
+
+```bash
+pocket list           # list active sessions
+pocket kill <id>      # kill a session
+pocket replay <id>    # replay a recorded session
+pocket pending        # list pending tool-call approvals
+```
+
+Anything you pass that is not the bare `pocket` command is forwarded
+verbatim to the underlying `pt-registry` CLI.
 
 To run the daemon detached at login, the human can use the launchd plist
 in `packages/daemon/launchd/` — point them at it but do not install it

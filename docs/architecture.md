@@ -250,11 +250,12 @@ public relay. Two flavours:
 ### Default: Cloudflare Quick Tunnel
 
 ```
-pt-registry serve --tunnel
+pocket
 ```
 
-Spawns `cloudflared tunnel --url http://localhost:7700` as a child
-process, captures the printed `*.trycloudflare.com` URL, writes it to
+Equivalent to `pt-registry serve --tunnel`. Spawns
+`cloudflared tunnel --url http://localhost:7700` as a child process,
+captures the printed `*.trycloudflare.com` URL, writes it to
 `~/.pocket-t/tunnel-url` and renders a QR code in the terminal. The
 URL is unauthenticated but unguessable; restart-resistant by paying
 once for a Cloudflare account + a named tunnel.
@@ -263,7 +264,7 @@ once for a Cloudflare account + a named tunnel.
 
 ```
 docker compose -f infra/docker-compose.yml up -d
-pt-registry serve --relay wss://your-domain/ws/pt?role=daemon&t=<token>
+pocket serve --relay wss://your-domain/ws/pt?role=daemon&t=<token>
 ```
 
 The hub is a 580-line file. It accepts two roles on
