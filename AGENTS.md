@@ -130,6 +130,11 @@ The daemon will print:
 
 Capture the URL — that is what the human opens on their phone.
 
+**Security note (must tell the human):** Treat the tunnel URL as a password.
+Anyone with that URL can access and control the mirrored terminal while the
+daemon is running. Do not share it in screenshots, chats, or public posts.
+
+
 LAN-only mode (no public tunnel, only reachable on the same Wi-Fi):
 
 ```bash
