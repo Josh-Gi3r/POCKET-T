@@ -1798,7 +1798,11 @@
         <div class="note-k">Prerequisites</div>
         <div class="note-v"><span>Rust toolchain · Node 22+ · pnpm. The installer checks for them and installs <code class="inline-code">cloudflared</code> via Homebrew.</span></div>
       </div>
-      <div class="note">
+      <div class="note trust">
+        <div class="note-k">Trust model</div>
+        <div class="note-v"><span><b>Tunnel URL = password.</b> Anyone with a live <code class="inline-code">*.trycloudflare.com</code> URL can control your terminal. Also, v0.1 transport is TLS-in-transit only (no end-to-end encryption), so tunnel/relay operators are trusted intermediaries.</span></div>
+      </div>
+<div class="note">
         <div class="note-k">Three modes</div>
         <div class="note-v note-modes">
           <span class="mode"><code class="inline-code mint">--tunnel</code><span class="mode-d">phone-from-anywhere (default)</span></span>
@@ -1832,7 +1836,7 @@
       </details>
       <details>
         <summary><span>Is it secure if the relay is public?</span><span class="chev">▾</span></summary>
-        <div class="body">The relay faces the internet, so it requires authentication — that's the lock on the door. Your phone, your account and your daemon are bound together; a stranger who finds the URL gets nothing. Self-host it and the relay is entirely yours.</div>
+        <div class="body">For the default Quick Tunnel flow, treat the URL like a password: anyone with the live URL can access your session. v0.1 protects transport with TLS, but does not provide end-to-end encryption. If you need stricter controls, use Cloudflare Access or self-host the relay behind your own auth boundary.</div>
       </details>
       <details>
         <summary><span>Can I see how much a Claude session is costing me?</span><span class="chev">▾</span></summary>

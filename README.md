@@ -262,10 +262,16 @@ xbar / SwiftBar widget at [`packages/daemon/scripts/pt.10s.sh`](packages/daemon/
 ## Security
 
 - The daemon binds `127.0.0.1` only by default. Cross-network access requires either a tunnel or a self-hosted relay, both over outbound connections.
-- Cloudflare Quick Tunnel URLs are unauthenticated but unguessable (random subdomain). For higher assurance, use a named tunnel with Cloudflare Access (free for personal use) or self-host the ws-v3 hub with a long shared token.
+- **Treat the tunnel URL as a password.** Anyone with a live `https://<sub>.trycloudflare.com` URL can view and control your terminal session. Do not paste it in screenshots, streams, chat threads, bug reports, or public logs.
+- Cloudflare Quick Tunnel URLs are unauthenticated by default in v0.1. For stronger controls, use a named tunnel with Cloudflare Access (free for personal use) or self-host the ws-v3 hub with your own auth boundary.
 - The self-hosted relay matches a shared token string between daemon and browser. Tokens are pass-through — Pocket-T does not run an identity service.
-- TLS terminates at the tunnel / relay edge. There is no end-to-end encryption between the daemon and the browser. If that's not acceptable, self-host the relay on infrastructure you control.
+- TLS protects transport, but there is **no end-to-end encryption** between daemon and browser in v0.1. Tunnel/relay operators can technically read terminal bytes. If that trust model is not acceptable, self-host the relay on infrastructure you control.
 - All session traffic logs are local (`~/.pocket-t/recordings/`) — nothing is uploaded by the daemon.
+
+- Hook approval fallback is configurable with `POCKET_T_HOOK_FAILSAFE`:
+  - `approve` (default): avoid hanging unattended sessions when no browser listener is available.
+  - `deny`: fail closed when no listener is available (recommended for unattended Macs).
+  - `passthrough`: disable the local hook server entirely.
 
 Report security issues privately rather than opening a public issue.
 
