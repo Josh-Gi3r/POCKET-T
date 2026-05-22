@@ -86,11 +86,25 @@ Every new window on that profile is automatically a Pocket-T session — no wrap
 
 ### 3. Start the daemon
 
+Open any terminal that is **not** going through `pt` (e.g. open a fresh `/bin/zsh`, or any non-`pt` profile) and run:
+
 ```bash
-pnpm --filter @pocket-t/daemon pt-registry serve --tunnel
+pocket
 ```
 
 A public HTTPS URL + QR code print in the terminal. Scan it on your phone — every Terminal.app window you open from now on appears in the browser, live.
+
+Other commands:
+
+```bash
+pocket serve              # LAN-only, no tunnel
+pocket list               # list active sessions
+pocket kill <session-id>  # kill a session
+pocket replay <id>        # replay a recorded session
+pocket pending            # list pending tool-call approvals
+```
+
+Anything not matching a `pocket` subcommand is passed through to the underlying `pt-registry` CLI.
 
 ## Features
 
@@ -147,7 +161,7 @@ Full design: [`docs/architecture.md`](docs/architecture.md).
 Free, no signup, no card. Starts in seconds.
 
 ```bash
-pt-registry serve --tunnel
+pocket
 ```
 
 A `*.trycloudflare.com` URL prints with a QR code. URL changes on each restart.
@@ -169,7 +183,7 @@ Docker on any VPS, or Fly.io free tier.
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d
-pt-registry serve --relay wss://your-domain/ws/pt?role=daemon&t=<token>
+pocket serve --relay wss://your-domain/ws/pt?role=daemon&t=<token>
 ```
 
 Full guide: [`docs/self-hosting.md`](docs/self-hosting.md).
@@ -179,7 +193,7 @@ Full guide: [`docs/self-hosting.md`](docs/self-hosting.md).
 No public exposure. Same-Mac browser access at `http://127.0.0.1:7700/`.
 
 ```bash
-pt-registry serve   # no flags
+pocket serve   # no flags = LAN/local only
 ```
 
 ## Live Cost Meter
@@ -231,29 +245,33 @@ Try one immediately by appending `?theme=halloween` (or `nokia`, `cyberpunk`, et
 Every session writes a standard [asciinema v2](https://github.com/asciinema/asciinema/blob/master/doc/asciicast-v2.md) cast file to `~/.pocket-t/recordings/<sessionId>.cast`:
 
 ```bash
-pt-registry recordings           # list all recordings
-pt-registry replay <sessionId>   # play at native speed
+pocket recordings           # list all recordings
+pocket replay <sessionId>   # play at native speed
 ```
 
 Compatible with any asciinema player (terminal `asciinema play`, asciinema.org, the `asciinema-player` npm package). Drop a cast file in a PR description, an issue, or embed in docs. Recording is **on by default** and best-effort — a failed write disables itself for that session and logs once, never interrupts the PTY.
 
 ## CLI Reference
 
+`pocket` is a thin wrapper around the underlying `pt-registry` CLI — anything you pass through is forwarded verbatim:
+
 ```bash
-pt-registry serve [--tunnel] [--relay <wss-url>]
+pocket                           Run the daemon with a Cloudflare Quick
+                                 Tunnel (shorthand for `serve --tunnel`).
+
+pocket serve [--tunnel] [--relay <wss-url>]
                                  Run the daemon. --tunnel = Cloudflare
                                  Quick Tunnel. --relay = self-hosted hub.
 
-pt-registry list                 List active sessions (JSON).
-pt-registry status [--json]      Uptime, counts, I/O totals, pending approvals.
-pt-registry pending [--json]     Outstanding tool approvals.
-pt-registry approve <id> [approve|deny]
+pocket list                      List active sessions (JSON).
+pocket status [--json]           Uptime, counts, I/O totals, pending approvals.
+pocket pending [--json]          Outstanding tool approvals.
+pocket approve <id> [approve|deny]
                                  Resolve a pending approval from CLI.
-pt-registry recordings [--json]  List asciinema cast files.
-pt-registry replay  <sessionId>  Replay a session at native speed.
-pt-registry input   <id> <text>  Inject bytes into a session's PTY.
-pt-registry kill    <id> [signal]
-                                 Signal a session's process group.
+pocket recordings [--json]       List asciinema cast files.
+pocket replay  <sessionId>       Replay a session at native speed.
+pocket input   <id> <text>       Inject bytes into a session's PTY.
+pocket kill    <id> [signal]     Signal a session's process group.
                                  Default: SIGHUP (1).
 ```
 
@@ -292,7 +310,7 @@ fly launch --copy-config && fly deploy
 Then on your Mac:
 
 ```bash
-pt-registry serve --relay wss://your-domain/ws/pt?role=daemon&t=<token>
+pocket serve --relay wss://your-domain/ws/pt?role=daemon&t=<token>
 ```
 
 Full guide: [`docs/self-hosting.md`](docs/self-hosting.md).
