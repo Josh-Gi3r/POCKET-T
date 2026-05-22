@@ -93,6 +93,9 @@ const DETACH_GRACE_MS = 60_000;
 // them into bubble events with kind:'approval' so the browser can show
 // approve/deny buttons; the user's choice flows back through ws-v3.
 const HOOK_PORT = Number(process.env.POCKET_T_HOOK_PORT ?? 7621);
+const HOOK_FAILSAFE = (process.env.POCKET_T_HOOK_FAILSAFE ?? 'approve').toLowerCase();
+const HOOK_FAILSAFE_MODE: 'approve' | 'deny' | 'passthrough' =
+  HOOK_FAILSAFE === 'deny' || HOOK_FAILSAFE === 'passthrough' ? HOOK_FAILSAFE : 'approve';
 
 // startup time for uptime reporting via `pt-registry status`.
 const STARTED_AT = Date.now();
@@ -1117,26 +1120,31 @@ export async function runServer(opts: { relayUrl?: string; tunnel?: boolean } = 
   // Write/Edit globally for the timeout. We bypass the block entirely
   // when no UI client is around. Claude's own permissions still gate
   // dangerous tools, so silently allowing here is safe.
-  hookServer = new HookServer({
-    port:                HOOK_PORT,
-    defaultOnNoListener: 'approve',
-    hasViableListener:   (sessionId, _toolName) => {
-      // "Viable" = at least one browser client is open AND we have a
-      // claude-vendor session to attach the approval to. Either
-      // condition false → no point blocking; let Claude proceed.
-      if (browserClients.size === 0) return false;
-      // Specific session id from the hook header? Use it if it
-      // resolves to one of ours.
-      if (sessions.has(sessionId)) return true;
-      // Otherwise fall back to "is there any live Claude session?"
-      for (const s of sessions.values()) {
-        if (s.vendor === 'claude' && !s.detached) return true;
-      }
-      return false;
-    },
-  });
-  hookServer.start();
-  hookServer.on('approvalRequested', (req: {
+  if (HOOK_FAILSAFE_MODE === 'passthrough') {
+    console.log('[pt-registry] PreToolUse hook server disabled (POCKET_T_HOOK_FAILSAFE=passthrough)');
+  } else {
+    hookServer = new HookServer({
+      port:                HOOK_PORT,
+      defaultOnNoListener: HOOK_FAILSAFE_MODE,
+      hasViableListener:   (sessionId, _toolName) => {
+        // "Viable" = at least one browser client is open AND we have a
+        // claude-vendor session to attach the approval to. Either
+        // condition false → no point blocking; honor the failsafe mode.
+        if (browserClients.size === 0) return false;
+        // Specific session id from the hook header? Use it if it
+        // resolves to one of ours.
+        if (sessions.has(sessionId)) return true;
+        // Otherwise fall back to "is there any live Claude session?"
+        for (const s of sessions.values()) {
+          if (s.vendor === 'claude' && !s.detached) return true;
+        }
+        return false;
+      },
+    });
+    hookServer.start();
+    console.log(`[pt-registry] PreToolUse failsafe mode: ${HOOK_FAILSAFE_MODE}`);
+  }
+  hookServer?.on('approvalRequested', (req: {
     approvalId: string; sessionId: string;
     toolName:   string; toolInput: unknown;
   }) => {
