@@ -1,0 +1,20 @@
+[package]
+name = "pt-shim"
+version = "0.1.0"
+edition = "2021"
+description = "pocket-t transparent shell proxy — the `pt` binary"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "pt"
+path = "src/main.rs"
+
+[dependencies]
+libc = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
+codegen-units = 1

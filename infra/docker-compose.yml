@@ -1,0 +1,24 @@
+# Self-hosting the optional pocket-t relay hub.
+#
+# Usage:
+#   POCKET_T_HUB_PORT=4080 docker compose up -d
+#
+# That's it. No Postgres, no Redis, no JWT secrets, no Stripe webhooks.
+# The ws-v3 hub is a pure WebSocket multiplexer — daemons dial in with
+# a token, browsers dial in with the same token, and the hub pipes
+# binary frames between same-token peers. No auth state, no database.
+#
+# Bind to a port your reverse proxy (Caddy, nginx, Cloudflare Tunnel)
+# can TLS-terminate in front of, or run behind Fly.io's edge.
+
+services:
+  hub:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.relay
+    ports:
+      - "${POCKET_T_HUB_PORT:-4080}:4080"
+    environment:
+      POCKET_T_HUB_PORT: "4080"
+      POCKET_T_HUB_HOST: "0.0.0.0"
+    restart: unless-stopped

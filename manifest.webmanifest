@@ -1,0 +1,31 @@
+{
+  "name": "Pocket-T — Your terminal, anywhere",
+  "short_name": "Pocket-T",
+  "description": "Mirror every Mac terminal to your phone. Drive Claude Code, Codex, any CLI from anywhere.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0B0F12",
+  "theme_color": "#0B0F12",
+  "categories": ["developer", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/branding/app-icon/app-icon-256.png",
+      "type": "image/png",
+      "sizes": "256x256"
+    },
+    {
+      "src": "/branding/app-icon/app-icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/branding/app-icon/app-icon-1024.png",
+      "type": "image/png",
+      "sizes": "1024x1024",
+      "purpose": "any maskable"
+    }
+  ]
+}

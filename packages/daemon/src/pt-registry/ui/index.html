@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f0f12">
+  <title>pocket-t</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+  <style>
+    /*
+     * Theme tokens. Skin authors override these in a body[data-theme=...]
+     * block — that's all you need to ship a Nokia / Halloween / Christmas
+     * / cyberpunk / whatever skin. Default is "midnight": dark indigo
+     * background with a soft violet accent.
+     */
+    :root {
+      --pt-bg:           #0f0f12;
+      --pt-fg:           #e8e8ea;
+      --pt-muted:        #888;
+      --pt-dim:          #666;
+      --pt-border:       #26262d;
+      --pt-sidebar-bg:   #16161a;
+      --pt-card-bg:      transparent;
+      --pt-card-hover:   #1f1f25;
+      --pt-accent:       #4b3a78;
+      --pt-accent-fg:    #ffffff;
+      --pt-cursor:       #9b87d6;
+      --pt-terminal-bg:  #0f0f12;
+      --pt-terminal-fg:  #e8e8ea;
+      --pt-font-ui:      -apple-system, system-ui, sans-serif;
+      --pt-font-mono:    ui-monospace, Menlo, monospace;
+    }
+    /* Example alternate skin — selectable via ?theme=halloween */
+    body[data-theme="halloween"] {
+      --pt-bg:           #1a0a00;
+      --pt-fg:           #ffbf80;
+      --pt-muted:        #b07040;
+      --pt-border:       #4a2a10;
+      --pt-sidebar-bg:   #200d04;
+      --pt-card-hover:   #2a1408;
+      --pt-accent:       #ff6a00;
+      --pt-accent-fg:    #1a0a00;
+      --pt-cursor:       #ff6a00;
+      --pt-terminal-bg:  #1a0a00;
+      --pt-terminal-fg:  #ffbf80;
+    }
+    body[data-theme="nokia"] {
+      --pt-bg:           #051a0a;
+      --pt-fg:           #95e600;
+      --pt-muted:        #4a7320;
+      --pt-border:       #1f3a14;
+      --pt-sidebar-bg:   #082010;
+      --pt-card-hover:   #0e2c17;
+      --pt-accent:       #95e600;
+      --pt-accent-fg:    #051a0a;
+      --pt-cursor:       #95e600;
+      --pt-terminal-bg:  #051a0a;
+      --pt-terminal-fg:  #95e600;
+      --pt-font-ui:      ui-monospace, Menlo, monospace;
+    }
+    body[data-theme="christmas"] {
+      --pt-bg:           #0a1612;
+      --pt-fg:           #f0ebe1;
+      --pt-muted:        #88a89a;
+      --pt-border:       #1f3a2c;
+      --pt-sidebar-bg:   #0d1f17;
+      --pt-card-hover:   #14301f;
+      --pt-accent:       #c0392b;
+      --pt-accent-fg:    #fff7e1;
+      --pt-cursor:       #f5c542;
+      --pt-terminal-bg:  #0a1612;
+      --pt-terminal-fg:  #f0ebe1;
+    }
+    body[data-theme="cyberpunk"] {
+      --pt-bg:           #0d0420;
+      --pt-fg:           #f4f0fa;
+      --pt-muted:        #b67de8;
+      --pt-border:       #2a1660;
+      --pt-sidebar-bg:   #15082e;
+      --pt-card-hover:   #1f0e44;
+      --pt-accent:       #ff2a92;
+      --pt-accent-fg:    #ffffff;
+      --pt-cursor:       #00ffe7;
+      --pt-terminal-bg:  #0d0420;
+      --pt-terminal-fg:  #00ffe7;
+    }
+    body[data-theme="forest"] {
+      --pt-bg:           #131c12;
+      --pt-fg:           #e4e8da;
+      --pt-muted:        #99a685;
+      --pt-border:       #2a3520;
+      --pt-sidebar-bg:   #1a2418;
+      --pt-card-hover:   #243020;
+      --pt-accent:       #6b9a44;
+      --pt-accent-fg:    #131c12;
+      --pt-cursor:       #c9d68a;
+      --pt-terminal-bg:  #131c12;
+      --pt-terminal-fg:  #e4e8da;
+    }
+    body[data-theme="paper"] {
+      --pt-bg:           #f7f3eb;
+      --pt-fg:           #2a2520;
+      --pt-muted:        #7a7065;
+      --pt-dim:          #a89c8c;
+      --pt-border:       #e0d8c8;
+      --pt-sidebar-bg:   #f0e8d8;
+      --pt-card-hover:   #e8e0d0;
+      --pt-accent:       #4a3a78;
+      --pt-accent-fg:    #ffffff;
+      --pt-cursor:       #4a3a78;
+      --pt-terminal-bg:  #f7f3eb;
+      --pt-terminal-fg:  #2a2520;
+    }
+    /* Prevent iOS Safari double-tap zoom on UI elements and pinch zoom
+       on the terminal/buttons. Touch row keys, sidebar items, the
+       hamburger — none of them should trigger a viewport zoom. */
+    html, body { -webkit-text-size-adjust: 100%; }
+    button, select, input, .session, .touch-key, .pill { touch-action: manipulation; }
+
+    body { margin: 0; font: 13px var(--pt-font-ui); background: var(--pt-bg); color: var(--pt-fg); -webkit-font-smoothing: antialiased; }
+    .layout { display: grid; grid-template-columns: 260px 1fr; height: 100vh; height: 100dvh; }
+    .sidebar { background: var(--pt-sidebar-bg); border-right: 1px solid var(--pt-border); padding: 14px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .sidebar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    h2 { margin: 0; font-size: 11px; font-weight: 600; color: var(--pt-muted); letter-spacing: 0.06em; text-transform: uppercase; }
+    .sidebar-spawn { width: 28px; height: 28px; border-radius: 8px; background: var(--pt-accent); color: var(--pt-accent-fg); border: 0; cursor: pointer; font-size: 18px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; transition: transform 120ms ease; font-weight: 600; }
+    .sidebar-spawn:active { transform: scale(0.92); }
+    #status { font-size: 11px; color: var(--pt-dim); padding: 6px 0 12px; }
+    .session { padding: 12px 14px; cursor: pointer; border-radius: 10px; margin-bottom: 6px; transition: background 120ms ease, transform 120ms ease; background: var(--pt-card-bg); position: relative; }
+    .session:hover { background: var(--pt-card-hover); }
+    .session.active { background: var(--pt-accent); color: var(--pt-accent-fg); }
+    .session-name { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding-right: 28px; }
+    .session-meta { font-size: 11px; color: var(--pt-muted); margin-top: 3px; font-family: var(--pt-font-mono); }
+    .session.active .session-meta { color: var(--pt-accent-fg); opacity: 0.85; }
+    .session-kill { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; background: transparent; color: var(--pt-muted); border: 0; cursor: pointer; opacity: 0; transition: all 120ms ease; font-size: 14px; line-height: 1; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; }
+    .session:hover .session-kill, .session.active .session-kill { opacity: 1; }
+    .session-kill:hover { background: #d04444; color: white; opacity: 1; transform: scale(1.1); }
+    .session.active .session-kill { color: var(--pt-accent-fg); }
+    .vendor-badge { display: inline-block; font-size: 9px; padding: 1px 6px; border-radius: 999px; background: var(--pt-accent); color: var(--pt-accent-fg); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; font-family: var(--pt-font-ui); }
+    .session.active .vendor-badge { background: var(--pt-accent-fg); color: var(--pt-accent); }
+    .empty { color: var(--pt-dim); font-style: italic; padding: 12px; line-height: 1.5; }
+    /* Main pane: fills the rest of the viewport. xterm sizes itself
+       to this container via @xterm/addon-fit. */
+    .main { display: flex; flex-direction: column; min-width: 0; }
+    .toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--pt-border); font-size: 11px; color: var(--pt-muted); }
+    .toolbar .grow { flex: 1; }
+    .toolbar .pill { padding: 3px 8px; border-radius: 999px; background: var(--pt-card-hover); color: var(--pt-fg); cursor: pointer; user-select: none; }
+    .toolbar .pill.active { background: var(--pt-accent); color: var(--pt-accent-fg); }
+    .terminal-wrap { flex: 1; padding: 8px; min-height: 0; }
+    #terminal { width: 100%; height: 100%; }
+    /* ─── Bubble view ─────────────────────────────────────────── */
+    .bubbles-wrap { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 22px; display: none; }
+    .bubbles-wrap.show { display: block; }
+    .bubble { max-width: 720px; margin: 10px auto; padding: 10px 14px; border-radius: 12px; line-height: 1.45; word-wrap: break-word; }
+    .bubble.role-user { background: var(--pt-accent); color: var(--pt-accent-fg); margin-right: 0; margin-left: auto; max-width: 540px; }
+    .bubble.role-assistant { background: var(--pt-sidebar-bg); color: var(--pt-fg); border: 1px solid var(--pt-border); }
+    .bubble.kind-thought { background: transparent; color: var(--pt-muted); font-style: italic; border-left: 2px solid var(--pt-border); border-radius: 0; padding-left: 14px; max-width: 720px; margin-left: 0; opacity: 0.8; }
+    .bubble.kind-thought .bubble-label { color: var(--pt-muted); }
+    .bubble.kind-action { background: var(--pt-card-hover); color: var(--pt-fg); font-family: var(--pt-font-mono); font-size: 12px; border-left: 3px solid var(--pt-accent); border-radius: 6px; }
+    .bubble.kind-tool_result { background: transparent; color: var(--pt-dim); font-family: var(--pt-font-mono); font-size: 12px; border-left: 3px solid var(--pt-border); border-radius: 6px; max-height: 240px; overflow: auto; white-space: pre-wrap; padding: 10px 14px; }
+    .bubble .bubble-label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--pt-muted); margin-bottom: 4px; font-weight: 600; font-family: var(--pt-font-ui); }
+    .bubble pre { margin: 6px 0 0 0; white-space: pre-wrap; font-family: var(--pt-font-mono); font-size: 12px; }
+    .bubble-text { white-space: pre-wrap; }
+    .bubble-empty { color: var(--pt-dim); font-style: italic; text-align: center; margin-top: 60px; }
+    /* approval card: prominent, with two action buttons. */
+    .bubble.kind-approval { background: var(--pt-card-hover); border-left: 3px solid #ff7a45; border-radius: 8px; max-width: 720px; }
+    .bubble.kind-approval .bubble-label { color: #ff7a45; }
+    .bubble.kind-approval .approval-actions { margin-top: 10px; display: flex; gap: 8px; }
+    .bubble.kind-approval button { padding: 6px 14px; border: 0; border-radius: 6px; font-weight: 600; cursor: pointer; font-family: var(--pt-font-ui); font-size: 12px; }
+    .bubble.kind-approval button.approve { background: #2da256; color: white; }
+    .bubble.kind-approval button.deny    { background: #d04444; color: white; }
+    .bubble.kind-approval.resolved button { opacity: 0.4; pointer-events: none; }
+    .bubble.kind-approval .resolution-tag { display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 600; }
+    /* Cost meter pill in the toolbar */
+    .cost-pill { padding: 3px 10px; border-radius: 999px; background: var(--pt-card-hover); color: var(--pt-fg); font-family: var(--pt-font-mono); font-size: 11px; display: none; }
+    .cost-pill.show { display: inline-block; }
+    .cost-pill .cost-amount { font-weight: 700; }
+    .cost-pill .cost-model { color: var(--pt-muted); margin-left: 6px; }
+    /* Pending-approval badge on a session in the sidebar. */
+    .session-pending { display: inline-block; background: #ff7a45; color: white; font-size: 9px; padding: 1px 6px; border-radius: 999px; font-weight: 700; }
+    /* Detached badge on a session in the sidebar . */
+    .session-detached { display: inline-block; background: var(--pt-dim); color: white; font-size: 9px; padding: 1px 6px; border-radius: 999px; font-weight: 700; }
+    /* Theme picker pill in the toolbar. */
+    .theme-picker { padding: 3px 8px; border-radius: 999px; background: var(--pt-card-hover); color: var(--pt-fg); font-family: var(--pt-font-ui); font-size: 11px; border: 0; cursor: pointer; }
+
+    /* ─── Mobile touch-keyboard row ───────────────────────────────
+     * The reason mobile terminals exist. Phone keyboards have no Esc,
+     * no Ctrl, no Tab, no arrow keys. Without these you literally
+     * can't use vim, claude, or kill a running process. We pin two
+     * rows at the bottom of the terminal pane (above the iOS soft
+     * keyboard) with the essential terminal keys.
+     */
+    .touch-rows { display: none; flex-direction: column; gap: 4px; padding: 6px 4px; background: var(--pt-sidebar-bg); border-top: 1px solid var(--pt-border); }
+    .touch-rows.show { display: flex; }
+    .touch-row { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+    .touch-row::-webkit-scrollbar { display: none; }
+    .touch-key { flex: 0 0 auto; min-width: 36px; height: 38px; padding: 0 8px; border-radius: 7px; background: var(--pt-card-hover); color: var(--pt-fg); border: 1px solid var(--pt-border); font-family: var(--pt-font-mono); font-size: 13px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: manipulation; display: inline-flex; align-items: center; justify-content: center; }
+    .touch-key:active { background: var(--pt-accent); color: var(--pt-accent-fg); transform: scale(0.95); }
+    .touch-key.sticky { background: var(--pt-accent); color: var(--pt-accent-fg); border-color: var(--pt-accent); }
+    .touch-key.danger:active { background: #d04444; color: white; border-color: #d04444; }
+    .touch-key .lbl { font-size: 11px; opacity: 0.7; margin-left: 3px; }
+
+    /* Mobile-menu hamburger button (hidden on desktop). */
+    .mobile-menu-btn { display: none; width: 36px; height: 36px; border-radius: 8px; background: transparent; border: 0; color: var(--pt-fg); cursor: pointer; align-items: center; justify-content: center; padding: 0; transition: background 120ms ease; }
+    .mobile-menu-btn:active { background: var(--pt-card-hover); transform: scale(0.92); }
+    .mobile-menu-btn svg { width: 20px; height: 20px; }
+    .sidebar-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      z-index: 5;
+      opacity: 0; transition: opacity 220ms ease;
+    }
+    .sidebar-backdrop.show { display: block; opacity: 1; }
+
+    /* ─── Mobile layout: collapsible sidebar, full-width terminal ─ */
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar {
+        position: fixed; left: 0; top: 0; bottom: 0; width: 84vw; max-width: 340px;
+        z-index: 10;
+        transform: translateX(-100%);
+        /* Cubic-bezier spring for that native-app feel on slide-in. */
+        transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
+        box-shadow: 0 0 0 0 rgba(0,0,0,0);
+        padding: 16px 14px calc(16px + env(safe-area-inset-bottom)) 14px;
+      }
+      .sidebar.open { transform: translateX(0); box-shadow: 24px 0 60px -12px rgba(0,0,0,0.5); }
+      .mobile-menu-btn { display: inline-flex; }
+      .touch-rows { display: flex; padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+      /* Tighter toolbar on phone; everything still fits. */
+      .toolbar { padding: 8px 10px; gap: 6px; padding-top: calc(8px + env(safe-area-inset-top)); }
+      .theme-picker { display: none; }                      /* hidden — move to sidebar */
+      .sidebar .theme-picker { display: block; width: 100%; padding: 8px 10px; font-size: 12px; margin-top: 14px; border-radius: 8px; }
+      .toolbar .pill { font-size: 11px; padding: 5px 10px; min-height: 28px; }
+      #title { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .cost-pill { font-size: 11px; padding: 4px 9px; }
+      /* xterm font scales for more columns. */
+      .xterm { font-size: 12px !important; }
+      .xterm-viewport { -webkit-overflow-scrolling: touch !important; }
+      /* Bubbles edge-to-edge on phone. */
+      .bubbles-wrap { padding: 12px 14px calc(14px + env(safe-area-inset-bottom)) 14px; }
+      .bubble { max-width: 100%; font-size: 14px; }
+      .bubble.role-user { max-width: 90%; }
+      .bubble pre { font-size: 11px; }
+      .bubble.kind-approval button { padding: 10px 16px; font-size: 14px; min-height: 44px; min-width: 90px; }
+      /* Larger tap targets across the board. */
+      .session { padding: 14px 14px; min-height: 56px; }
+      .session-name { font-size: 14px; }
+      .session-meta { font-size: 12px; }
+      .session-kill { opacity: 1; width: 28px; height: 28px; font-size: 16px; }
+      .sidebar-spawn { width: 36px; height: 36px; font-size: 20px; }
+    }
+    /* Show theme picker inside sidebar on desktop too (also reachable
+       from the toolbar — twin entry points are fine). */
+    .sidebar .theme-picker { display: none; }
+
+    /* Even on desktop the touch row is useful if the user shows it. */
+    .touch-rows.show-desktop { display: flex; }
+
+    /* ─── Floating action button (alt entry for + new session) ──── */
+    .fab-spawn { display: none; position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 6;
+      width: 56px; height: 56px; border-radius: 28px; background: var(--pt-accent); color: var(--pt-accent-fg);
+      border: 0; cursor: pointer; font-size: 28px; line-height: 1; font-weight: 300;
+      box-shadow: 0 10px 28px -8px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.05);
+      transition: transform 160ms cubic-bezier(0.32, 0.72, 0, 1); }
+    .fab-spawn:active { transform: scale(0.92); }
+    @media (max-width: 768px) {
+      /* Only visible on mobile if there's already a session selected
+         (otherwise the sidebar spawn button is the primary CTA). */
+      .fab-spawn.show { display: inline-flex; align-items: center; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+  <button class="fab-spawn" id="fab-spawn" aria-label="New session">+</button>
+  <div class="layout">
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-head">
+        <h2>pocket-t</h2>
+        <button class="sidebar-spawn" id="sidebar-spawn" aria-label="New session" title="New terminal session">+</button>
+      </div>
+      <div id="status">connecting…</div>
+      <div id="sessions"></div>
+      <select class="theme-picker" onchange="window.__pt_setTheme(this.value)" aria-label="Theme">
+        <option value="">midnight (default)</option>
+        <option value="halloween">halloween</option>
+        <option value="nokia">nokia</option>
+        <option value="christmas">christmas</option>
+        <option value="cyberpunk">cyberpunk</option>
+        <option value="forest">forest</option>
+        <option value="paper">paper</option>
+      </select>
+    </div>
+    <div class="main">
+      <div class="toolbar">
+        <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Sessions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <span id="title">no session</span>
+        <span class="grow"></span>
+        <span id="cost-pill" class="cost-pill"><span class="cost-amount">$0.00</span><span class="cost-model"></span></span>
+        <select id="theme-picker" class="theme-picker" onchange="window.__pt_setTheme(this.value)">
+          <option value="">midnight (default)</option>
+          <option value="halloween">halloween</option>
+          <option value="nokia">nokia</option>
+          <option value="christmas">christmas</option>
+          <option value="cyberpunk">cyberpunk</option>
+          <option value="forest">forest</option>
+          <option value="paper">paper</option>
+        </select>
+        <span class="pill active" data-view="terminal" onclick="window.__pt_setView('terminal')">Terminal</span>
+        <span class="pill" data-view="bubbles" onclick="window.__pt_setView('bubbles')">Bubbles</span>
+      </div>
+      <div class="terminal-wrap"><div id="terminal"></div></div>
+      <div class="bubbles-wrap" id="bubbles"></div>
+      <!-- mobile touch keyboard. Default-hidden on desktop;
+           a .show or .show-desktop class flips it on. CSS @media
+           shows it automatically on mobile widths. -->
+      <div class="touch-rows" id="touch-rows">
+        <div class="touch-row">
+          <button class="touch-key" data-send="">Esc</button>
+          <button class="touch-key" data-send="	">Tab</button>
+          <button class="touch-key" data-ctrl="1" id="touch-ctrl">Ctrl</button>
+          <button class="touch-key" data-send="[A">↑</button>
+          <button class="touch-key" data-send="[B">↓</button>
+          <button class="touch-key" data-send="[D">←</button>
+          <button class="touch-key" data-send="[C">→</button>
+          <button class="touch-key" data-send="[H">Home</button>
+          <button class="touch-key" data-send="[F">End</button>
+          <button class="touch-key" data-send="[5~">PgUp</button>
+          <button class="touch-key" data-send="[6~">PgDn</button>
+          <button class="touch-key danger" data-send="">^C</button>
+          <button class="touch-key danger" data-send="">^D</button>
+        </div>
+        <div class="touch-row">
+          <button class="touch-key" data-send="`">`</button>
+          <button class="touch-key" data-send="~">~</button>
+          <button class="touch-key" data-send="/">/</button>
+          <button class="touch-key" data-send="\">\</button>
+          <button class="touch-key" data-send="|">|</button>
+          <button class="touch-key" data-send="'">'</button>
+          <button class="touch-key" data-send='"'>"</button>
+          <button class="touch-key" data-send="-">-</button>
+          <button class="touch-key" data-send="_">_</button>
+          <button class="touch-key" data-send="{">{</button>
+          <button class="touch-key" data-send="}">}</button>
+          <button class="touch-key" data-send="[">[</button>
+          <button class="touch-key" data-send="]">]</button>
+          <button class="touch-key" data-send="(">(</button>
+          <button class="touch-key" data-send=")">)</button>
+          <button class="touch-key" data-send="<">&lt;</button>
+          <button class="touch-key" data-send=">">&gt;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<script>
+  // ws-v3 protocol (mirrors @pocket-t/shared/ws-v3)
+  const WS_V3_MAGIC = 0x5450, WS_V3_VERSION = 3;
+  const T = { HELLO:1, WELCOME:2, SUBSCRIBE:10, UNSUBSCRIBE:11,
+              STDOUT:20, SNAPSHOT_VT:21, EVENT:22, ERROR:23,
+              INPUT_TEXT:30, INPUT_KEY:31, RESIZE:32, KILL:33, RESET_SIZE:34,
+              PING:40, PONG:41 };
+  const FLAG = { STDOUT:1, SNAPSHOTS:2, EVENTS:4 };
+
+  function encodeFrame(type, sessionId='', payload=new Uint8Array()) {
+    const sid = new TextEncoder().encode(sessionId);
+    const out = new Uint8Array(12 + sid.length + payload.length);
+    const v = new DataView(out.buffer);
+    let o = 0;
+    v.setUint16(o, WS_V3_MAGIC, true); o += 2;
+    v.setUint8(o, WS_V3_VERSION); o += 1;
+    v.setUint8(o, type); o += 1;
+    v.setUint32(o, sid.length, true); o += 4;
+    out.set(sid, o); o += sid.length;
+    v.setUint32(o, payload.length, true); o += 4;
+    out.set(payload, o);
+    return out;
+  }
+  function decodeFrame(d) {
+    if (d.byteLength < 12) return null;
+    const v = new DataView(d.buffer, d.byteOffset, d.byteLength);
+    let o = 0;
+    if (v.getUint16(o, true) !== WS_V3_MAGIC) return null;
+    o += 2;
+    if (v.getUint8(o) !== WS_V3_VERSION) return null;
+    o += 1;
+    const type = v.getUint8(o); o += 1;
+    const sl = v.getUint32(o, true); o += 4;
+    if (o + sl > d.byteLength) return null;
+    const sid = new TextDecoder().decode(d.subarray(o, o + sl));
+    o += sl;
+    const pl = v.getUint32(o, true); o += 4;
+    if (o + pl > d.byteLength) return null;
+    return { type, sessionId: sid, payload: d.subarray(o, o + pl) };
+  }
+  function encodeSubPayload(flags) {
+    const out = new Uint8Array(12);
+    new DataView(out.buffer).setUint32(0, flags >>> 0, true);
+    return out;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+  }
+
+  // Theme support: ?theme=… overrides; otherwise the user's last
+  // pick (saved in localStorage) is restored. Skin authors add new
+  // blocks to the <style> above — pure CSS variable overrides.
+  const themeParam = new URLSearchParams(location.search).get('theme');
+  const savedTheme = localStorage.getItem('pt-theme') || '';
+  const initialTheme = themeParam || savedTheme;
+  if (initialTheme) document.body.setAttribute('data-theme', initialTheme);
+  // Populate the picker once the DOM exists (it's already rendered).
+  setTimeout(() => {
+    const picker = document.getElementById('theme-picker');
+    if (picker) picker.value = initialTheme;
+  }, 0);
+  window.__pt_setTheme = (val) => {
+    if (val) document.body.setAttribute('data-theme', val);
+    else document.body.removeAttribute('data-theme');
+    localStorage.setItem('pt-theme', val);
+    // Push the new colors into the live xterm.js instance so the
+    // terminal pane matches the rest of the UI immediately.
+    if (window.__pt_term) {
+      window.__pt_term.options.theme = {
+        background: getCssVar('--pt-terminal-bg') || '#0f0f12',
+        foreground: getCssVar('--pt-terminal-fg') || '#e8e8ea',
+        cursor:     getCssVar('--pt-cursor')      || '#9b87d6',
+      };
+    }
+  };
+
+  // desktop notifications for approval prompts. We ask once
+  // on first user interaction (browser policy requires a gesture), then
+  // remember the answer. Notification permission is per-origin so the
+  // local URL and the hosted relay URL each ask separately — fine.
+  let notifAsked = false;
+  function maybeAskNotif() {
+    if (notifAsked) return;
+    notifAsked = true;
+    try {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+      }
+    } catch (_) {}
+  }
+  document.addEventListener('click', maybeAskNotif, { once: true });
+  document.addEventListener('keydown', maybeAskNotif, { once: true });
+  function fireNotif(title, body) {
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const n = new Notification(title, { body, icon: '/icon.png', tag: 'pt-approval' });
+        n.onclick = () => { window.focus(); n.close(); };
+      }
+    } catch (_) {}
+  }
+
+  function getCssVar(name) {
+    return getComputedStyle(document.body).getPropertyValue(name).trim();
+  }
+
+  const term = new Terminal({
+    fontFamily: getCssVar('--pt-font-mono') || 'ui-monospace, Menlo, monospace',
+    fontSize: 13,
+    cursorBlink: true,
+    allowProposedApi: true,
+    theme: {
+      background: getCssVar('--pt-terminal-bg') || '#0f0f12',
+      foreground: getCssVar('--pt-terminal-fg') || '#e8e8ea',
+      cursor:     getCssVar('--pt-cursor')      || '#9b87d6',
+    },
+  });
+  term.open(document.getElementById('terminal'));
+  // Exposed so the theme picker can repaint the terminal pane on switch.
+  window.__pt_term = term;
+
+  // FitAddon: xterm sizes itself to the .terminal-wrap container. We
+  // refit on window resize AND on container resize (sidebar toggles,
+  // view changes, etc.), then send the new dimensions to the daemon
+  // as a ws-v3 RESIZE so the actual PTY also resizes — the shell sees
+  // SIGWINCH and full-screen apps (vim, htop, claude) redraw.
+  const FitAddonCtor = (window.FitAddon && window.FitAddon.FitAddon) || null;
+  const fit = FitAddonCtor ? new FitAddonCtor() : null;
+  if (fit) term.loadAddon(fit);
+
+  let lastSentCols = 0;
+  let lastSentRows = 0;
+  function encodeResizePayloadJS(cols, rows) {
+    const out = new Uint8Array(8);
+    const v = new DataView(out.buffer);
+    v.setUint32(0, cols >>> 0, true);
+    v.setUint32(4, rows >>> 0, true);
+    return out;
+  }
+  function doFit() {
+    if (!fit) return;
+    // BUG GUARD: when the terminal pane is display:none (Bubbles view)
+    // or has zero physical size (sidebar drawer animation, container not
+    // yet laid out), fit.fit() returns degenerate dimensions. We used
+    // to ship those over the wire — the daemon would TIOCSWINSZ the PTY
+    // to 0x0, the shell SIGWINCH'd to a 0-column terminal, and every
+    // future line wrapped at column 1 (visible BOTH in the browser AND
+    // in the local Terminal.app since they share the PTY). Skip the
+    // resize unless the pane is actually visible AND sane-sized.
+    const wrap = document.querySelector('.terminal-wrap');
+    if (!wrap) return;
+    const rect = wrap.getBoundingClientRect();
+    if (rect.width < 50 || rect.height < 30) return;  // hidden or too small
+    try { fit.fit(); } catch (_) { return; }
+    let c = term.cols, r = term.rows;
+    // Clamp to floor — never claim a 0-col terminal even if fit lies.
+    if (!Number.isFinite(c) || c < 4) c = 4;
+    if (!Number.isFinite(r) || r < 2) r = 2;
+    if (c === lastSentCols && r === lastSentRows) return;
+    lastSentCols = c; lastSentRows = r;
+    if (currentSession && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(encodeFrame(T.RESIZE, currentSession, encodeResizePayloadJS(c, r)));
+    }
+  }
+  // Initial fit (deferred so the layout is settled), then on window
+  // resize. ResizeObserver on the wrap catches sidebar/toolbar changes
+  // too without us having to instrument them.
+  setTimeout(doFit, 0);
+  window.addEventListener('resize', () => requestAnimationFrame(doFit));
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => requestAnimationFrame(doFit))
+      .observe(document.querySelector('.terminal-wrap'));
+  }
+
+  // Toolbar view-mode toggle. The Bubbles view is implemented in a
+  // later commit (typed adapter events render as cards) — for now it
+  // shows a placeholder so the toggle is wired end-to-end.
+  // Per-session bubble history. We re-render the whole list when the
+  // active session changes; new bubbles arriving during view are
+  // appended without a full re-render so scroll position is preserved
+  // unless the user is at the bottom (then we auto-scroll).
+  const bubblesBySession  = new Map();  // sid → BubbleEvent[]
+  const costBySession     = new Map();  // sid → { cumulativeCostUSD, model }
+  const bubblesEl = document.getElementById('bubbles');
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+  }
+  function fmtParams(params) {
+    if (!params || typeof params !== 'object') return '';
+    // Show the most distinctive single field on the title; details
+    // available in the expanded JSON below.
+    const key = params.file_path ?? params.path ?? params.command ?? params.pattern ?? params.url ?? '';
+    return typeof key === 'string' && key.length > 0 ? key.slice(0, 200) : '';
+  }
+  function bubbleHTML(ev) {
+    const role = ev.role === 'user' ? 'user' : 'assistant';
+    const kind = ev.kind;
+    if (kind === 'chat') {
+      return '<div class="bubble role-' + role + ' kind-chat">' +
+             '<div class="bubble-text">' + esc(ev.text || '') + '</div></div>';
+    }
+    if (kind === 'thought') {
+      return '<div class="bubble kind-thought"><span class="bubble-label">thinking</span>' +
+             '<div class="bubble-text">' + esc(ev.text || '') + '</div></div>';
+    }
+    if (kind === 'action') {
+      const params = JSON.stringify(ev.parameters || {}, null, 2);
+      const summary = fmtParams(ev.parameters);
+      return '<div class="bubble kind-action">' +
+             '<span class="bubble-label">tool · ' + esc(ev.tool || 'unknown') + '</span>' +
+             (summary ? '<div class="bubble-text">' + esc(summary) + '</div>' : '') +
+             '<pre>' + esc(params) + '</pre></div>';
+    }
+    if (kind === 'tool_result') {
+      const out = (ev.output || '').slice(0, 4000);
+      return '<div class="bubble kind-tool_result">' +
+             '<span class="bubble-label">result</span>' +
+             esc(out) + '</div>';
+    }
+    if (kind === 'approval') {
+      // Resolved-message variant: short pill confirming the decision.
+      // The daemon broadcasts a follow-up approval bubble with text
+      // "✓ approved" / "✗ denied" after a decision lands so all
+      // attached browsers update together.
+      if (!ev.approvalId || /^[✓✗]/.test(ev.text || '')) {
+        return '<div class="bubble kind-approval resolved">' +
+               '<span class="bubble-label">approval</span>' +
+               '<div class="bubble-text">' + esc(ev.text || '') + '</div></div>';
+      }
+      const params = JSON.stringify(ev.parameters || {}, null, 2);
+      const summary = fmtParams(ev.parameters);
+      return '<div class="bubble kind-approval" data-approval-id="' + esc(ev.approvalId) + '">' +
+             '<span class="bubble-label">approval needed · ' + esc(ev.tool || 'tool') + '</span>' +
+             (summary ? '<div class="bubble-text">' + esc(summary) + '</div>' : '') +
+             '<pre>' + esc(params) + '</pre>' +
+             '<div class="approval-actions">' +
+               '<button class="approve" data-decision="approve">Approve</button>' +
+               '<button class="deny" data-decision="deny">Deny</button>' +
+             '</div></div>';
+    }
+    // 'cost' and others: not rendered inline (cost feeds the pill).
+    return '';
+  }
+
+  // click delegate on the bubbles container catches approval
+  // button clicks no matter when the bubble was rendered (initial paint,
+  // appendBubble, etc). Avoids fragile inline-onclick escaping inside a
+  // TS template-literal HTML block.
+  bubblesEl.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest && e.target.closest('button[data-decision]');
+    if (!btn) return;
+    const card = btn.closest('.bubble.kind-approval');
+    if (!card) return;
+    const approvalId = card.getAttribute('data-approval-id');
+    const decision   = btn.getAttribute('data-decision');
+    if (!approvalId || !decision) return;
+    if (!currentSession || !ws || ws.readyState !== WebSocket.OPEN) return;
+    const msg = { kind: 'approvalDecision', approvalId, decision };
+    ws.send(encodeFrame(T.EVENT, currentSession, new TextEncoder().encode(JSON.stringify(msg))));
+    card.classList.add('resolved');
+  });
+
+  function renderBubbles() {
+    if (!currentSession) {
+      bubblesEl.innerHTML = '<div class="bubble-empty">no session selected.</div>';
+      return;
+    }
+    const list = bubblesBySession.get(currentSession) || [];
+    const renderables = list.filter(ev => ev.kind !== 'cost');
+    if (renderables.length === 0) {
+      bubblesEl.innerHTML = '<div class="bubble-empty">waiting for agent activity…<br>(run <code>claude</code>, <code>codex</code>, or any supported agent CLI)</div>';
+      return;
+    }
+    bubblesEl.innerHTML = renderables.map(bubbleHTML).join('');
+    bubblesEl.scrollTop = bubblesEl.scrollHeight;
+  }
+
+  function appendBubble(ev) {
+    if (ev.kind === 'cost') return;  // cost feeds the pill, not the list
+    const wasAtBottom = bubblesEl.scrollTop + bubblesEl.clientHeight >= bubblesEl.scrollHeight - 8;
+    const html = bubbleHTML(ev);
+    if (!html) return;
+    // First bubble after the "waiting…" placeholder: replace.
+    if (bubblesEl.querySelector('.bubble-empty')) {
+      bubblesEl.innerHTML = html;
+    } else {
+      bubblesEl.insertAdjacentHTML('beforeend', html);
+    }
+    if (wasAtBottom) bubblesEl.scrollTop = bubblesEl.scrollHeight;
+  }
+
+  function updateCostPill() {
+    const pill = document.getElementById('cost-pill');
+    if (!currentSession) { pill.classList.remove('show'); return; }
+    const c = costBySession.get(currentSession);
+    if (!c) { pill.classList.remove('show'); return; }
+    const dollars = (c.cumulativeCostUSD || 0).toFixed(4).replace(/0+$/, '').replace(/\.$/, '.00');
+    pill.querySelector('.cost-amount').textContent = '$' + dollars;
+    pill.querySelector('.cost-model').textContent = c.model ? '· ' + c.model.split('-').slice(0, 2).join(' ') : '';
+    pill.classList.add('show');
+  }
+
+  // ─── Refresh-safe UI state (localStorage) ─────────────────────────
+  // Persist enough state that a hard browser refresh feels like nothing
+  // happened. The daemon already keeps the underlying session running;
+  // we just need the UI to remember which one was open and what mode.
+  const savedSession = localStorage.getItem('pt-session') || null;
+  const savedView    = localStorage.getItem('pt-view') || 'terminal';
+
+  let viewMode = 'terminal';
+  window.__pt_setView = (mode) => {
+    viewMode = mode;
+    document.querySelectorAll('.toolbar .pill').forEach(p => {
+      p.classList.toggle('active', p.dataset.view === mode);
+    });
+    document.querySelector('.terminal-wrap').style.display = (mode === 'terminal') ? '' : 'none';
+    bubblesEl.classList.toggle('show', mode === 'bubbles');
+    if (mode === 'bubbles') renderBubbles();
+    try { localStorage.setItem('pt-view', mode); } catch (_) {}
+    // Only refit when SWITCHING TO terminal — switching away should not
+    // touch the PTY size. doFit's own visibility guard ignores the call
+    // anyway, but skipping it here avoids unnecessary work + reads.
+    // Two rAF ticks so the browser has finished laying out the now-
+    // visible container before fit measures its size.
+    if (mode === 'terminal') {
+      requestAnimationFrame(() => requestAnimationFrame(doFit));
+    }
+  };
+
+  let currentSession = null;
+  const sessions = new Map();
+
+  function renderSessions() {
+    const el = document.getElementById('sessions');
+    if (sessions.size === 0) {
+      el.innerHTML = '<div class="empty">no active sessions.<br>open a Terminal.app window<br>with the pocket-t profile.</div>';
+      return;
+    }
+    el.innerHTML = '';
+    for (const [id, s] of sessions) {
+      const div = document.createElement('div');
+      div.className = 'session' + (id === currentSession ? ' active' : '');
+      const cwdShort = (s.cwd || '~').replace(/^\/Users\/[^/]+/, '~');
+      const badges =
+        (s.vendor    ? '<span class="vendor-badge">'   + escapeHtml(s.vendor) + '</span>' : '') +
+        (s.pendingApprovals > 0
+          ? '<span class="session-pending">' + s.pendingApprovals + ' approve</span>'
+          : '') +
+        (s.detached  ? '<span class="session-detached">detached</span>' : '');
+      div.dataset.sessionId = id;
+      div.innerHTML =
+        '<div class="session-name"><span>' + escapeHtml(id) + '</span>' + badges + '</div>' +
+        '<div class="session-meta">' + escapeHtml(cwdShort) + ' · ' + s.rows + '×' + s.cols + '</div>' +
+        '<button class="session-kill" data-kill="' + escapeHtml(id) + '" aria-label="Kill session" title="Kill session" type="button">×</button>';
+      el.appendChild(div);
+    }
+  }
+
+  // ─── WebSocket lifecycle + keepalive ───────────────────────────
+  // A backgrounded iOS Safari tab can leave a *half-open* socket: it
+  // never fires 'close', and the 2s retry timer is frozen while the
+  // page is hidden, so the user comes back to a dead-but-"connected"
+  // terminal. iOS can also suspend the tab *during* the handshake, so
+  // the socket wedges in CONNECTING and no open/close/error ever fires.
+  // Defenses: (1) an application-level PING/PONG heartbeat that detects
+  // a silent pipe; (2) a connect watchdog that breaks a wedged CONNECTING
+  // socket; (3) visibility / pageshow / online handlers that reconnect
+  // the instant the user returns — and, if the socket only *claims* OPEN,
+  // probe it with a short pong deadline rather than waiting the full
+  // steady-state PONG_TIMEOUT. Reconnect re-SUBSCRIBEs the same session,
+  // so the server's VT snapshot resyncs the screen.
+  const KEEPALIVE_MS      = 20000; // send a PING this often
+  const PONG_TIMEOUT_MS   = 45000; // no PONG for >2 intervals ⇒ dead pipe (steady state)
+  const CONNECT_TIMEOUT_MS = 10000; // handshake must reach OPEN within this
+  const RESUME_PONG_MS     = 3000;  // on resume, expect a PONG within this or reconnect
+  let ws = null;
+  let reconnectTimer = null;     // pending close-path retry (setTimeout)
+  let keepaliveTimer = null;     // PING interval
+  let connectWatchdog = null;    // fires if a handshake never reaches OPEN
+  let connecting = false;        // a socket is mid-connect; debounces reconnects
+  let connectStart = 0;          // Date.now() when the current connect() began
+  let lastPong = 0;              // Date.now() of the last PONG / open
+
+  function stopKeepalive() {
+    if (keepaliveTimer) { clearInterval(keepaliveTimer); keepaliveTimer = null; }
+  }
+  function clearConnectWatchdog() {
+    if (connectWatchdog) { clearTimeout(connectWatchdog); connectWatchdog = null; }
+  }
+  function keepaliveTick() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    // Silent for longer than the pong timeout ⇒ the pipe is dead even
+    // if readyState still claims OPEN (the iOS half-open case).
+    if (Date.now() - lastPong > PONG_TIMEOUT_MS) { forceReconnect(); return; }
+    try { ws.send(encodeFrame(T.PING)); } catch (_) { forceReconnect(); }
+  }
+  function startKeepalive() {
+    stopKeepalive();
+    lastPong = Date.now();
+    keepaliveTimer = setInterval(keepaliveTick, KEEPALIVE_MS);
+  }
+  // Tear down the current socket and open a fresh one *now*, without
+  // waiting for the 2s close timer. Debounced by `connecting` so a burst
+  // of foreground events can't spawn parallel sockets — but a socket that
+  // has been stuck CONNECTING past CONNECT_TIMEOUT_MS is wedged (iOS
+  // suspended the handshake), so preempt it instead of no-oping forever.
+  function forceReconnect() {
+    if (connecting && Date.now() - connectStart < CONNECT_TIMEOUT_MS) return;
+    clearConnectWatchdog();
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    stopKeepalive();
+    const old = ws;
+    ws = null;              // orphan the old socket; its handlers no-op via currentTarget
+    if (old) { try { old.close(); } catch (_) {} }
+    connect();
+  }
+  // Fired when the user returns to the tab, restores the page from
+  // bfcache, or the network comes back. If the socket isn't cleanly OPEN,
+  // reconnect immediately. If it *claims* OPEN it may be half-open — send()
+  // won't throw on a dead pipe — so probe it now and hold a *short*
+  // deadline: if no fresh PONG lands within RESUME_PONG_MS, reconnect
+  // rather than waiting the full steady-state PONG_TIMEOUT_MS.
+  function onResume() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) { forceReconnect(); return; }
+    const probeAt = Date.now();
+    try { ws.send(encodeFrame(T.PING)); } catch (_) { forceReconnect(); return; }
+    const probed = ws;
+    setTimeout(() => {
+      if (ws !== probed || ws.readyState !== WebSocket.OPEN) return; // already handled
+      if (lastPong < probeAt) forceReconnect();  // no PONG since the probe ⇒ dead pipe
+    }, RESUME_PONG_MS);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') onResume();
+  });
+  window.addEventListener('pageshow', onResume);
+  window.addEventListener('online', onResume);
+
+  function connect() {
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    clearConnectWatchdog();
+    connecting = true;
+    connectStart = Date.now();
+    const wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+    ws = new WebSocket(wsUrl);
+    ws.binaryType = 'arraybuffer';
+    // Watchdog: if the handshake never reaches OPEN (the tab was suspended
+    // mid-CONNECTING and no open/close/error ever fires), `connecting`
+    // would wedge true forever and every forceReconnect would no-op. Break
+    // it: force a fresh attempt once the timeout elapses.
+    connectWatchdog = setTimeout(() => {
+      if (!ws || ws.readyState === WebSocket.OPEN) return; // resolved already
+      forceReconnect();
+    }, CONNECT_TIMEOUT_MS);
+
+    ws.addEventListener('open', (e) => {
+      if (e.currentTarget !== ws) return;   // orphaned by a forced reconnect
+      clearConnectWatchdog();
+      connecting = false;
+      document.getElementById('status').textContent = 'connected';
+      // HELLO payload = [protocolVersion, ...tokenUtf8]. The token comes
+      // from the URL the daemon printed (?t=<token>). On the local/tunnel
+      // path the ws upgrade was already authed by cookie/query, but the
+      // relay path has no HTTP handshake — the token here is the only
+      // authentication, so always include it when we have one.
+      const params = new URLSearchParams(location.search);
+      const token = params.get('t') || params.get('token') || '';
+      const tokenBytes = new TextEncoder().encode(token);
+      const hello = new Uint8Array(1 + tokenBytes.length);
+      hello[0] = 3;
+      hello.set(tokenBytes, 1);
+      ws.send(encodeFrame(T.HELLO, '', hello));
+      // The reconnect-owns-resubscribe rule: re-attach to the session we
+      // were watching, so the page seamlessly resumes after the daemon
+      // restarts or the WS drops.
+      if (currentSession) {
+        ws.send(encodeFrame(T.SUBSCRIBE, currentSession, encodeSubPayload(FLAG.STDOUT | FLAG.SNAPSHOTS | FLAG.EVENTS)));
+      }
+      // Start the heartbeat only once we're actually open.
+      startKeepalive();
+    });
+
+    ws.addEventListener('message', (e) => {
+      const data = new Uint8Array(e.data);
+      const f = decodeFrame(data);
+      if (!f) return;
+      switch (f.type) {
+        case T.STDOUT:
+          if (f.sessionId === currentSession) term.write(f.payload);
+          break;
+        case T.SNAPSHOT_VT:
+          // Mid-session attach: the daemon hands us a serialized
+          // snapshot of the current screen. Write it first so the
+          // terminal mirrors what's currently on the Mac, then live
+          // STDOUT continues from there.
+          if (f.sessionId === currentSession) {
+            term.write(new TextDecoder().decode(f.payload));
+          }
+          break;
+        case T.PONG:
+          // Heartbeat reply — the pipe is alive.
+          lastPong = Date.now();
+          break;
+        case T.EVENT: {
+          try {
+            const ev = JSON.parse(new TextDecoder().decode(f.payload));
+            if (ev.kind === 'sessionAdded') {
+              sessions.set(ev.session.sessionId, ev.session);
+              renderSessions();
+              // Restore previously-attached session after a browser refresh.
+              // Priority: matching savedSession (from localStorage) > first
+              // new session if nothing is open yet. Either way the user
+              // doesn't have to manually re-tap a session every reload.
+              if (!currentSession) {
+                if (savedSession && ev.session.sessionId === savedSession) {
+                  attachToSession(savedSession);
+                } else if (!savedSession) {
+                  attachToSession(ev.session.sessionId);
+                }
+              }
+              if (typeof updateFab === 'function') updateFab();
+            } else if (ev.kind === 'sessionUpdated') {
+              sessions.set(ev.session.sessionId, ev.session);
+              renderSessions();
+              if (f.sessionId === currentSession) updateCostPill();
+            } else if (ev.kind === 'sessionRemoved') {
+              sessions.delete(f.sessionId);
+              if (currentSession === f.sessionId) {
+                currentSession = null;
+                term.clear();
+                term.write('\r\n[session ended]\r\n');
+                bubblesEl.innerHTML = '<div class="bubble-empty">session ended.</div>';
+                updateCostPill();
+                // Don't restore this session on next refresh — it's gone.
+                try { localStorage.removeItem('pt-session'); } catch (_) {}
+              }
+              renderSessions();
+              if (typeof updateFab === 'function') updateFab();
+            } else if (ev.kind === 'bubble') {
+              // Per-session bubble event from a vendor adapter.
+              const sid = ev.sessionId;
+              const bev = ev.event;
+              const arr = bubblesBySession.get(sid) || [];
+              arr.push(bev);
+              bubblesBySession.set(sid, arr);
+              if (bev.kind === 'cost') {
+                costBySession.set(sid, {
+                  cumulativeCostUSD: bev.cumulativeCostUSD,
+                  model:             bev.model,
+                });
+                if (sid === currentSession) updateCostPill();
+              } else if (sid === currentSession && viewMode === 'bubbles') {
+                appendBubble(bev);
+              }
+              // approval prompts fire a desktop notification
+              // regardless of which session is currently visible. This
+              // is the "phone buzzes when Claude needs me" path; works
+              // identically for the local browser tab.
+              if (bev.kind === 'approval' && bev.approvalId && !/^[✓✗]/.test(bev.text || '')) {
+                fireNotif('pocket-t · approval needed',
+                  (bev.tool ? bev.tool + ' — ' : '') + (bev.text || 'tool wants to run'));
+              }
+            }
+          } catch (_) {}
+          break;
+        }
+      }
+    });
+
+    ws.addEventListener('close', (e) => {
+      if (e.currentTarget !== ws) return;   // orphaned by a forced reconnect
+      clearConnectWatchdog();
+      connecting = false;
+      stopKeepalive();
+      document.getElementById('status').textContent = 'disconnected — retrying in 2s…';
+      reconnectTimer = setTimeout(connect, 2000);
+    });
+    ws.addEventListener('error', (e) => {
+      if (e.currentTarget !== ws) return;
+      clearConnectWatchdog();
+      connecting = false;
+      document.getElementById('status').textContent = 'error — retrying…';
+    });
+  }
+
+  function attachToSession(id) {
+    if (currentSession === id) return;
+    if (currentSession && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(encodeFrame(T.UNSUBSCRIBE, currentSession));
+    }
+    currentSession = id;
+    document.getElementById('title').textContent = id;
+    // Persist the selection so a browser refresh restores this same
+    // session automatically (the daemon kept the underlying shell
+    // running the whole time — we just need the UI to remember).
+    try { localStorage.setItem('pt-session', id); } catch (_) {}
+    // Reset accumulated bubble history for this session — the daemon
+    // will replay it on SUBSCRIBE, so we rebuild from scratch.
+    bubblesBySession.set(id, []);
+    costBySession.delete(id);
+    lastSentCols = 0;
+    lastSentRows = 0;
+    term.reset();
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(encodeFrame(T.SUBSCRIBE, id, encodeSubPayload(FLAG.STDOUT | FLAG.SNAPSHOTS | FLAG.EVENTS)));
+    }
+    renderSessions();
+    renderBubbles();
+    updateCostPill();
+    if (typeof updateFab === 'function') updateFab();
+    term.focus();
+    setTimeout(doFit, 0);
+  }
+
+  // Browser keystrokes → INPUT_TEXT → daemon → pt → PTY master → shell
+  term.onData(data => {
+    if (!currentSession || !ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(encodeFrame(T.INPUT_TEXT, currentSession, new TextEncoder().encode(data)));
+  });
+
+  // ─── Mobile UI wiring ──────────────────────────────────────────
+  // Hamburger sidebar toggle — fixes the "sidebar takes half my
+  // phone screen" problem. Tap menu icon → spring-animated slide-in.
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  function openSidebar()  { sidebar.classList.add('open');    backdrop.classList.add('show'); }
+  function closeSidebar() { sidebar.classList.remove('open'); backdrop.classList.remove('show'); }
+  document.getElementById('mobile-menu-btn').addEventListener('click', openSidebar);
+  backdrop.addEventListener('click', closeSidebar);
+  // Single delegated click handler on the sessions container —
+  // dispatches between "kill (×)" and "attach". Avoids per-card
+  // onclick handlers + per-card listener attach churn, and works
+  // reliably on iOS (whose pointer-event ordering bit the
+  // previous div.onclick approach).
+  document.getElementById('sessions').addEventListener('click', (ev) => {
+    const target = ev.target;
+    if (!target || !target.closest) return;
+    // KILL path — tap × on a session card.
+    const killBtn = target.closest('.session-kill');
+    if (killBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const sid = killBtn.getAttribute('data-kill');
+      if (sid && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(encodeFrame(T.KILL, sid));
+      }
+      return;
+    }
+    // ATTACH path — tap anywhere else on the session card.
+    const card = target.closest('.session');
+    if (card && card.dataset.sessionId) {
+      attachToSession(card.dataset.sessionId);
+      if (window.matchMedia('(max-width: 768px)').matches) closeSidebar();
+    }
+  });
+
+  // ─── Spawn new session from the phone ──────────────────────────
+  // Sends a ws-v3 EVENT { kind: 'spawnSession' } back over the wire.
+  // The daemon spawns /usr/local/bin/pt as a child process (no node-pty
+  // needed) — pt opens its PTY, registers via the unix socket, the new
+  // session appears in this sidebar within ~100ms.
+  function spawnNewSession() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const msg = { kind: 'spawnSession' };
+    ws.send(encodeFrame(T.EVENT, '', new TextEncoder().encode(JSON.stringify(msg))));
+    if (window.matchMedia('(max-width: 768px)').matches) closeSidebar();
+  }
+  document.getElementById('sidebar-spawn').addEventListener('click', spawnNewSession);
+  document.getElementById('fab-spawn').addEventListener('click', spawnNewSession);
+
+  // FAB visible only when we have ≥1 session and we're on mobile.
+  // The sidebar+ button is the primary "+ new" when no session is
+  // attached; FAB is for quick spawn while you're already in one.
+  const fab = document.getElementById('fab-spawn');
+  function updateFab() {
+    fab.classList.toggle('show', sessions.size > 0 && !!currentSession);
+  }
+
+  // ─── Touch-keyboard row ────────────────────────────────────────
+  // The reason this exists: a phone keyboard has no Esc, no Ctrl,
+  // no Tab, no arrow keys. Without these you can't even quit vim.
+  //
+  // Each .touch-key has a data-send attribute carrying the escape
+  // sequence (e.g. \x1b for Esc, \x1b[A for arrow up). The Ctrl
+  // key is a sticky modifier — tap it, the next key gets Ctrl-
+  // modified (so Ctrl+R for history search works without us having
+  // to ship a key for every Ctrl combination).
+  let ctrlSticky = false;
+  const ctrlKey  = document.getElementById('touch-ctrl');
+  function sendKey(bytes) {
+    if (!currentSession || !ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(encodeFrame(T.INPUT_TEXT, currentSession, new TextEncoder().encode(bytes)));
+    // Keep the terminal focused so iOS keyboard doesn't dismiss.
+    term.focus();
+  }
+  document.getElementById('touch-rows').addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest && e.target.closest('.touch-key');
+    if (!btn) return;
+    // Sticky Ctrl: toggle and bail out — next normal-key tap consumes it.
+    if (btn.dataset.ctrl) {
+      ctrlSticky = !ctrlSticky;
+      ctrlKey.classList.toggle('sticky', ctrlSticky);
+      return;
+    }
+    let send = btn.dataset.send || '';
+    if (ctrlSticky && send.length === 1) {
+      // Ctrl+<letter>: ASCII code 1..26 = letter - 'a' + 1.
+      const c = send.toLowerCase().charCodeAt(0);
+      if (c >= 0x61 && c <= 0x7a) send = String.fromCharCode(c - 0x60);
+      ctrlSticky = false;
+      ctrlKey.classList.remove('sticky');
+    }
+    sendKey(send);
+  });
+  // Long-press Esc / arrows for repeat? Future. Tap is enough today.
+
+  // Power users / desktop folks can toggle the touch row on with
+  // ?keys=1 or by adding the .show-desktop class manually.
+  if (new URLSearchParams(location.search).get('keys') === '1') {
+    document.getElementById('touch-rows').classList.add('show-desktop');
+  }
+
+  // Restore the last-used view mode (Terminal / Bubbles) from a previous
+  // page-load. Catalog-driven session restore lives in the sessionAdded
+  // handler above. Theme already restored elsewhere via localStorage.
+  if (savedView && savedView !== 'terminal') {
+    window.__pt_setView(savedView);
+  }
+
+  renderSessions();
+  connect();
+</script>
+</body>
+</html>

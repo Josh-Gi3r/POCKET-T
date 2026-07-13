@@ -1,0 +1,21 @@
+{
+  "name": "@pocket-t/relay",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev":       "tsx watch src/wsv3-hub.ts",
+    "build":     "tsc",
+    "start":     "node dist/wsv3-hub.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pocket-t/shared": "workspace:*",
+    "ws": "^8.20.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.0"
+  }
+}

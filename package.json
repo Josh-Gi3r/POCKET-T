@@ -1,0 +1,31 @@
+{
+  "name": "pocket-t",
+  "private": true,
+  "scripts": {
+    "dev:relay":  "pnpm --filter @pocket-t/relay dev",
+    "dev:daemon": "pnpm --filter @pocket-t/daemon dev",
+    "build":      "pnpm -r build",
+    "shared":     "pnpm --filter @pocket-t/shared build",
+    "typecheck":  "pnpm --filter @pocket-t/shared build && pnpm -r typecheck",
+    "test":       "pnpm --filter @pocket-t/daemon test",
+    "lint":       "pnpm --filter @pocket-t/shared build && eslint .",
+    "format:check": "prettier --check .",
+    "format":     "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "eslint": "^9.13.0",
+    "globals": "^17.6.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.11.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ],
+    "overrides": {
+      "ws": "^8.21.0"
+    }
+  }
+}

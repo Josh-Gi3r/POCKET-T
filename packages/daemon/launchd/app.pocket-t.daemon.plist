@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>app.pocket-t.daemon</string>
+
+  <!--
+    `install.sh` drops a `pocket` launcher at /usr/local/bin/pocket that runs
+    `pt-registry serve`. The CLI subcommand is `serve` (there is no `run`).
+    Pass `--tunnel` here if you want the daemon to open a Cloudflare Quick
+    Tunnel on boot; bare `serve` is local-only (http://127.0.0.1:7700/).
+  -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/pocket</string>
+    <string>serve</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/pocket-t-daemon.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/tmp/pocket-t-daemon.err</string>
+
+  <!--
+    LaunchAgents inherit a minimal PATH, so the `pocket` wrapper (which shells
+    out to pnpm/node) can't find its tools without this. Adjust the first two
+    entries to match where Homebrew and pnpm live on your Mac:
+      - /opt/homebrew/bin  Apple Silicon Homebrew (node, pnpm, cloudflared)
+      - /usr/local/bin     Intel Homebrew + the `pocket`/`pt` binaries
+    If pnpm was installed via its standalone script, also add
+    "$HOME/Library/pnpm" (LaunchAgents can't expand $HOME, so use the literal
+    absolute path, e.g. /Users/you/Library/pnpm).
+  -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+</dict>
+</plist>

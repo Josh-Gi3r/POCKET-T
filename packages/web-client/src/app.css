@@ -1,0 +1,57 @@
+:root {
+  --bg: #0b0f14;
+  --bg-elev: #121822;
+  --bg-card: #161d28;
+  --border: #232c3a;
+  --text: #e6edf3;
+  --text-dim: #8b98a9;
+  --accent: #3fe08f;
+  --accent-dim: #1f7a4d;
+  --user: #2b3b52;
+  --thought: #2a2140;
+  --action: #1c2b3a;
+  --result: #14231b;
+  --approval: #3a2a12;
+  --error: #3a1720;
+  --danger: #ff6b6b;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+#app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+code,
+.mono {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+}
