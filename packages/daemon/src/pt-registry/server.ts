@@ -21,6 +21,7 @@ import * as fs from 'node:fs';
 import * as http from 'node:http';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import * as crypto from 'node:crypto';
 import { spawn as spawnChild } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -82,6 +83,24 @@ export const RECORDINGS_DIR = path.join(POCKET_T_DIR, 'recordings');
 const BROWSER_PORT = Number(process.env.POCKET_T_BROWSER_PORT ?? 7700);
 const BROWSER_HOST = process.env.POCKET_T_BROWSER_HOST ?? '127.0.0.1';
 
+// Per-daemon bearer token minted at startup (see runServer). Every /ws
+// upgrade and every page GET must carry it — via ?t=<token> in the URL
+// the daemon prints, an Authorization: Bearer header, or the same-origin
+// cookie the page route sets. Empty until runServer() mints it; an empty
+// token rejects everything, so nothing is ever served unauthenticated.
+let BROWSER_TOKEN = '';
+
+// Origin allowlist for the /ws upgrade. Populated in runServer with the
+// daemon's own loopback host(s) and, once known, the tunnel/relay host.
+// A drive-by website's Origin never lands here, so it can't open a
+// ws://localhost socket even before the token check runs.
+const ALLOWED_ORIGIN_HOSTS = new Set<string>();
+
+// Keystroke recording is OFF by default — the .cast files capture every
+// byte typed, including passwords pasted into prompts. Opt in explicitly
+// with POCKET_T_RECORD=1 (or true/yes/on).
+const RECORDING_ENABLED = /^(1|true|yes|on)$/i.test(process.env.POCKET_T_RECORD ?? '');
+
 // when a pt socket drops without a clean FRAME_EXIT, we hold
 // the session in "detached" state for this long. Lets the browser show
 // a graceful "detached" badge instead of yanking the session away, and
@@ -93,9 +112,19 @@ const DETACH_GRACE_MS = 60_000;
 // them into bubble events with kind:'approval' so the browser can show
 // approve/deny buttons; the user's choice flows back through ws-v3.
 const HOOK_PORT = Number(process.env.POCKET_T_HOOK_PORT ?? 7621);
-const HOOK_FAILSAFE = (process.env.POCKET_T_HOOK_FAILSAFE ?? 'approve').toLowerCase();
-const HOOK_FAILSAFE_MODE: 'approve' | 'deny' | 'passthrough' =
-  HOOK_FAILSAFE === 'deny' || HOOK_FAILSAFE === 'passthrough' ? HOOK_FAILSAFE : 'approve';
+
+// PreToolUse failsafe when no UI listener is connected. An explicit
+// POCKET_T_HOOK_FAILSAFE always wins. Otherwise the default depends on
+// exposure: a loopback-only daemon can safely fall through to Claude's
+// own permission gate (approve), but an exposed daemon (tunnel/relay/
+// non-loopback bind) must fail CLOSED (deny) so a remote peer can't
+// auto-approve writes when no human is watching. Resolved per-run in
+// runServer() where exposure is known.
+function resolveHookFailsafeMode(exposed: boolean): 'approve' | 'deny' | 'passthrough' {
+  const env = (process.env.POCKET_T_HOOK_FAILSAFE ?? '').toLowerCase();
+  if (env === 'approve' || env === 'deny' || env === 'passthrough') return env;
+  return exposed ? 'deny' : 'approve';
+}
 
 // startup time for uptime reporting via `pt-registry status`.
 const STARTED_AT = Date.now();
@@ -309,19 +338,22 @@ function startPtServer(): net.Server {
                 events:       [],
                 pendingApprovals: new Map(),
               };
-              // asciinema recorder. Best-effort: never lets
-              // a filesystem hiccup kill a session.
-              try {
-                session.recorder = new Recorder({
-                  dir:       RECORDINGS_DIR,
-                  sessionId: session.sessionId,
-                  cols:      session.cols,
-                  rows:      session.rows,
-                  shell:     session.shell,
-                  cwd:       session.cwd,
-                });
-              } catch (e) {
-                console.warn(`[pt-registry] recorder init failed for ${session.sessionId}:`, (e as Error).message);
+              // asciinema recorder. Opt-in only (POCKET_T_RECORD): the
+              // .cast files record every keystroke, including secrets.
+              // Best-effort: never lets a filesystem hiccup kill a session.
+              if (RECORDING_ENABLED) {
+                try {
+                  session.recorder = new Recorder({
+                    dir:       RECORDINGS_DIR,
+                    sessionId: session.sessionId,
+                    cols:      session.cols,
+                    rows:      session.rows,
+                    shell:     session.shell,
+                    cwd:       session.cwd,
+                  });
+                } catch (e) {
+                  console.warn(`[pt-registry] recorder init failed for ${session.sessionId}:`, (e as Error).message);
+                }
               }
               sessions.set(session.sessionId, session);
               boundSessionId = session.sessionId;
@@ -700,6 +732,13 @@ function shellEscape(s: string): string {
 interface BrowserClient {
   ws:            WebSocket;
   subscriptions: Map<string, number>; // sessionId → flag bitmask
+  // Has this client proved it holds the per-daemon bearer token? Clients
+  // that arrive over the local /ws server are pre-authed by verifyClient
+  // (token + Origin checked at the HTTP upgrade). Clients that arrive via
+  // the outbound relay have NO HTTP handshake to gate them, so they start
+  // false and must present the token in their HELLO frame before any
+  // privileged frame (SUBSCRIBE / INPUT / KILL / spawnSession) is honoured.
+  authed:        boolean;
 }
 
 const browserClients = new Set<BrowserClient>();
@@ -708,6 +747,7 @@ function broadcastStdout(sessionId: string, bytes: Buffer): void {
   if (browserClients.size === 0) return;
   let cachedFrame: Uint8Array | null = null;
   for (const client of browserClients) {
+    if (!client.authed) continue;   // defense-in-depth: no PTY bytes to unauthed relay peers
     const flags = client.subscriptions.get(sessionId);
     if (!flags || !(flags & WsV3SubscribeFlags.Stdout)) continue;
     if (client.ws.readyState !== WebSocket.OPEN) continue;
@@ -787,6 +827,10 @@ function broadcastEvent(sessionId: string, event: unknown): void {
     || kind === 'sessionUpdated';
 
   for (const client of browserClients) {
+    // Never leak session metadata to a not-yet-authenticated relay peer,
+    // even for unsubscribed lifecycle events — this matches the catalog
+    // gating in attachWsAsBrowserClient so pre-auth relay clients see nothing.
+    if (!client.authed) continue;
     const flags = client.subscriptions.get(sessionId);
     const wantsEvents = (flags ?? 0) & WsV3SubscribeFlags.Events;
     if (!sessionLifecycle && !wantsEvents) continue;
@@ -825,15 +869,47 @@ function sendWelcomeAndCatalog(ws: WebSocket): void {
  * daemon's perspective.
  */
 function handleIncomingFrame(client: BrowserClient, frame: { type: WsV3MessageType; sessionId: string; payload: Uint8Array }): void {
+  // Relay auth gate. A relay-attached client (client.authed === false)
+  // reached us with NO HTTP handshake, so verifyClient never ran. Until
+  // it proves the token in its HELLO frame we honour only HELLO (which
+  // carries the token) and PING (keepalive). Every privileged frame —
+  // SUBSCRIBE, INPUT_TEXT/KEY, RESIZE, KILL, and EVENT (spawnSession /
+  // approvalDecision) — is dropped. This closes the --relay bypass where
+  // an unauthenticated hub peer could inject keystrokes / kill sessions.
+  if (!client.authed
+      && frame.type !== WsV3MessageType.HELLO
+      && frame.type !== WsV3MessageType.PING) {
+    return;
+  }
+
   switch (frame.type) {
-    case WsV3MessageType.HELLO:
+    case WsV3MessageType.HELLO: {
       // Browser-side HELLO arrives whenever a fresh tab connects. Through
       // the local WS this happens after we already sent the catalog on
       // connect; through the relay (hub) it's the FIRST signal we get
-      // that a downstream browser is alive, since the hub is a dumb
-      // pipe. Re-send the catalog so the browser populates its sidebar.
+      // that a downstream browser is alive, since the hub is a dumb pipe.
+      //
+      // HELLO payload = [protocolVersion, ...tokenUtf8]. On the relay
+      // path the token here is the ONLY authentication, so a not-yet-authed
+      // client must present a valid token or be dropped. Pre-authed
+      // (local /ws) clients skip the check — they were gated at the HTTP
+      // upgrade — but sending the token is harmless.
+      if (!client.authed) {
+        const token = frame.payload.length > 1
+          ? new TextDecoder().decode(frame.payload.subarray(1))
+          : '';
+        if (!tokenMatches(token)) {
+          console.warn('[pt-registry] relay client HELLO missing/invalid token — dropping connection');
+          try { client.ws.close(1008, 'Unauthorized'); } catch { /* noop */ }
+          return;
+        }
+        client.authed = true;
+        console.log('[pt-registry] relay client authenticated via HELLO token');
+      }
+      // Re-send the catalog so the browser populates its sidebar.
       sendWelcomeAndCatalog(client.ws);
       break;
+    }
 
     case WsV3MessageType.SUBSCRIBE: {
       const sub = decodeSubscribePayload(frame.payload);
@@ -992,11 +1068,14 @@ function handleIncomingFrame(client: BrowserClient, frame: { type: WsV3MessageTy
   }
 }
 
-function attachWsAsBrowserClient(ws: WebSocket, label: string): BrowserClient {
-  const client: BrowserClient = { ws, subscriptions: new Map() };
+function attachWsAsBrowserClient(ws: WebSocket, label: string, preAuthed = true): BrowserClient {
+  const client: BrowserClient = { ws, subscriptions: new Map(), authed: preAuthed };
   browserClients.add(client);
-  sendWelcomeAndCatalog(ws);
-  console.log(`[pt-registry] ${label} connected (${browserClients.size} total)`);
+  // Only paint the session catalog for an already-authenticated client.
+  // A relay client (preAuthed=false) gets it after it authenticates in
+  // its HELLO frame — never leak the session list to an unauthed peer.
+  if (preAuthed) sendWelcomeAndCatalog(ws);
+  console.log(`[pt-registry] ${label} connected${preAuthed ? '' : ' (awaiting token)'} (${browserClients.size} total)`);
 
   ws.on('message', (data: Buffer) => {
     const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
@@ -1015,10 +1094,117 @@ function attachWsAsBrowserClient(ws: WebSocket, label: string): BrowserClient {
   return client;
 }
 
+// ─── Browser auth: bearer token + origin allowlist ─────────────────────────
+//
+// The daemon serves a terminal-control surface: /ws lets a peer stream
+// PTY output and inject keystrokes into any live session. Left open, a
+// drive-by website could ws://localhost:7700/ws and drive the user's
+// shell. Two gates close that:
+//
+//   1. A per-daemon bearer token (BROWSER_TOKEN). The page GET requires
+//      it (delivered via ?t=<token> in the URL the daemon prints) and
+//      sets it as a same-origin cookie, so the ws-v3 handshake the
+//      static client opens carries it automatically.
+//   2. An Origin allowlist on the /ws upgrade — a foreign site's Origin
+//      never matches, so it's rejected before the token check.
+//
+// Tunnel traffic reaches us over loopback (cloudflared dials localhost),
+// so it is indistinguishable from a local socket. We therefore never
+// exempt by remote address — the token is ALWAYS required.
+
+const TOKEN_COOKIE = 'pocket_t_token';
+
+function parseCookies(header: string | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!header) return out;
+  for (const part of header.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq < 0) continue;
+    const k = part.slice(0, eq).trim();
+    if (!k) continue;
+    out[k] = decodeURIComponent(part.slice(eq + 1).trim());
+  }
+  return out;
+}
+
+function tokenFromRequest(req: http.IncomingMessage): string | null {
+  // 1) query param ?t= / ?token= (matches the relay hub convention).
+  try {
+    const u = new URL(req.url ?? '/', 'http://localhost');
+    const q = u.searchParams.get('t') ?? u.searchParams.get('token');
+    if (q) return q;
+  } catch { /* malformed url */ }
+  // 2) Authorization: Bearer <token>.
+  const auth = req.headers['authorization'];
+  if (typeof auth === 'string' && /^Bearer\s+/i.test(auth)) {
+    return auth.replace(/^Bearer\s+/i, '').trim();
+  }
+  // 3) same-origin cookie set by the page route.
+  const cookies = parseCookies(req.headers['cookie']);
+  return cookies[TOKEN_COOKIE] ?? null;
+}
+
+/** Constant-time compare of a candidate against the per-daemon token.
+ *  An unminted (empty) token rejects everything. Shared by the HTTP gate
+ *  (tokenOk) and the ws-v3 relay gate (HELLO auth). */
+function tokenMatches(candidate: string | null | undefined): boolean {
+  if (!BROWSER_TOKEN) return false;
+  if (!candidate || candidate.length !== BROWSER_TOKEN.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(candidate), Buffer.from(BROWSER_TOKEN));
+  } catch { return false; }
+}
+
+/** True only when the request carries the exact per-daemon token. */
+function tokenOk(req: http.IncomingMessage): boolean {
+  return tokenMatches(tokenFromRequest(req));
+}
+
+/** Extract the bare hostname (no port) from an Origin, a Host header, or
+ *  a "host[:port]" string. Comparing host-only sidesteps the default-port
+ *  mismatch: a phone's Origin is https://x.trycloudflare.com (implicit
+ *  :443) while the forwarded Host may carry an explicit port. Returns ''
+ *  on anything unparseable. */
+function hostnameOf(hostOrOrigin: string): string {
+  try {
+    const u = new URL(hostOrOrigin.includes('://') ? hostOrOrigin : `http://${hostOrOrigin}`);
+    return u.hostname.toLowerCase();
+  } catch { return ''; }
+}
+
+/** Origin allowlist for the /ws upgrade. Same-origin (Origin host ==
+ *  Host header, both compared HOST-ONLY) or a known tunnel/relay/loopback
+ *  host passes. A missing Origin (native client, e.g. the relay dial-out)
+ *  passes to the token gate. Any foreign Origin is rejected. */
+function originOk(req: http.IncomingMessage): boolean {
+  const origin = req.headers['origin'];
+  if (!origin) return true;  // non-browser client; token still required
+  const originHost = hostnameOf(origin);
+  if (!originHost) return false;
+  const host = req.headers['host'];
+  if (host && hostnameOf(host) === originHost) return true;
+  return ALLOWED_ORIGIN_HOSTS.has(originHost);
+}
+
 function startBrowserServer(): http.Server {
   const httpServer = http.createServer((req, res) => {
-    if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    let pathname = '/';
+    try { pathname = new URL(req.url ?? '/', 'http://localhost').pathname; } catch { /* noop */ }
+    if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html')) {
+      if (!tokenOk(req)) {
+        res.writeHead(401, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('Unauthorized — open the URL the daemon printed (it carries ?t=<token>).');
+        return;
+      }
+      // Hand the token to the browser as a same-origin cookie so the
+      // ws-v3 handshake (opened without a query string by the static
+      // client) authenticates automatically. HttpOnly keeps it out of
+      // page JS; SameSite=Strict keeps it off cross-site requests, so a
+      // drive-by ws attempt from another site carries no token.
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Set-Cookie': `${TOKEN_COOKIE}=${encodeURIComponent(BROWSER_TOKEN)}; Path=/; SameSite=Strict; HttpOnly`,
+      });
       res.end(BROWSER_PAGE_HTML);
       return;
     }
@@ -1026,7 +1212,23 @@ function startBrowserServer(): http.Server {
     res.end('Not Found');
   });
 
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({
+    server: httpServer,
+    path:   '/ws',
+    verifyClient: (info, cb) => {
+      if (!originOk(info.req)) {
+        console.warn(`[pt-registry] rejected /ws — foreign origin ${info.req.headers['origin']}`);
+        cb(false, 403, 'Forbidden origin');
+        return;
+      }
+      if (!tokenOk(info.req)) {
+        console.warn('[pt-registry] rejected /ws — missing/invalid token');
+        cb(false, 401, 'Unauthorized');
+        return;
+      }
+      cb(true);
+    },
+  });
   wss.on('connection', (ws) => attachWsAsBrowserClient(ws, 'browser'));
 
   return httpServer;
@@ -1055,7 +1257,11 @@ function connectToRelay(url: string): void {
     ws.on('open', () => {
       console.log(`[pt-registry] relay connected`);
       backoff = 1000;
-      client = attachWsAsBrowserClient(ws, 'relay');
+      // preAuthed=false: the relay hub is a dumb pipe with no per-browser
+      // HTTP upgrade, so downstream browsers must authenticate at the
+      // ws-v3 layer via the token in their HELLO frame before we honour
+      // any privileged frame.
+      client = attachWsAsBrowserClient(ws, 'relay', false);
       RELAY_CLIENT = client;  // surfaced via `pt-registry status`.
     });
 
@@ -1102,9 +1308,53 @@ export async function runServer(opts: { relayUrl?: string; tunnel?: boolean } = 
       try { fs.unlinkSync(p); } catch { /* noop */ }
     }
   }
-  // make sure the recordings directory exists before the
-  // first session registers.
-  try { fs.mkdirSync(RECORDINGS_DIR, { recursive: true }); } catch { /* noop */ }
+
+  // Mint the per-daemon bearer token BEFORE any surface is served so no
+  // request is ever answered with an empty (accept-nothing) token. This
+  // is what gates /ws and the page route; the tunnel/relay paths inherit
+  // it unconditionally (no loopback exemption — see the auth section).
+  BROWSER_TOKEN = crypto.randomBytes(32).toString('hex');
+
+  // Seed the /ws Origin allowlist with our own loopback hostnames so the
+  // local browser client passes the same-origin check. Stored HOST-ONLY
+  // (no port) to match hostnameOf(); the tunnel/relay host is added below
+  // once it's known.
+  ALLOWED_ORIGIN_HOSTS.add('127.0.0.1');
+  ALLOWED_ORIGIN_HOSTS.add('localhost');
+  ALLOWED_ORIGIN_HOSTS.add(hostnameOf(`[::1]:${BROWSER_PORT}`));
+  if (BROWSER_HOST !== '127.0.0.1' && BROWSER_HOST !== 'localhost') {
+    ALLOWED_ORIGIN_HOSTS.add(hostnameOf(`${BROWSER_HOST}:${BROWSER_PORT}`));
+  }
+
+  // Is this daemon exposed beyond the local machine? Tunnel, relay, or a
+  // non-loopback bind all mean a remote peer can reach us — which flips
+  // the PreToolUse no-listener failsafe to fail CLOSED (deny).
+  //
+  // CAVEAT (be honest about the trade-off): while exposed AND no UI
+  // client is attached, this fail-closed default DENIES every Claude
+  // PreToolUse tool call until a browser connects — Claude's tools are
+  // blocked, not silently allowed. That's the safe posture for an
+  // internet-reachable terminal, but it does mean "exposed + nobody
+  // watching = tools denied". An explicit POCKET_T_HOOK_FAILSAFE
+  // (approve|deny|passthrough) always overrides this exposure-derived
+  // default, so an operator who understands the risk can opt back into
+  // approve/passthrough. (Prose docs owned by the docs lane.)
+  const exposed =
+       !!opts.tunnel
+    || !!opts.relayUrl
+    || (BROWSER_HOST !== '127.0.0.1' && BROWSER_HOST !== 'localhost');
+  const failsafeMode = resolveHookFailsafeMode(exposed);
+
+  // Recordings only exist when explicitly opted in. Create the dir 0700
+  // (owner-only) so the plaintext keystroke casts aren't world-readable.
+  if (RECORDING_ENABLED) {
+    // mkdir's mode only applies to a freshly-created dir, so also chmod
+    // to remediate a pre-existing recordings dir left world-readable by
+    // an earlier build (the .cast files hold plaintext keystrokes).
+    try { fs.mkdirSync(RECORDINGS_DIR, { recursive: true, mode: 0o700 }); } catch { /* noop */ }
+    try { fs.chmodSync(RECORDINGS_DIR, 0o700); } catch { /* noop */ }
+    console.log('[pt-registry] session recording ENABLED (POCKET_T_RECORD) — casts capture every keystroke');
+  }
 
   const ptServer      = startPtServer();
   const ctlServer     = startCtlServer();
@@ -1118,14 +1368,15 @@ export async function runServer(opts: { relayUrl?: string; tunnel?: boolean } = 
   // the Claude tool call waiting for approval. If no browser is
   // connected, blocking is pointless and dangerous — it hangs every
   // Write/Edit globally for the timeout. We bypass the block entirely
-  // when no UI client is around. Claude's own permissions still gate
-  // dangerous tools, so silently allowing here is safe.
-  if (HOOK_FAILSAFE_MODE === 'passthrough') {
+  // when no UI client is around. On a loopback-only daemon Claude's own
+  // permissions still gate dangerous tools, so approving here is safe;
+  // when exposed we fail closed (deny) instead.
+  if (failsafeMode === 'passthrough') {
     console.log('[pt-registry] PreToolUse hook server disabled (POCKET_T_HOOK_FAILSAFE=passthrough)');
   } else {
     hookServer = new HookServer({
       port:                HOOK_PORT,
-      defaultOnNoListener: HOOK_FAILSAFE_MODE,
+      defaultOnNoListener: failsafeMode,
       hasViableListener:   (sessionId, _toolName) => {
         // "Viable" = at least one browser client is open AND we have a
         // claude-vendor session to attach the approval to. Either
@@ -1142,7 +1393,7 @@ export async function runServer(opts: { relayUrl?: string; tunnel?: boolean } = 
       },
     });
     hookServer.start();
-    console.log(`[pt-registry] PreToolUse failsafe mode: ${HOOK_FAILSAFE_MODE}`);
+    console.log(`[pt-registry] PreToolUse failsafe mode: ${failsafeMode}${exposed ? ' (exposed → fail-closed default)' : ''}`);
   }
   hookServer?.on('approvalRequested', (req: {
     approvalId: string; sessionId: string;
@@ -1205,9 +1456,10 @@ export async function runServer(opts: { relayUrl?: string; tunnel?: boolean } = 
   console.log('[pt-registry] listening:');
   console.log(`               pt  socket: ${PT_SOCK_PATH}`);
   console.log(`               ctl socket: ${CTL_SOCK_PATH}`);
-  console.log(`               browser:    http://${BROWSER_HOST}:${BROWSER_PORT}/`);
+  console.log(`               browser:    http://${BROWSER_HOST}:${BROWSER_PORT}/?t=${BROWSER_TOKEN}`);
   console.log(`               hooks:      http://127.0.0.1:${HOOK_PORT}/`);
-  console.log(`               recordings: ${RECORDINGS_DIR}`);
+  console.log(`               recordings: ${RECORDING_ENABLED ? RECORDINGS_DIR : 'disabled (set POCKET_T_RECORD=1 to enable)'}`);
+  console.log('[pt-registry] the browser URL carries a required access token — treat it like a password');
 
   // phone-from-anywhere via Cloudflare Quick Tunnel.
   // Spawn cloudflared (free, no signup) and print the public URL +
@@ -1217,8 +1469,12 @@ export async function runServer(opts: { relayUrl?: string; tunnel?: boolean } = 
   if (opts.tunnel) {
     try {
       console.log('[pt-registry] starting Cloudflare tunnel…');
-      tunnel = await startTunnel({ localPort: BROWSER_PORT });
-      printTunnelBanner(tunnel.url);
+      tunnel = await startTunnel({ localPort: BROWSER_PORT, token: BROWSER_TOKEN });
+      // Allow the tunnel's own Origin through the /ws check (host-only,
+      // matching hostnameOf), and print the public URL with the required
+      // access token appended.
+      try { ALLOWED_ORIGIN_HOSTS.add(hostnameOf(tunnel.url)); } catch { /* noop */ }
+      printTunnelBanner(tunnel.url, BROWSER_TOKEN);
     } catch (e) {
       console.warn(`[pt-registry] tunnel failed: ${(e as Error).message}`);
       console.warn('[pt-registry] continuing without tunnel — local browser still works at the URL above');

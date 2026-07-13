@@ -1,6 +1,9 @@
 // Anthropic API pricing per million tokens, in USD.
 //
-// Snapshot of public pricing for the model lineup current as of mid-2026.
+// Snapshot of public pricing for the model lineup current as of mid-2026
+// (source: Anthropic public pricing — Opus 4.6/4.7/4.8 $5/$25, Sonnet
+// 5/4.6 $3/$15, Haiku 4.5 $1/$5). Cache reads bill at ~0.1x input; cache
+// writes (5-minute TTL) at 1.25x input.
 // Keep this file as the single edit point when prices move — adapters and
 // the cost-meter UI all read from `priceForModel()`. If we don't recognise
 // the model name we fall back to a "best-guess Sonnet" pricing so the
@@ -25,17 +28,17 @@ const SONNET: ModelPricing = {
 };
 
 const OPUS: ModelPricing = {
-  inputPerMTok:          15.00,
-  outputPerMTok:         75.00,
-  cacheReadPerMTok:      1.50,
-  cacheCreationPerMTok:  18.75,
+  inputPerMTok:          5.00,
+  outputPerMTok:         25.00,
+  cacheReadPerMTok:      0.50,
+  cacheCreationPerMTok:  6.25,
 };
 
 const HAIKU: ModelPricing = {
-  inputPerMTok:          0.80,
-  outputPerMTok:         4.00,
-  cacheReadPerMTok:      0.08,
-  cacheCreationPerMTok:  1.00,
+  inputPerMTok:          1.00,
+  outputPerMTok:         5.00,
+  cacheReadPerMTok:      0.10,
+  cacheCreationPerMTok:  1.25,
 };
 
 // OpenAI GPT-5 family (Codex backbone). Public list pricing as of

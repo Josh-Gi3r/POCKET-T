@@ -38,3 +38,35 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+      # Supply-chain signal: surface known high/critical advisories in
+      # production dependencies (e.g. the ws DoS CVE GHSA-96hv-2xvq-fx4p, which
+      # the root `ws` override must keep clear). Non-blocking on purpose —
+      # `pnpm audit` hits the network on every run, so an unrelated future
+      # advisory or a registry hiccup must not gate every merge. Watch the
+      # step's status; don't let it fail the job.
+      - name: Audit production dependencies
+        continue-on-error: true
+        run: pnpm audit --prod --audit-level high
+
+  # The `pt` shim becomes the user's login shell, yet CI never compiled it.
+  # Build, lint, and test it on macOS — the only platform it ships to.
+  shim:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: packages/pt-shim
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clippy
+        run: rustup component add clippy
+
+      - name: Build
+        run: cargo build --locked
+
+      - name: Clippy
+        run: cargo clippy --locked -- -D warnings
+
+      - name: Test
+        run: cargo test --locked

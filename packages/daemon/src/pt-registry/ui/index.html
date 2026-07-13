@@ -717,21 +717,128 @@
     }
   }
 
+  // ─── WebSocket lifecycle + keepalive ───────────────────────────
+  // A backgrounded iOS Safari tab can leave a *half-open* socket: it
+  // never fires 'close', and the 2s retry timer is frozen while the
+  // page is hidden, so the user comes back to a dead-but-"connected"
+  // terminal. iOS can also suspend the tab *during* the handshake, so
+  // the socket wedges in CONNECTING and no open/close/error ever fires.
+  // Defenses: (1) an application-level PING/PONG heartbeat that detects
+  // a silent pipe; (2) a connect watchdog that breaks a wedged CONNECTING
+  // socket; (3) visibility / pageshow / online handlers that reconnect
+  // the instant the user returns — and, if the socket only *claims* OPEN,
+  // probe it with a short pong deadline rather than waiting the full
+  // steady-state PONG_TIMEOUT. Reconnect re-SUBSCRIBEs the same session,
+  // so the server's VT snapshot resyncs the screen.
+  const KEEPALIVE_MS      = 20000; // send a PING this often
+  const PONG_TIMEOUT_MS   = 45000; // no PONG for >2 intervals ⇒ dead pipe (steady state)
+  const CONNECT_TIMEOUT_MS = 10000; // handshake must reach OPEN within this
+  const RESUME_PONG_MS     = 3000;  // on resume, expect a PONG within this or reconnect
   let ws = null;
+  let reconnectTimer = null;     // pending close-path retry (setTimeout)
+  let keepaliveTimer = null;     // PING interval
+  let connectWatchdog = null;    // fires if a handshake never reaches OPEN
+  let connecting = false;        // a socket is mid-connect; debounces reconnects
+  let connectStart = 0;          // Date.now() when the current connect() began
+  let lastPong = 0;              // Date.now() of the last PONG / open
+
+  function stopKeepalive() {
+    if (keepaliveTimer) { clearInterval(keepaliveTimer); keepaliveTimer = null; }
+  }
+  function clearConnectWatchdog() {
+    if (connectWatchdog) { clearTimeout(connectWatchdog); connectWatchdog = null; }
+  }
+  function keepaliveTick() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    // Silent for longer than the pong timeout ⇒ the pipe is dead even
+    // if readyState still claims OPEN (the iOS half-open case).
+    if (Date.now() - lastPong > PONG_TIMEOUT_MS) { forceReconnect(); return; }
+    try { ws.send(encodeFrame(T.PING)); } catch (_) { forceReconnect(); }
+  }
+  function startKeepalive() {
+    stopKeepalive();
+    lastPong = Date.now();
+    keepaliveTimer = setInterval(keepaliveTick, KEEPALIVE_MS);
+  }
+  // Tear down the current socket and open a fresh one *now*, without
+  // waiting for the 2s close timer. Debounced by `connecting` so a burst
+  // of foreground events can't spawn parallel sockets — but a socket that
+  // has been stuck CONNECTING past CONNECT_TIMEOUT_MS is wedged (iOS
+  // suspended the handshake), so preempt it instead of no-oping forever.
+  function forceReconnect() {
+    if (connecting && Date.now() - connectStart < CONNECT_TIMEOUT_MS) return;
+    clearConnectWatchdog();
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    stopKeepalive();
+    const old = ws;
+    ws = null;              // orphan the old socket; its handlers no-op via currentTarget
+    if (old) { try { old.close(); } catch (_) {} }
+    connect();
+  }
+  // Fired when the user returns to the tab, restores the page from
+  // bfcache, or the network comes back. If the socket isn't cleanly OPEN,
+  // reconnect immediately. If it *claims* OPEN it may be half-open — send()
+  // won't throw on a dead pipe — so probe it now and hold a *short*
+  // deadline: if no fresh PONG lands within RESUME_PONG_MS, reconnect
+  // rather than waiting the full steady-state PONG_TIMEOUT_MS.
+  function onResume() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) { forceReconnect(); return; }
+    const probeAt = Date.now();
+    try { ws.send(encodeFrame(T.PING)); } catch (_) { forceReconnect(); return; }
+    const probed = ws;
+    setTimeout(() => {
+      if (ws !== probed || ws.readyState !== WebSocket.OPEN) return; // already handled
+      if (lastPong < probeAt) forceReconnect();  // no PONG since the probe ⇒ dead pipe
+    }, RESUME_PONG_MS);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') onResume();
+  });
+  window.addEventListener('pageshow', onResume);
+  window.addEventListener('online', onResume);
+
   function connect() {
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    clearConnectWatchdog();
+    connecting = true;
+    connectStart = Date.now();
     const wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
     ws = new WebSocket(wsUrl);
     ws.binaryType = 'arraybuffer';
+    // Watchdog: if the handshake never reaches OPEN (the tab was suspended
+    // mid-CONNECTING and no open/close/error ever fires), `connecting`
+    // would wedge true forever and every forceReconnect would no-op. Break
+    // it: force a fresh attempt once the timeout elapses.
+    connectWatchdog = setTimeout(() => {
+      if (!ws || ws.readyState === WebSocket.OPEN) return; // resolved already
+      forceReconnect();
+    }, CONNECT_TIMEOUT_MS);
 
-    ws.addEventListener('open', () => {
+    ws.addEventListener('open', (e) => {
+      if (e.currentTarget !== ws) return;   // orphaned by a forced reconnect
+      clearConnectWatchdog();
+      connecting = false;
       document.getElementById('status').textContent = 'connected';
-      ws.send(encodeFrame(T.HELLO, '', new Uint8Array([3])));
+      // HELLO payload = [protocolVersion, ...tokenUtf8]. The token comes
+      // from the URL the daemon printed (?t=<token>). On the local/tunnel
+      // path the ws upgrade was already authed by cookie/query, but the
+      // relay path has no HTTP handshake — the token here is the only
+      // authentication, so always include it when we have one.
+      const params = new URLSearchParams(location.search);
+      const token = params.get('t') || params.get('token') || '';
+      const tokenBytes = new TextEncoder().encode(token);
+      const hello = new Uint8Array(1 + tokenBytes.length);
+      hello[0] = 3;
+      hello.set(tokenBytes, 1);
+      ws.send(encodeFrame(T.HELLO, '', hello));
       // The reconnect-owns-resubscribe rule: re-attach to the session we
       // were watching, so the page seamlessly resumes after the daemon
       // restarts or the WS drops.
       if (currentSession) {
         ws.send(encodeFrame(T.SUBSCRIBE, currentSession, encodeSubPayload(FLAG.STDOUT | FLAG.SNAPSHOTS | FLAG.EVENTS)));
       }
+      // Start the heartbeat only once we're actually open.
+      startKeepalive();
     });
 
     ws.addEventListener('message', (e) => {
@@ -750,6 +857,10 @@
           if (f.sessionId === currentSession) {
             term.write(new TextDecoder().decode(f.payload));
           }
+          break;
+        case T.PONG:
+          // Heartbeat reply — the pipe is alive.
+          lastPong = Date.now();
           break;
         case T.EVENT: {
           try {
@@ -817,11 +928,18 @@
       }
     });
 
-    ws.addEventListener('close', () => {
+    ws.addEventListener('close', (e) => {
+      if (e.currentTarget !== ws) return;   // orphaned by a forced reconnect
+      clearConnectWatchdog();
+      connecting = false;
+      stopKeepalive();
       document.getElementById('status').textContent = 'disconnected — retrying in 2s…';
-      setTimeout(connect, 2000);
+      reconnectTimer = setTimeout(connect, 2000);
     });
-    ws.addEventListener('error', () => {
+    ws.addEventListener('error', (e) => {
+      if (e.currentTarget !== ws) return;
+      clearConnectWatchdog();
+      connecting = false;
       document.getElementById('status').textContent = 'error — retrying…';
     });
   }

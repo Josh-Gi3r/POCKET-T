@@ -269,9 +269,17 @@ fn copy_loop(master_fd: RawFd, child_pid: pid_t, daemon: &mut Option<DaemonConn>
 
 fn main() {
 
-    // Resolve the user's real shell. Defaulting to zsh because that's the
-    // macOS default since Catalina; bash / fish also work via $SHELL.
-    let shell = env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+    // Resolve the user's real shell. An explicitly-set, non-empty $SHELL is
+    // authoritative: we exec *only* that and never silently fall back to a
+    // different shell on exec failure, because doing so could let a user
+    // escape a restricted/locked-down login shell an admin pinned via $SHELL.
+    // The hardcoded fallbacks below apply only when $SHELL is unset or empty —
+    // there there's no intent to honour, and the alternative is bricking the
+    // terminal. Default to zsh (macOS default since Catalina) for that case.
+    let shell_env = env::var("SHELL").ok().filter(|s| !s.is_empty());
+    let shell = shell_env
+        .clone()
+        .unwrap_or_else(|| "/bin/zsh".to_string());
 
     // Ignore SIGPIPE. On macOS, `MSG_NOSIGNAL` on send() is effectively
     // a no-op, so a broken pipe (daemon vanished mid-write, stdout pipe
@@ -323,21 +331,46 @@ fn main() {
         // Child: exec the user's shell as a *login* shell.
         // The leading-dash arg0 convention is how Unix marks a login shell;
         // zsh/bash/fish all respect it and source the login init files.
-        let shell_path = CString::new(shell.as_bytes()).expect("shell path cstring");
-        let shell_basename = std::path::Path::new(&shell)
-            .file_name()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "sh".to_string());
-        let login_arg0 = CString::new(format!("-{}", shell_basename)).expect("arg0 cstring");
+        //
+        // Candidate shells to exec, in order. When $SHELL was explicitly set
+        // we honour it *exclusively* — a single-element list — so an exec
+        // failure never silently escapes a restricted login shell (see the
+        // resolution note above). Only an unset/empty $SHELL falls through to
+        // the well-known shells so a missing $SHELL never bricks the terminal:
+        // /bin/zsh (macOS default) then /bin/sh (guaranteed present). Each
+        // execvp only returns on failure, so we advance to the next
+        // candidate; if every candidate fails there's nothing left to
+        // become, so exit cleanly with 127.
+        let candidates: Vec<&str> = match shell_env.as_deref() {
+            Some(s) => vec![s],
+            None => vec!["/bin/zsh", "/bin/sh"],
+        };
+        for candidate in &candidates {
+            let shell_path = match CString::new(candidate.as_bytes()) {
+                Ok(p) => p,
+                Err(_) => continue,
+            };
+            let shell_basename = std::path::Path::new(candidate)
+                .file_name()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "sh".to_string());
+            let login_arg0 = match CString::new(format!("-{}", shell_basename)) {
+                Ok(a) => a,
+                Err(_) => continue,
+            };
 
-        let argv: [*const libc::c_char; 2] = [login_arg0.as_ptr(), std::ptr::null()];
+            let argv: [*const libc::c_char; 2] = [login_arg0.as_ptr(), std::ptr::null()];
 
+            unsafe {
+                libc::execvp(shell_path.as_ptr(), argv.as_ptr());
+                // execvp only returns on failure — try the next candidate.
+                let err = std::io::Error::last_os_error();
+                eprintln!("pt: execvp({}) failed: {}", candidate, err);
+            }
+        }
+
+        // Every shell candidate failed to exec.
         unsafe {
-            libc::execvp(shell_path.as_ptr(), argv.as_ptr());
-            // execvp only returns on failure.
-            let err = std::io::Error::last_os_error();
-
-            eprintln!("pt: execvp({}) failed: {}", shell, err);
             libc::_exit(127);
         }
     }

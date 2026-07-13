@@ -43,7 +43,9 @@ export class Recorder {
   constructor(private readonly opts: RecorderOpts) {
     this.startedAt = Date.now();
     this.file = path.join(opts.dir, `${opts.sessionId}.cast`);
-    try { fs.mkdirSync(opts.dir, { recursive: true }); } catch { /* noop */ }
+    // 0700 — casts hold plaintext keystrokes (incl. anything typed at a
+    // password prompt), so keep the directory owner-only.
+    try { fs.mkdirSync(opts.dir, { recursive: true, mode: 0o700 }); } catch { /* noop */ }
     try {
       this.fd = fs.openSync(this.file, 'a');
     } catch (e) {

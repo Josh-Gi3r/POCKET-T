@@ -1,81 +1,82 @@
-# Self-hosting pocket-t
+# Self-hosting the pocket-t relay hub
 
-pocket-t is MIT licensed and fully self-hostable. You run the relay; you own
-the data.
+pocket-t is MIT licensed. The default remote-access path is a free Cloudflare
+Quick Tunnel — you don't have to host anything. The **relay hub** is an
+*optional* alternative: run it yourself if you'd rather not have Cloudflare in
+the path, or want a stable URL on infrastructure you control.
+
+The hub is a **stateless ws-v3 WebSocket multiplexer** — a dumb pipe. There is
+**no Postgres, no Redis, no JWT/VAPID secrets, no Stripe, no Fastify, no
+Socket.IO, and no database.** Daemons dial in with a token, browsers dial in
+with the same token, and the hub pipes binary frames between same-token peers.
+Tokens are just shared strings (typically your daemonId).
 
 ## Prerequisites
 
-- Node.js 20+, pnpm 9+
-- Postgres (Neon, or the bundled Docker `postgres`)
-- Redis (Upstash, or the bundled Docker `redis`)
-- VAPID keys: `npx web-push generate-vapid-keys`
+- Docker (Option A), or a Fly.io account (Option B), or Node.js 22+ + pnpm 10+
+  to build from source (Option C).
+- A reverse proxy (Caddy, nginx, Cloudflare Tunnel) or Fly.io's edge to
+  TLS-terminate in front of the hub, so the daemon and browser can dial `wss://`.
 
 ## Option A — Docker Compose (easiest)
 
 ```bash
-git clone https://github.com/josh-gi3r/pocket-t
-cd pocket-t
+git clone https://github.com/Josh-Gi3r/POCKET-T
+cd POCKET-T
 
-cat > infra/.env <<'EOF'
-JWT_SECRET=            # openssl rand -hex 32
-COOKIE_SECRET=         # openssl rand -hex 32
-VAPID_PUBLIC=          # npx web-push generate-vapid-keys
-VAPID_PRIVATE=
-VAPID_CONTACT=ops@example.com
-APP_URL=http://localhost:3000
-EOF
+# Builds infra/Dockerfile.relay and starts the hub. No env file required.
+POCKET_T_HUB_PORT=4080 docker compose -f infra/docker-compose.yml up -d
 
-docker compose -f infra/docker-compose.yml up -d
-curl http://localhost:4000/healthz   # → {"ok":true}
+# Health check: the hub serves its browser page at GET / (200 HTML).
+curl -sI http://localhost:4080/ | head -1        # → HTTP/1.1 200 OK
 ```
 
-The Postgres container auto-applies `packages/relay/src/db/schema.sql` on
-first boot.
+The only configuration the hub reads is `POCKET_T_HUB_PORT` (default `4080`)
+and `POCKET_T_HUB_HOST` (default `0.0.0.0`). Both are set in
+`infra/docker-compose.yml`.
 
-## Option B — Local dev (four terminals)
+## Option B — Fly.io
+
+`infra/fly.toml` deploys the hub on a 256 MB shared-CPU VM with TLS at the edge.
+
+```bash
+fly launch --copy-config --name <your-app-name>
+fly deploy
+```
+
+## Option C — Build and run from source
 
 ```bash
 pnpm install
-pnpm --filter @pocket-t/shared build
-psql "$DATABASE_URL" -f packages/relay/src/db/schema.sql
-
-# 1: relay
-cd packages/relay && cp .env.example .env && $EDITOR .env && pnpm dev
-# 2: web
-cd packages/web && echo "VITE_VAPID_PUBLIC=$VAPID_PUBLIC" > .env && pnpm dev
-# 3: daemon
-cd packages/daemon && pnpm build
-POCKET_T_RELAY_URL=ws://localhost:4000 node dist/main.js auth <token>
-POCKET_T_RELAY_URL=ws://localhost:4000 node dist/main.js run
-# 4: a process to watch (bash, python3, claude, …)
+pnpm --filter @pocket-t/shared build   # shared types — build first
+pnpm --filter @pocket-t/relay build
+POCKET_T_HUB_PORT=4080 node packages/relay/dist/wsv3-hub.js
 ```
 
-Get the one-time `<token>` from the web Dashboard page after creating an
-account.
+Or for live-reload development: `pnpm --filter @pocket-t/relay dev`.
 
-## Pointing the daemon at your relay
+## Pointing the daemon at your hub
 
-The daemon reads `POCKET_T_RELAY_URL` (default `wss://relay.pocket-t.ai`).
-Set it to your own relay's URL before `auth` and `run`.
+The daemon takes a `--relay <wss-url>` flag. Point it at your hub's `/ws/pt`
+endpoint with `role=daemon` and a token:
 
-## Production hosting topology
+```bash
+pocket serve --relay "wss://your-host/ws/pt?role=daemon&t=<token>"
+```
 
-The PWA talks to the relay two ways, and they are configured separately:
+The browser connects to the same host with `role=client` and the **same
+token** — the hub pipes frames between them. Open `https://your-host/` in a
+browser and it dials `role=client` automatically using the token in the URL.
+Any two peers sharing a token are connected; the hub keeps no auth state, so
+**treat the token like a password.**
 
-- **REST (`/api/*`)** — proxied to the relay so cookies stay first-party.
-  In dev, the Vite dev server proxies it. In a static deploy (Vercel),
-  `packages/web/vercel.json` rewrites `/api/(.*)` to the relay origin —
-  change that destination to your relay when self-hosting. The SPA
-  catch-all rewrite must stay last.
-- **Realtime (Socket.IO/WebSocket)** — Vercel cannot proxy the WS
-  upgrade, so the socket connects to the relay **directly**. Build the
-  web app with `VITE_RELAY_URL=https://relay.example.com` (your relay
-  origin). Leave it unset for same-origin dev / a reverse-proxy setup
-  where one origin fronts both the static app and the relay.
+## Endpoints the hub exposes
 
-The relay's CORS already allows the configured app origin. If you put
-everything behind one reverse proxy (nginx/Caddy) on a single domain,
-you don't need `VITE_RELAY_URL` and the `vercel.json` `/api` rewrite is
-irrelevant — proxy `/api` and `/socket.io` to the relay yourself.
+Single HTTP server on `$POCKET_T_HUB_PORT` (default `4080`):
 
-`packages/relay/.env.example` lists every relay variable.
+- `GET /` — embedded xterm.js browser page.
+- `WS /ws/pt?role=daemon&t=<token>` — daemon registers under account `<token>`.
+- `WS /ws/pt?role=client&t=<token>` — browser subscribes under account `<token>`.
+
+There is no REST API, no `/healthz`, and no persistence — a restart drops all
+live connections and starts clean.

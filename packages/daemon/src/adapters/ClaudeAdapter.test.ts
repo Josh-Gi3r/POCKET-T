@@ -86,10 +86,40 @@ describe('ClaudeAdapter.recordToEvents', () => {
     expect(events[0]!.model).toBe('claude-opus-4-7');
     expect(events[0]!.inputTokens).toBe(1_000);
     expect(events[0]!.outputTokens).toBe(200);
-    // Opus pricing: $15 input + $75 output per million → 0.015 + 0.015 = 0.030
-    expect(events[0]!.turnCostUSD).toBeCloseTo(0.030, 4);
-    expect(events[0]!.cumulativeCostUSD).toBeCloseTo(0.030, 4);
+    // Opus pricing: $5 input + $25 output per million → 0.005 + 0.005 = 0.010
+    expect(events[0]!.turnCostUSD).toBeCloseTo(0.010, 4);
+    expect(events[0]!.cumulativeCostUSD).toBeCloseTo(0.010, 4);
     expect(events[1]!.kind).toBe('chat');
+  });
+
+  it('re-bills a repeated message.id last-wins (final usage replaces the partial)', () => {
+    const adapter = new ClaudeAdapter('/tmp');
+    // Claude Code emits the same assistant message twice under one id: a
+    // streamed partial first, then the final complete usage. The final must
+    // win — a first-wins scheme would lock in the (smaller) partial.
+    const partial = {
+      type: 'assistant',
+      message: {
+        role: 'assistant', model: 'claude-opus-4-7', id: 'msg_stream_1',
+        content: [{ type: 'text', text: 'thinking…' }],
+        usage: { input_tokens: 1_000, output_tokens: 200 },  // → $0.010
+      },
+    };
+    const final = {
+      type: 'assistant',
+      message: {
+        role: 'assistant', model: 'claude-opus-4-7', id: 'msg_stream_1',
+        content: [{ type: 'text', text: 'done' }],
+        usage: { input_tokens: 1_000, output_tokens: 1_000 },  // → $0.030
+      },
+    };
+    const firstCost = adapter.recordToEvents(partial).find(e => e.kind === 'cost')!;
+    expect(firstCost.cumulativeCostUSD).toBeCloseTo(0.010, 4);
+    const secondCost = adapter.recordToEvents(final).find(e => e.kind === 'cost')!;
+    // Last-wins: the final record's full cost, not the sum (0.040) and not the
+    // first-wins partial (0.010).
+    expect(secondCost.turnCostUSD).toBeCloseTo(0.030, 4);
+    expect(secondCost.cumulativeCostUSD).toBeCloseTo(0.030, 4);
   });
 
   it('accumulates cumulativeCostUSD across multiple turns', () => {

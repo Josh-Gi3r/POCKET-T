@@ -73,6 +73,7 @@ interface Block {
 interface Rec {
   type?:    string;
   message?: {
+    id?:      string;
     role?:    string;
     content?: unknown;
     model?:   string;
@@ -96,6 +97,13 @@ export class ClaudeAdapter extends EventEmitter implements Adapter {
   private rescan:  ReturnType<typeof setInterval> | null = null;
   private stopped = false;
   private cumulativeCostUSD = 0;
+  // Cost already billed per assistant `message.id`. Claude Code re-emits the
+  // same assistant message (same `message.id`) across streamed partials and a
+  // final complete record; without deduping we'd count each turn's usage
+  // multiple times and inflate the cost meter (~1.26x measured). The stored
+  // value lets us re-bill last-wins: the final/complete usage replaces any
+  // partial we billed earlier for the same id (see recordToEvents()).
+  private billedByMessageId = new Map<string, number>();
 
   constructor(private readonly cwd: string) { super(); }
 
@@ -140,6 +148,7 @@ export class ClaudeAdapter extends EventEmitter implements Adapter {
       this.offset = 0;
       this.buf    = '';
       this.cumulativeCostUSD = 0;
+      this.billedByMessageId.clear();
       this.attachWatcher();
     } else {
       this.drain();
@@ -189,11 +198,24 @@ export class ClaudeAdapter extends EventEmitter implements Adapter {
     const content = rec.message?.content;
     const out: BubbleEvent[] = [];
 
-    // Cost: each assistant turn carries a `usage` block.
+    // Cost: each assistant turn carries a `usage` block. Bill each unique
+    // assistant `message.id` last-wins — Claude Code re-emits the same id as
+    // it streams (a partial usage record, then a final complete one), so we
+    // subtract whatever we previously billed for that id and re-add the
+    // latest. This lets the final/complete usage win; a first-wins scheme
+    // would UNDERcount when the partial arrives first. Records with no id
+    // can't be deduped, so they're always counted.
     if (isAsst && rec.message?.usage) {
       const u = rec.message.usage;
       const turnCost = costOfUsage(rec.message?.model, u);
-      this.cumulativeCostUSD += turnCost;
+      const msgId = rec.message?.id;
+      if (msgId) {
+        const prevBilled = this.billedByMessageId.get(msgId) ?? 0;
+        this.cumulativeCostUSD += turnCost - prevBilled;
+        this.billedByMessageId.set(msgId, turnCost);
+      } else {
+        this.cumulativeCostUSD += turnCost;
+      }
       out.push({
         kind:               'cost',
         model:              rec.message?.model,

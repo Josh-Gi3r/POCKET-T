@@ -6,7 +6,7 @@
 
 Pocket-T mirrors every terminal you open on your Mac into a phone, laptop or any browser, live. Tail a production log, `ssh` into a Pi or a router, run a build, edit in `vim`, drive a trading bot, watch `htop` on the office box — or control Claude Code / Codex / OpenClaw / NanoClaw / Hermes / Aider from anywhere. Bidirectional input straight into the real PTY. Live USD cost pill + agent-aware bubble view when a CLI agent is detected. Free Cloudflare tunnel by default — no SSH, no VPN, no Tailscale, no port forwarding.
 
-[**Website**](https://pocket-t.ai) • [**Install via AI**](AGENTS.md) • [**Documentation**](docs/) • [**Skins**](docs/skins.md) • [**Releases**](https://github.com/Josh-Gi3r/POCKET-T/releases) • [**@Josh_Gier**](https://x.com/Josh_Gier)
+[**Website**](https://pocket-t.ai) • [**Install via AI**](AGENTS.md) • [**Documentation**](docs/) • [**Skins**](docs/skins.md) • [**@Josh_Gier**](https://x.com/Josh_Gier)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00F0B5?style=flat-square&labelColor=0B0F12)](LICENSE)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-F5F7FA?style=flat-square&labelColor=0B0F12)](#quick-start)
@@ -114,7 +114,7 @@ Anything not matching a `pocket` subcommand is passed through to the underlying 
 - ✋ **Tool-call approval from the phone** — Claude PreToolUse hooks surface as approve / deny cards with Web Notification push.
 - 📱 **Native phone UX** — Slide-out sidebar drawer, touch keyboard row (Esc, Ctrl, Tab, arrows, brackets), spawn-from-phone, FAB shortcut, safe-area-inset support for notched iPhones.
 - 🎬 **Session recording** — Every session writes a standard `asciinema v2` cast file. Replay with `pocket replay <id>` or any asciinema player.
-- 🎨 **7 built-in skins** — Operator (default), Halloween, Nokia, Christmas, Cyberpunk, Forest, Paper. New skins are pure CSS-variable blocks — ship one in a PR.
+- 🎨 **7 built-in skins** — Midnight (default), Halloween, Nokia, Christmas, Cyberpunk, Forest, Paper. New skins are pure CSS-variable blocks — ship one in a PR.
 - 🔄 **Detach & resume** — A 60-second grace window means a transient `pt` restart doesn't drop the session. Reconnect with the same session ID and history continues.
 - ⚡ **Zero configuration** — `--tunnel` gives a public URL via Cloudflare Quick Tunnel. No signup, no card, no relay to deploy.
 - 🍎 **Apple Silicon native** — Pure Rust shim, no Rosetta. Intel Macs supported too.
@@ -149,7 +149,7 @@ Anything not matching a `pocket` subcommand is passed through to the underlying 
 |---|---|---:|
 | `pt` shell proxy | Rust, `libc`, `forkpty()`, raw-mode signal handling | ~700 |
 | `pt-registry` daemon | Node 22, TypeScript, Unix sockets, ws-v3 WebSocket, `@xterm/headless` | ~2,800 |
-| `ws-v3` relay hub | Node 22, TypeScript, one file, stateless | ~580 |
+| `ws-v3` relay hub | Node 22, TypeScript, one file, stateless | ~730 |
 | Browser UI | xterm.js, `@xterm/addon-fit`, CSS-variable skins | ~975 |
 
 Full design: [`docs/architecture.md`](docs/architecture.md).
@@ -203,7 +203,7 @@ For Claude Code and Claude CLI sessions, Pocket-T shows a live USD pill in the b
 - Reads exact token counts from Claude's transcript file — not estimated.
 - Updates in real time during a session.
 - Cumulative across all turns of the session.
-- Pricing tables for Sonnet (3.5 / 4 / 4.5 / 4.7), Opus, Haiku, GPT-5, GPT-5 Mini, Grok 4, Grok 4 Mini.
+- Pricing tables for Sonnet (3.5 / 3.7 / 4 / 4.5), Opus, Haiku, GPT-5, GPT-5 Mini, Grok 4, Grok 4 Mini.
 - Single source of truth at [`packages/daemon/src/adapters/pricing.ts`](packages/daemon/src/adapters/pricing.ts) — one file to keep current as model prices change.
 
 ## Agent-Aware Bubbles
@@ -231,8 +231,8 @@ The entire UI re-themes from a CSS-variable block. Seven skins ship by default:
 
 | | | | |
 |---|---|---|---|
-| **Operator** (default) | **Halloween** | **Nokia** | **Christmas** |
-| graphite + mint | brown + pumpkin | pixel-green nostalgia | pine + cranberry + gold |
+| **Midnight** (default) | **Halloween** | **Nokia** | **Christmas** |
+| indigo + violet | brown + pumpkin | pixel-green nostalgia | pine + cranberry + gold |
 | **Cyberpunk** | **Forest** | **Paper** | **Yours?** |
 | magenta + cyan | moss + sage | daylight + ink + mint | [Ship a skin →](docs/skins.md) |
 
@@ -274,8 +274,6 @@ pocket input   <id> <text>       Inject bytes into a session's PTY.
 pocket kill    <id> [signal]     Signal a session's process group.
                                  Default: SIGHUP (1).
 ```
-
-xbar / SwiftBar widget at [`packages/daemon/scripts/pt.10s.sh`](packages/daemon/scripts/pt.10s.sh) — traffic-light status icon, session count, pending-approval submenu with one-click approve / deny.
 
 ## Security
 
@@ -333,13 +331,13 @@ Pocket-T captures the terminal itself, so anything that runs in a shell runs thr
 
 ## Contributing
 
-PRs welcome. The codebase is small (~7,100 LOC) and split into focused modules:
+PRs welcome. The codebase is small (~5,800 LOC) and split into focused modules:
 
 - [`packages/pt-shim/`](packages/pt-shim/) — Rust shell proxy. Open targets: Linux port, signal-handling edge cases.
 - [`packages/daemon/`](packages/daemon/) — TypeScript daemon. New vendor adapters land in `src/adapters/` — mirror `ClaudeAdapter.ts`.
 - [`packages/relay/`](packages/relay/) — ws-v3 hub. One file, stable.
 - [`packages/shared/`](packages/shared/) — wire-format types only.
-- [`site/`](site/) — marketing homepage. Brand assets in [`branding/`](branding/).
+- [`branding/`](branding/) — brand assets (the marketing homepage is the repo-root `index.html`).
 - [`docs/skins.md`](docs/skins.md) — ship a Pocket Skin in one PR (CSS variables only).
 
 Local development:
@@ -348,7 +346,7 @@ Local development:
 pnpm install
 pnpm --filter @pocket-t/shared build
 pnpm -r typecheck
-pnpm test         # 21 vitest specs
+pnpm test         # 22 vitest specs
 pnpm lint
 pnpm -r build
 ```

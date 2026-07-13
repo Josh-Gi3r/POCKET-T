@@ -9,15 +9,21 @@ pnpm install
 pnpm --filter @pocket-t/shared build
 ```
 
-See [docs/self-hosting.md](docs/self-hosting.md) for running the full stack
-locally (relay + web + daemon).
+See [docs/self-hosting.md](docs/self-hosting.md) for running the optional
+ws-v3 hub locally and pointing the daemon at it.
 
 ## Repo layout
 
-- `packages/shared` — types + Socket.IO protocol (build first; everything depends on it)
-- `packages/daemon` — the Mac daemon (PTY capture, ANSI normalize, relay uplink)
-- `packages/relay` — Fastify + Socket.IO relay (auth, persistence, push)
-- `packages/web` — React PWA client
+- `packages/shared` — ws-v3 wire-format types (`src/ws-v3.ts`). Build first;
+  everything else typechecks against its `dist`.
+- `packages/pt-shim` — the Rust `pt` shell proxy (`forkpty`, raw-mode signal
+  handling). Copied to `/usr/local/bin/pt` by `install.sh`.
+- `packages/daemon` — the Mac daemon / `pt-registry` (PTY capture, ANSI
+  normalize, adapters, ws-v3 uplink, the browser UI at
+  `src/pt-registry/ui/index.html`).
+- `packages/relay` — the optional stateless **ws-v3 hub** (`src/wsv3-hub.ts`,
+  one file). A plain Node `ws` WebSocket multiplexer — no Fastify, no
+  Socket.IO, no database, no auth state. See [self-hosting](docs/self-hosting.md).
 
 ## Conventions
 
@@ -37,15 +43,16 @@ pnpm --filter @pocket-t/daemon test     # vitest
 pnpm -r build                           # production builds
 ```
 
-Web UI changes can't be device-tested in CI — verify typecheck + the Vite
-production build, and exercise the flow in a phone-sized viewport locally.
+The browser UI is a single static file served by the daemon
+(`packages/daemon/src/pt-registry/ui/index.html`) — it can't be device-tested
+in CI, so exercise the flow in a phone-sized viewport against a running daemon
+locally.
 
 ## Docs
 
-User/operator docs live in `docs/` and are linked from the README.
-`docs/protocol.md` and `docs/schema.md` are derived from
-`packages/shared/src/protocol.ts` and `packages/relay/src/db/schema.sql` —
-update them in the same PR that changes those files.
+User/operator docs live in `docs/` and are linked from the README. The ws-v3
+wire format is defined in `packages/shared/src/ws-v3.ts`; keep any protocol
+notes in `docs/architecture.md` in sync with it in the same PR.
 
 ## PR flow
 

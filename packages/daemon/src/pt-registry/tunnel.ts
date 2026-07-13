@@ -44,6 +44,9 @@ export interface TunnelHandle {
 export function startTunnel(opts: {
   localPort:  number;
   timeoutMs?: number;
+  /** Access token appended (?t=<token>) to the URL persisted for tooling
+   *  so the saved link authenticates against the daemon's gate. */
+  token?:     string;
 }): Promise<TunnelHandle> {
   const timeoutMs = opts.timeoutMs ?? 30_000;
 
@@ -71,10 +74,17 @@ export function startTunnel(opts: {
         resolved = true;
         clearTimeout(timer);
         const url = match[0];
-        // Persist for tooling (xbar widget, status CLI, etc).
+        // Persist for tooling (xbar widget, status CLI, etc). Include the
+        // access token so the saved link actually authenticates.
+        const savedUrl = opts.token ? `${url}?t=${encodeURIComponent(opts.token)}` : url;
         try {
           fs.mkdirSync(path.dirname(TUNNEL_URL_FILE), { recursive: true });
-          fs.writeFileSync(TUNNEL_URL_FILE, url + '\n');
+          // 0600 — the persisted link now carries the access token, so
+          // keep it owner-only (anyone who reads it can drive the terminal).
+          // The mode option only applies on create, so chmod as well to
+          // tighten a file left 0644 by an earlier (pre-token) run.
+          fs.writeFileSync(TUNNEL_URL_FILE, savedUrl + '\n', { mode: 0o600 });
+          try { fs.chmodSync(TUNNEL_URL_FILE, 0o600); } catch { /* best-effort */ }
         } catch { /* best-effort */ }
         resolve({
           url,
@@ -125,18 +135,24 @@ export function startTunnel(opts: {
 
 /** Render the tunnel banner on the daemon's terminal — prominent URL +
  *  a scannable QR code. The QR is what makes the "open on phone" step
- *  trivial — no typing, no copy-paste. */
-export function printTunnelBanner(url: string): void {
+ *  trivial — no typing, no copy-paste.
+ *
+ *  When a `token` is supplied it is appended as `?t=<token>` so the
+ *  published URL authenticates against the daemon's access gate — the
+ *  tunnel must never expose an unauthenticated surface. */
+export function printTunnelBanner(url: string, token?: string): void {
+  const publicUrl = token ? `${url}?t=${encodeURIComponent(token)}` : url;
   console.log('');
   console.log('━'.repeat(60));
   console.log('  🚇 pocket-t tunnel ready');
   console.log('');
   console.log('  Open on your phone (or any device, any network):');
   console.log('');
-  console.log(`     ${url}`);
+  console.log(`     ${publicUrl}`);
   console.log('');
-  qrcode.generate(url, { small: true });
-  console.log(`  URL also saved to ~/.pocket-t/tunnel-url`);
+  qrcode.generate(publicUrl, { small: true });
+  console.log(`  This URL carries an access token — anyone with it can`);
+  console.log(`  drive your terminal. Don't share it.`);
   console.log('━'.repeat(60));
   console.log('');
 }

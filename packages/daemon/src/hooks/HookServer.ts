@@ -37,9 +37,11 @@ export interface HookServerOpts {
    */
   hasViableListener?: (sessionId: string, toolName: string) => boolean;
   /** Decision returned when `hasViableListener` says no one's home.
-   *  Default: 'approve' — Claude Code's built-in permission system
-   *  already gates dangerous tools, so silently approving here just
-   *  delegates back to that. Set to 'deny' for a stricter posture. */
+   *  Default: 'deny' — fail CLOSED. The caller (pt-registry) computes an
+   *  exposure-aware value and passes it explicitly (loopback → 'approve',
+   *  tunnel/relay/non-loopback → 'deny'); this conservative fallback only
+   *  applies if a caller forgets to. Denying still responds immediately,
+   *  so it never reintroduces the global block-and-hang regression. */
   defaultOnNoListener?: ApprovalDecision;
   projectRoot?: string;  // for NOHUP.md injection
 }
@@ -57,10 +59,11 @@ export class HookServer extends EventEmitter {
     super();
     this.timeoutMs            = opts.timeoutMs           ?? 5 * 60 * 1000;
     this.defaultOnTimeout     = opts.defaultOnTimeout    ?? 'deny';
-    this.defaultOnNoListener  = opts.defaultOnNoListener ?? 'approve';
+    this.defaultOnNoListener  = opts.defaultOnNoListener ?? 'deny';
     // Default to "no one is home" so when pt-registry isn't running or
-    // hasn't wired a real check yet, we never block a Claude tool call.
-    // Fail-open is the only safe default for a hook routed globally.
+    // hasn't wired a real check yet, we never block-and-hang a Claude
+    // tool call — we resolve immediately via defaultOnNoListener (which
+    // itself defaults to the fail-closed 'deny').
     this.hasViableListener    = opts.hasViableListener   ?? (() => false);
     this.projectRoot          = opts.projectRoot;
     this.server               = http.createServer(this.handle.bind(this));

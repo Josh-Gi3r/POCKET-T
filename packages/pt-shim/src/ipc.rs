@@ -35,6 +35,12 @@ use libc::{
 
 pub const PROTOCOL_VERSION: u8 = 1;
 
+// Hard wall-clock budget (ms) for writing one whole frame (header+payload).
+// Shared across both write_all calls in send_frame so a single frame can
+// never freeze the terminal for more than this, even against a slow-drip
+// daemon. See write_all for the two bounds that enforce it.
+const FRAME_WRITE_BUDGET_MS: u64 = 2000;
+
 // pt → daemon
 pub const FRAME_HELLO: u8 = 0x01;
 pub const FRAME_REGISTER: u8 = 0x02;
@@ -135,9 +141,15 @@ impl DaemonConn {
         let mut header = [0u8; 5];
         header[0] = frame_type;
         header[1..5].copy_from_slice(&(len as u32).to_be_bytes());
-        write_all(self.fd, &header)?;
+        // One wall-clock deadline shared by the header and payload writes of
+        // this frame. Without it each write_all got its own budget, so a
+        // single frame could freeze the terminal for ~2x the per-write cap
+        // (header stall + payload stall) against a wedged/slow-drip daemon.
+        let deadline =
+            std::time::Instant::now() + std::time::Duration::from_millis(FRAME_WRITE_BUDGET_MS);
+        write_all(self.fd, &header, deadline)?;
         if !payload.is_empty() {
-            write_all(self.fd, payload)?;
+            write_all(self.fd, payload, deadline)?;
         }
         Ok(())
     }
@@ -259,7 +271,27 @@ impl Drop for DaemonConn {
     }
 }
 
-fn write_all(fd: RawFd, mut buf: &[u8]) -> Result<(), Error> {
+fn write_all(fd: RawFd, mut buf: &[u8], deadline: std::time::Instant) -> Result<(), Error> {
+    // Bound the EAGAIN backoff. pt runs as the user's login shell, so an
+    // unbounded 1ms spin against a wedged daemon (socket buffer full, never
+    // drained) would freeze the terminal. Two independent bounds apply:
+    //
+    //   * `deadline` — a hard wall-clock cap on the total time this call may
+    //     block, passed in and shared by send_frame across a frame's
+    //     header+payload. This is what bounds a *slow-drip* daemon: one that
+    //     dribbles a byte every ~1.9s makes progress often enough to keep
+    //     resetting the consecutive-stall window forever, so only a total
+    //     deadline stops it from freezing the terminal arbitrarily long.
+    //   * consecutive-stall window (`stall_deadline`) — any successful send
+    //     pushes it forward, so a fast, steadily-draining daemon is never
+    //     penalised for a long-but-progressing transfer.
+    //
+    // On exceeding either bound we return an error; every caller treats a
+    // send failure by dropping the daemon connection and continuing
+    // local-only — the same degrade path used when the daemon is absent.
+    const MAX_STALL_MS: u64 = 2000;
+    let mut stall_deadline =
+        std::time::Instant::now() + std::time::Duration::from_millis(MAX_STALL_MS);
     while !buf.is_empty() {
         // MSG_NOSIGNAL prevents a stray SIGPIPE if the daemon vanishes
         // mid-write — we want to handle EPIPE as an Error instead.
@@ -273,6 +305,11 @@ fn write_all(fd: RawFd, mut buf: &[u8]) -> Result<(), Error> {
         };
         if n > 0 {
             buf = &buf[n as usize..];
+            // Progress — reset the consecutive-stall window. The shared
+            // `deadline` still bounds total time, so slow-drip can't abuse
+            // this reset.
+            stall_deadline =
+                std::time::Instant::now() + std::time::Duration::from_millis(MAX_STALL_MS);
             continue;
         }
         if n == 0 {
@@ -282,9 +319,18 @@ fn write_all(fd: RawFd, mut buf: &[u8]) -> Result<(), Error> {
         match err.raw_os_error() {
             Some(libc::EINTR) => continue,
             // EAGAIN == EWOULDBLOCK on macOS/Linux. Socket buffer full —
-            // briefly spin. A responsive daemon drains fast. If this ever
-            // becomes a real problem, switch to a write queue.
+            // briefly spin. A responsive daemon drains fast, pushing the
+            // stall window forward. If either the total-time `deadline` or
+            // the consecutive-stall window is exceeded, stop and degrade to
+            // local-only instead of hanging the terminal forever.
             Some(libc::EAGAIN) => {
+                let now = std::time::Instant::now();
+                if now >= deadline || now >= stall_deadline {
+                    return Err(Error::new(
+                        ErrorKind::TimedOut,
+                        "daemon socket blocked; degrading to local-only",
+                    ));
+                }
                 std::thread::sleep(std::time::Duration::from_millis(1));
                 continue;
             }
