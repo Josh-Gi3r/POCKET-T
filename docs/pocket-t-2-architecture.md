@@ -177,3 +177,11 @@ For real-time voice use OpenAI's documented WebRTC client route with a server-ow
 - Cloudflare Access JWT validation: https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/
 - Apple ScreenCaptureKit: https://developer.apple.com/documentation/screencapturekit
 - Apple AXUIElement Accessibility API: https://developer.apple.com/documentation/applicationservices/axuielement_h
+
+## Secondary Telegram control channel (fallback)
+
+A Telegram bot is an **approved secondary, low-bandwidth UI** for when the primary Pocket-T site cannot load on the phone but Telegram is available. It uses the **same Cloudflare/OpenAI orchestration, identity, machine transport, command validation and receipts**, not a separate privileged bot or agent. Ordinary chat/voice/inline buttons must work without opening a Telegram Mini App; the Mini App is optional and may share the same website-blocking problem.
+
+The controlled Mac does **not** need to connect to Telegram or directly to OpenAI. It still needs an explicitly permitted Pocket-T machine connection. Telegram is not an alternative transport out of a fully disconnected or security-blocked Mac. Telegram bot chats are cloud chats rather than E2EE Secret Chats; defaults must use bounded, redacted summaries and step-up approval for impactful actions.
+
+**Full implementation contract:** [Telegram fallback design](telegram-fallback.md). This document is a design decision only; the bot is not implemented, connected or deployed in this PR.
