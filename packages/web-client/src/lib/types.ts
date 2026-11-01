@@ -52,7 +52,61 @@ export type EventEnvelope =
   | { kind: 'sessionAdded'; session: SessionInfo }
   | { kind: 'sessionUpdated'; session: SessionInfo }
   | { kind: 'sessionRemoved'; sessionId: string }
-  | { kind: 'bubble'; sessionId: string; event: BubbleEvent };
+  | { kind: 'bubble'; sessionId: string; event: BubbleEvent }
+  | { kind: 'existingTerminals'; sessions: ExistingTerminal[] }
+  | { kind: 'fileRoots'; roots: FileRoot[] }
+  | { kind: 'fileListing'; requestId: string; listing: DirectoryListing }
+  | { kind: 'fileBrowseError'; requestId: string; message: string }
+  | { kind: 'approvedApps'; apps: ApprovedApp[] }
+  | { kind: 'appLaunchResult'; requestId: string; ok: boolean; message: string };
+
+export interface ExistingTerminal {
+  sessionId: string;
+  source: 'tmux' | 'terminal' | 'iterm2';
+  title: string;
+  cwd: string;
+  tty?: string;
+  pane?: string;
+  capabilities: Array<'discover'>; // inventory only in first slice
+}
+
+export interface FileRoot {
+  id: string;
+  label: string;
+}
+
+export interface FileEntry {
+  name: string;
+  relativePath: string;
+  kind: 'directory' | 'file' | 'symlink' | 'other';
+  size: number | null;
+  modifiedAt: number | null;
+}
+
+export interface DirectoryListing {
+  rootId: string;
+  relativePath: string;
+  entries: FileEntry[];
+  truncated: boolean;
+}
+
+export interface ApprovedApp {
+  name: string;
+  bundleId: string;
+}
+
+export interface AppLaunchResult {
+  requestId: string;
+  ok: boolean;
+  message: string;
+}
+
+export interface FileState {
+  requestId: string;
+  loading: boolean;
+  listing: DirectoryListing | null;
+  error: string | null;
+}
 
 export interface CostState {
   cumulativeCostUSD?: number;

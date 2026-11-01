@@ -1,13 +1,24 @@
 import { writable, get } from 'svelte/store';
 import { PTConnection } from './connection';
 import { appendBubble, resetSession } from './bubbles';
-import type { BubbleEvent, ConnStatus, CostState, EventEnvelope, SessionInfo } from './types';
+import type { ApprovedApp, AppLaunchResult, BubbleEvent, ConnStatus, CostState, DirectoryListing, EventEnvelope, ExistingTerminal, FileRoot, FileState, SessionInfo } from './types';
 
 export const status = writable<ConnStatus>('connecting');
 export const sessions = writable<SessionInfo[]>([]);
 export const current = writable<string | null>(null);
 export const bubbles = writable<Record<string, BubbleEvent[]>>({});
 export const cost = writable<Record<string, CostState>>({});
+export const existingTerminals = writable<ExistingTerminal[]>([]);
+export const fileRoots = writable<FileRoot[]>([]);
+export const fileState = writable<FileState>({ requestId: '', loading: false, listing: null, error: null });
+export const approvedApps = writable<ApprovedApp[]>([]);
+export const appLaunch = writable<AppLaunchResult | null>(null);
+let requestCounter = 0;
+function nextRequestId(): string {
+  requestCounter += 1;
+  return 'req' + Date.now().toString(36) + '_' + requestCounter.toString(36);
+}
+
 
 // Terminal sink — the lazy-loaded TerminalView registers write/snapshot/reset
 // callbacks here so raw STDOUT/SNAPSHOT_VT frames reach xterm only when the
@@ -85,6 +96,32 @@ function handleEvent(frameSessionId: string, env: EventEnvelope): void {
       }
       break;
     }
+    case 'existingTerminals': {
+      existingTerminals.set(env.sessions);
+      break;
+    }
+    case 'fileRoots': {
+      fileRoots.set(env.roots);
+      break;
+    }
+    case 'fileListing': {
+      fileState.update((state) => state.requestId === env.requestId
+        ? { requestId: env.requestId, loading: false, listing: env.listing, error: null } : state);
+      break;
+    }
+    case 'fileBrowseError': {
+      fileState.update((state) => state.requestId === env.requestId
+        ? { ...state, loading: false, error: env.message } : state);
+      break;
+    }
+    case 'approvedApps': {
+      approvedApps.set(env.apps);
+      break;
+    }
+    case 'appLaunchResult': {
+      appLaunch.set({ requestId: env.requestId, ok: env.ok, message: env.message });
+      break;
+    }
     case 'bubble': {
       const ev = env.event;
       if (ev.kind === 'cost') {
@@ -130,6 +167,32 @@ export function requestResync(): void {
 
 export function resolveApproval(sessionId: string, approvalId: string, decision: 'approve' | 'deny'): void {
   conn.resolveApproval(sessionId, approvalId, decision);
+}
+
+/** Metadata-only, explicitly opt-in local filesystem browsing. */
+export function fetchFileRoots(): void {
+  conn.sendJsonEvent('', { kind: 'listFileRoots' });
+}
+
+export function browseFolder(rootId: string, relativePath: string): void {
+  const requestId = nextRequestId();
+  fileState.set({ requestId, loading: true, listing: null, error: null });
+  conn.sendJsonEvent('', { kind: 'browseFiles', requestId, rootId, relativePath });
+}
+
+export function fetchApprovedApps(): void {
+  conn.sendJsonEvent('', { kind: 'listApprovedApps' });
+}
+
+export function requestAppLaunch(bundleId: string): string {
+  const requestId = nextRequestId();
+  appLaunch.set(null);
+  conn.sendJsonEvent('', { kind: 'launchApprovedApp', requestId, bundleId });
+  return requestId;
+}
+
+export function discoverExistingTerminals(): void {
+  conn.sendJsonEvent('', { kind: 'discoverExistingTerminals' });
 }
 
 export function spawnSession(cwd?: string): void {
