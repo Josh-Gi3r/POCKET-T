@@ -189,3 +189,7 @@ The controlled Mac does **not** need to connect to Telegram or directly to OpenA
 ## Files, apps, browsers and Keychain-backed values
 
 The same Pocket-T account and mobile web app include separate **Files**, **Applications**, **Desktop** and **Vault & Values** interfaces, gated by the same machine identity and local policy enforcement. Exact Apple/Chrome capabilities, Apple TCC and enterprise-policy boundaries, explicit folder-root configuration, and the credential-design trust model are documented in [Mac workspaces: files, apps, browsers, credentials](mac-workspaces-v2.md). The current first slice exposes only opt-in read-only file metadata browsing and locally-allowlisted app launch; no GUI control or credential entry is shipped yet.
+
+## Optional SSH, Tailscale and browser-VNC fallback
+
+**SSH, Tailscale Serve and noVNC are a supplementary transport and desktop-control strategy**, not substitutes for the OpenAI/Cloudflare command policy plane. Ordinary macOS Remote Login can provide SSH/SFTP on a permitted private Tailscale network; Tailscale Serve can privately expose the current Pocket-T browser UI; Apple's Screen Sharing plus noVNC/websockify is a promising *unvalidated* HTML5 desktop-control fallback. None of these can adopt an arbitrary previously-running Terminal.app PTY, unlock macOS, or override managed-device policy. See [SSH/Tailscale/noVNC design and verification matrix](ssh-tailscale-fallback.md). This integration is **not implemented in the current draft PR**.
