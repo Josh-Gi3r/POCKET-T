@@ -1,3 +1,7 @@
+<script lang="ts">
+  // Informational until a signed Mac Keychain companion and E2E secret transfer are implemented.
+</script>
+
 <section class="vault">
   <div class="eyebrow">YOUR MAC <span>/</span> SECURE VALUES</div>
   <div class="hero">
