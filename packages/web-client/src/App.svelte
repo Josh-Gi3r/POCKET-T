@@ -3,7 +3,7 @@
   import BubbleView from './components/BubbleView.svelte';
   import CostPill from './components/CostPill.svelte';
   import KeyboardRow from './components/KeyboardRow.svelte';
-  import { status, current, sessions, bubbles, conn, attach, spawnSession, killSession } from './lib/store';
+  import { status, current, sessions, bubbles, existingTerminals, discoverExistingTerminals, conn, attach, spawnSession, killSession } from './lib/store';
   import { enableNotifications, subscribeToPush, pushConfigured } from './lib/push';
   import type { SessionInfo } from './lib/types';
 
@@ -38,6 +38,7 @@
   let speechSupported = $state(false);
   let speech: SpeechInput | null = null;
   let createBusy = $state(false);
+  let inventoryRequested = $state(false);
   let toast = $state('');
   let kbInset = $state(0);
   let TerminalView = $state<any>(null);
@@ -495,6 +496,28 @@
           <p>Pocket-T already controls real terminal sessions. Visual desktop control will require a permissioned native macOS companion and an encrypted live screen stream. It is not enabled in this build.</p>
           <div class="machine-chips"><span>Window streaming</span><span>Touch & pointer</span><span>Keyboard shortcuts</span><span>Explicit consent</span></div>
         </div>
+        <div class="discovery-section">
+          <div class="discovery-head">
+            <div><span class="section-kicker">ALREADY OPEN ON YOUR MAC</span><h2>Existing terminals</h2></div>
+            <button class="section-action" disabled={!connected} onclick={() => { inventoryRequested = true; discoverExistingTerminals(); }}>⌕ Discover terminals</button>
+          </div>
+          <p>Discover existing tmux panes, Terminal.app tabs and iTerm2 sessions without restarting them. macOS may request Automation permission. This first slice is <strong>read-only inventory</strong>, not full control.</p>
+          {#if $existingTerminals.length > 0}
+            <div class="discovery-list">
+              {#each $existingTerminals as term (term.sessionId)}
+                <div class="discovery-item">
+                  <span class="discovery-icon">{term.source === 'tmux' ? '⌁' : '⌘'}</span>
+                  <div><strong>{term.title}</strong><small>{term.source === 'terminal' ? 'Terminal.app' : term.source === 'iterm2' ? 'iTerm2' : 'tmux'} · {term.tty ?? term.pane ?? 'Existing session'}</small></div>
+                  <span class="discovery-tag">DISCOVERED</span>
+                </div>
+              {/each}
+            </div>
+          {:else if inventoryRequested}
+            <div class="discovery-empty">No discoverable terminal sessions reported yet. If terminals are open, check the daemon's Automation permissions.</div>
+          {:else}
+            <div class="discovery-empty">Tap Discover to inventory sessions that were already running before Pocket-T.</div>
+          {/if}
+        </div>
         <div class="machine-features">
           <div><span class="feature-icon">◩</span><strong>See what the Mac sees</strong><p>Stream an individual window or display when you turn on remote viewing.</p></div>
           <div><span class="feature-icon">⌖</span><strong>Interact naturally</strong><p>Tap, drag and use gestures, with a proper remote keyboard.</p></div>
@@ -634,6 +657,17 @@
   .pick-session{margin:auto;text-align:center;max-width:400px;padding:40px 20px}.big-glyph{font-size:64px;color:#9cebc9}.pick-session h2{font-size:24px}.pick-session p{color:#8aa2ae;font-size:13px;line-height:1.7}.pick-list{display:grid;gap:7px;margin-top:22px}.pick-list button{border:1px solid #28443d;background:#14292b;padding:12px;border-radius:10px;display:flex;gap:12px;justify-content:space-between;text-align:left}.pick-list small{color:#8ca59d}
   .machine-page{padding-top:37px}.machine-hero{padding:52px;background:linear-gradient(124deg,#193b3b,#101e2a 58%,#131e2a);border:1px solid #35524c;border-radius:22px}
   .machine-hero h1{font-size:clamp(37px,5vw,62px)}.machine-hero p{max-width:570px}.machine-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:30px}.machine-chips span{padding:9px 12px;font-size:10px;color:#b3e6d3;border:1px solid #406458;border-radius:99px;background:#1f403b}
+  .discovery-section{padding:24px;margin-top:22px;background:#112229;border:1px solid #2c4746;border-radius:17px}
+  .discovery-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:13px}
+  .discovery-head h2{font-size:21px;margin:6px 0 0;letter-spacing:-.5px}
+  .discovery-section p{font-size:12px;color:#9cbdba;line-height:1.7;max-width:670px}
+  .discovery-list{display:grid;gap:9px;margin-top:18px}
+  .discovery-item{display:flex;align-items:center;gap:12px;padding:13px 14px;background:#192b31;border:1px solid #31514b;border-radius:12px}
+  .discovery-icon{font-size:20px;color:#a0edcf;background:#26483d;border-radius:9px;width:38px;height:38px;display:grid;place-items:center}
+  .discovery-item div{min-width:0;flex:1;display:grid;gap:4px}
+  .discovery-item strong{font-size:12px}.discovery-item small{font-size:10px;color:#93abae}
+  .discovery-tag{font-size:8px;color:#9cc4b9;letter-spacing:.7px;font-weight:800}
+  .discovery-empty{border:1px dashed #3b5b56;border-radius:12px;padding:18px;font-size:12px;color:#88a9a4;margin-top:16px}
   .machine-features{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:22px 0}.machine-features>div{padding:27px;border:1px solid #293f46;border-radius:15px;background:#15232d}.feature-icon{color:#a9f6d3;font-size:25px;display:block;margin-bottom:20px}.machine-features strong{display:block;font-size:15px}.machine-features p{color:#8a9fa8;font-size:12px;line-height:1.7}
   .machine-footnote{display:flex;gap:12px;align-items:center;color:#b4a8a1;font-size:12px;margin:20px 0}.machine-footnote span{font-size:20px}
   .mobile-top{display:none}.mobile-scrim{display:none}
@@ -662,7 +696,7 @@
     .quick-row button span{font-size:12px;color:#7eaca0}
     .composer-wrap{padding:9px 11px calc(var(--safe-bottom) + 11px)}.composer{border-radius:13px;min-height:53px}.composer-caption{font-size:9px;padding-top:6px}
     .mic-button{width:38px;height:38px}.compose-trigger{font-size:12px}
-    .machine-hero{padding:33px 25px}.machine-hero h1{font-size:42px;letter-spacing:-2px}.machine-hero p{font-size:12px}.machine-features{grid-template-columns:1fr;gap:9px}.machine-features>div{padding:19px}.feature-icon{margin-bottom:10px}
+    .machine-hero{padding:33px 25px}.machine-hero h1{font-size:42px;letter-spacing:-2px}.machine-hero p{font-size:12px}.discovery-section{padding:18px}.discovery-head{align-items:flex-start;flex-direction:column}.discovery-item{gap:10px}.discovery-tag{font-size:7px}.machine-features{grid-template-columns:1fr;gap:9px}.machine-features>div{padding:19px}.feature-icon{margin-bottom:10px}
     .toast{bottom:calc(var(--safe-bottom) + 105px);max-width:90vw;white-space:normal;text-align:center}
   }
   @media(min-width:761px){.home-content{padding-bottom:70px}}
