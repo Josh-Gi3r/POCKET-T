@@ -52,7 +52,18 @@ export type EventEnvelope =
   | { kind: 'sessionAdded'; session: SessionInfo }
   | { kind: 'sessionUpdated'; session: SessionInfo }
   | { kind: 'sessionRemoved'; sessionId: string }
-  | { kind: 'bubble'; sessionId: string; event: BubbleEvent };
+  | { kind: 'bubble'; sessionId: string; event: BubbleEvent }
+  | { kind: 'existingTerminals'; sessions: ExistingTerminal[] };
+
+export interface ExistingTerminal {
+  sessionId: string;
+  source: 'tmux' | 'terminal' | 'iterm2';
+  title: string;
+  cwd: string;
+  tty?: string;
+  pane?: string;
+  capabilities: Array<'discover'>; // inventory only in first slice
+}
 
 export interface CostState {
   cumulativeCostUSD?: number;
