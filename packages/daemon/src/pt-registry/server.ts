@@ -54,6 +54,7 @@ import {
   type PersistedEvent,
 } from './state.js';
 import { loadPushServiceFromEnv, type PushService } from './push.js';
+import { discoverExistingTerminals } from './existing-terminals.js';
 
 // @xterm/headless and @xterm/addon-serialize ship as CommonJS — Node 22's
 // strict ESM loader rejects `import { Terminal } from '@xterm/headless'`
@@ -1330,6 +1331,21 @@ function handleIncomingFrame(client: BrowserClient, frame: { type: WsV3MessageTy
       if (!msg || typeof msg !== 'object') return;
       if (msg.kind === 'approvalDecision' && typeof msg.approvalId === 'string') {
         resolveApprovalLocally(msg.approvalId, msg.decision === 'approve' ? 'approve' : 'deny');
+      } else if (msg.kind === 'discoverExistingTerminals') {
+        // Opt-in, read-only native discovery. May trigger macOS Automation
+        // permissions. Reply ONLY to the authenticated requester.
+        void discoverExistingTerminals().then((found) => {
+          if (!client.authed || client.ws.readyState !== WebSocket.OPEN) return;
+          client.ws.send(encodeWsV3Frame({
+            type: WsV3MessageType.EVENT,
+            payload: new TextEncoder().encode(JSON.stringify({
+              kind: 'existingTerminals',
+              sessions: found,
+            })),
+          }));
+        }).catch((error: unknown) => {
+          console.warn('[existing-terminals] discovery failed:', error);
+        });
       } else if (msg.kind === 'spawnSession') {
         // Phone-tapped "+ New session" — daemon launches /usr/local/bin/pt
         // as a child process. pt opens its own PTY, runs the user's
