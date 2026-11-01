@@ -56,6 +56,7 @@ import {
 import { loadPushServiceFromEnv, type PushService } from './push.js';
 import { discoverExistingTerminals } from './existing-terminals.js';
 import { publicFileRoots, handleFileBrowse } from './files.js';
+import { approvedApps, launchApprovedApp } from './apps.js';
 
 // @xterm/headless and @xterm/addon-serialize ship as CommonJS — Node 22's
 // strict ESM loader rejects `import { Terminal } from '@xterm/headless'`
@@ -1332,6 +1333,45 @@ function handleIncomingFrame(client: BrowserClient, frame: { type: WsV3MessageTy
       if (!msg || typeof msg !== 'object') return;
       if (msg.kind === 'approvalDecision' && typeof msg.approvalId === 'string') {
         resolveApprovalLocally(msg.approvalId, msg.decision === 'approve' ? 'approve' : 'deny');
+      } else if (msg.kind === 'listApprovedApps') {
+        if (client.ws.readyState !== WebSocket.OPEN) return;
+        client.ws.send(encodeWsV3Frame({
+          type: WsV3MessageType.EVENT,
+          payload: new TextEncoder().encode(JSON.stringify({
+            kind: 'approvedApps', apps: approvedApps(),
+          })),
+        }));
+      } else if (msg.kind === 'launchApprovedApp') {
+        // User-initiated app launch is an actual privileged operation.
+        // The Mac owner first allowlists the exact bundle ID locally.
+        const requestId = typeof msg.requestId === 'string'
+          && /^[a-zA-Z0-9_-]{1,40}$/.test(msg.requestId) ? msg.requestId : '';
+        if (!requestId || client.ws.readyState !== WebSocket.OPEN) return;
+        void launchApprovedApp(msg.bundleId)
+          .then(() => {
+            if (client.ws.readyState !== WebSocket.OPEN || !client.authed) return;
+            client.ws.send(encodeWsV3Frame({
+              type: WsV3MessageType.EVENT,
+              payload: new TextEncoder().encode(JSON.stringify({
+                kind: 'appLaunchResult', requestId, ok: true,
+                message: 'Launch request accepted by macOS',
+              })),
+            }));
+          })
+          .catch((error: unknown) => {
+            if (client.ws.readyState !== WebSocket.OPEN || !client.authed) return;
+            const message = error instanceof Error && (
+              error.message === 'Application is not approved for remote launch'
+              || error.message === 'App launch is only supported on macOS'
+              || error.message === 'Invalid application'
+            ) ? error.message : 'macOS could not launch the application';
+            client.ws.send(encodeWsV3Frame({
+              type: WsV3MessageType.EVENT,
+              payload: new TextEncoder().encode(JSON.stringify({
+                kind: 'appLaunchResult', requestId, ok: false, message,
+              })),
+            }));
+          });
       } else if (msg.kind === 'listFileRoots') {
         // The Mac owner configures roots locally in POCKET_T_FILE_ROOTS.
         // No absolute filesystem paths or file contents are returned.
