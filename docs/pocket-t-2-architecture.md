@@ -185,3 +185,7 @@ A Telegram bot is an **approved secondary, low-bandwidth UI** for when the prima
 The controlled Mac does **not** need to connect to Telegram or directly to OpenAI. It still needs an explicitly permitted Pocket-T machine connection. Telegram is not an alternative transport out of a fully disconnected or security-blocked Mac. Telegram bot chats are cloud chats rather than E2EE Secret Chats; defaults must use bounded, redacted summaries and step-up approval for impactful actions.
 
 **Full implementation contract:** [Telegram fallback design](telegram-fallback.md). This document is a design decision only; the bot is not implemented, connected or deployed in this PR.
+
+## Files, apps, browsers and Keychain-backed values
+
+The same Pocket-T account and mobile web app include separate **Files**, **Applications**, **Desktop** and **Vault & Values** interfaces, gated by the same machine identity and local policy enforcement. Exact Apple/Chrome capabilities, Apple TCC and enterprise-policy boundaries, explicit folder-root configuration, and the credential-design trust model are documented in [Mac workspaces: files, apps, browsers, credentials](mac-workspaces-v2.md). The current first slice exposes only opt-in read-only file metadata browsing and locally-allowlisted app launch; no GUI control or credential entry is shipped yet.
