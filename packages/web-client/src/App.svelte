@@ -1,13 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import BubbleView from './components/BubbleView.svelte';
+  import FilesWorkspace from './components/FilesWorkspace.svelte';
+  import AppsWorkspace from './components/AppsWorkspace.svelte';
+  import VaultWorkspace from './components/VaultWorkspace.svelte';
   import CostPill from './components/CostPill.svelte';
   import KeyboardRow from './components/KeyboardRow.svelte';
   import { status, current, sessions, bubbles, existingTerminals, discoverExistingTerminals, conn, attach, spawnSession, killSession } from './lib/store';
   import { enableNotifications, subscribeToPush, pushConfigured } from './lib/push';
   import type { SessionInfo } from './lib/types';
 
-  type Page = 'home' | 'workspace' | 'machine';
+  type Page = 'home' | 'workspace' | 'files' | 'apps' | 'vault' | 'machine';
   type Surface = 'activity' | 'terminal';
   type QuickAction = 'summary' | 'review' | 'tests' | 'status';
 
@@ -276,6 +279,25 @@
         <span class="nav-icon">◫</span> Sessions
         {#if $sessions.length}<span class="nav-counter">{$sessions.length}</span>{/if}
       </button>
+      <button class:active={page === 'files'} onclick={() => {
+        page = 'files';
+        mobileMenu = false;
+      }}>
+        <span class="nav-icon">▤</span> Files
+      </button>
+      <button class:active={page === 'apps'} onclick={() => {
+        page = 'apps';
+        mobileMenu = false;
+      }}>
+        <span class="nav-icon">◈</span> Applications
+      </button>
+      <button class:active={page === 'vault'} onclick={() => {
+        page = 'vault';
+        mobileMenu = false;
+      }}>
+        <span class="nav-icon">◇</span> Vault & Values
+        <span class="nav-soon">PLAN</span>
+      </button>
       <button class:active={page === 'machine'} onclick={() => {
         page = 'machine';
         mobileMenu = false;
@@ -487,6 +509,12 @@
           </div>
         {/if}
       </div>
+    {:else if page === 'files'}
+      <FilesWorkspace />
+    {:else if page === 'apps'}
+      <AppsWorkspace />
+    {:else if page === 'vault'}
+      <VaultWorkspace />
     {:else if page === 'machine'}
       <div class="content machine-page">
         <div class="topline"><div class="crumb">WORKSPACE <span>/</span> YOUR MAC</div><span class="connection-label"><span class:offline={!connected}></span>{connected ? 'TERMINAL CONNECTED' : 'OFFLINE'}</span></div>
