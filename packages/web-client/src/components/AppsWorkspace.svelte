@@ -22,7 +22,9 @@
       pendingId = '';
       pendingBundle = '';
     }
-  }
+  });
+
+  const setupExample = `POCKET_T_ALLOWED_APPS='[{"name":"Safari","bundleId":"com.apple.Safari"},{"name":"Finder","bundleId":"com.apple.finder"}]'`;
 </script>
 
 <section class="apps">
@@ -65,7 +67,7 @@
   {#if showSetup}
     <div class="setup">
       <span>EXAMPLE LOCAL DAEMON CONFIGURATION</span>
-      <code>POCKET_T_ALLOWED_APPS='[{"name":"Safari","bundleId":"com.apple.Safari"},{"name":"Finder","bundleId":"com.apple.finder"}]'</code>
+      <code>{setupExample}</code>
       <p>Set the environment variable in the Mac daemon's launch configuration and restart the daemon. Opening a restricted website remains subject to the browser and network's existing restrictions.</p>
     </div>
   {/if}
