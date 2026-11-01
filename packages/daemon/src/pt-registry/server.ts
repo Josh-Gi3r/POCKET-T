@@ -55,6 +55,7 @@ import {
 } from './state.js';
 import { loadPushServiceFromEnv, type PushService } from './push.js';
 import { discoverExistingTerminals } from './existing-terminals.js';
+import { publicFileRoots, handleFileBrowse } from './files.js';
 
 // @xterm/headless and @xterm/addon-serialize ship as CommonJS — Node 22's
 // strict ESM loader rejects `import { Terminal } from '@xterm/headless'`
@@ -1331,6 +1332,52 @@ function handleIncomingFrame(client: BrowserClient, frame: { type: WsV3MessageTy
       if (!msg || typeof msg !== 'object') return;
       if (msg.kind === 'approvalDecision' && typeof msg.approvalId === 'string') {
         resolveApprovalLocally(msg.approvalId, msg.decision === 'approve' ? 'approve' : 'deny');
+      } else if (msg.kind === 'listFileRoots') {
+        // The Mac owner configures roots locally in POCKET_T_FILE_ROOTS.
+        // No absolute filesystem paths or file contents are returned.
+        if (client.ws.readyState !== WebSocket.OPEN) return;
+        client.ws.send(encodeWsV3Frame({
+          type: WsV3MessageType.EVENT,
+          payload: new TextEncoder().encode(JSON.stringify({
+            kind: 'fileRoots',
+            roots: publicFileRoots(),
+          })),
+        }));
+      } else if (msg.kind === 'browseFiles') {
+        // Strict metadata-only traversal under a canonical Mac-approved
+        // folder. Never treat the browser as an authority for absolute paths.
+        const requestId = typeof msg.requestId === 'string'
+          && /^[a-zA-Z0-9_-]{1,40}$/.test(msg.requestId) ? msg.requestId : '';
+        if (!requestId || client.ws.readyState !== WebSocket.OPEN) return;
+        try {
+          const listing = handleFileBrowse(msg.rootId, msg.relativePath);
+          client.ws.send(encodeWsV3Frame({
+            type: WsV3MessageType.EVENT,
+            payload: new TextEncoder().encode(JSON.stringify({
+              kind: 'fileListing',
+              requestId,
+              listing,
+            })),
+          }));
+        } catch (error) {
+          // Don't leak absolute paths or macOS OS errors across the gateway.
+          const explanation = error instanceof Error ? error.message : '';
+          const allowed = [
+            'Invalid folder path', 'Only paths inside an approved folder are allowed',
+            'Invalid folder traversal', 'Symbolic-link traversal is not allowed',
+            'Not a directory', 'Folder is outside the approved root',
+            'Unknown approved folder', 'Folder is not approved or no longer available',
+          ];
+          const message = allowed.includes(explanation) ? explanation : 'Folder is unavailable or access was denied by macOS';
+          client.ws.send(encodeWsV3Frame({
+            type: WsV3MessageType.EVENT,
+            payload: new TextEncoder().encode(JSON.stringify({
+              kind: 'fileBrowseError',
+              requestId,
+              message,
+            })),
+          }));
+        }
       } else if (msg.kind === 'discoverExistingTerminals') {
         // Opt-in, read-only native discovery. May trigger macOS Automation
         // permissions. Reply ONLY to the authenticated requester.
