@@ -5,7 +5,7 @@
 
   let { sessionId }: { sessionId: string } = $props();
   const list = $derived($bubbles[sessionId] ?? []);
-  let scroller = $state<HTMLDivElement | null>(null);
+  let scroller = $state<HTMLElement | null>(null);
   let pinned = true;
 
   $effect(() => {
