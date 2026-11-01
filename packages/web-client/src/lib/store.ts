@@ -1,13 +1,14 @@
 import { writable, get } from 'svelte/store';
 import { PTConnection } from './connection';
 import { appendBubble, resetSession } from './bubbles';
-import type { BubbleEvent, ConnStatus, CostState, EventEnvelope, SessionInfo } from './types';
+import type { BubbleEvent, ConnStatus, CostState, EventEnvelope, ExistingTerminal, SessionInfo } from './types';
 
 export const status = writable<ConnStatus>('connecting');
 export const sessions = writable<SessionInfo[]>([]);
 export const current = writable<string | null>(null);
 export const bubbles = writable<Record<string, BubbleEvent[]>>({});
 export const cost = writable<Record<string, CostState>>({});
+export const existingTerminals = writable<ExistingTerminal[]>([]);
 
 // Terminal sink — the lazy-loaded TerminalView registers write/snapshot/reset
 // callbacks here so raw STDOUT/SNAPSHOT_VT frames reach xterm only when the
@@ -85,6 +86,10 @@ function handleEvent(frameSessionId: string, env: EventEnvelope): void {
       }
       break;
     }
+    case 'existingTerminals': {
+      existingTerminals.set(env.sessions);
+      break;
+    }
     case 'bubble': {
       const ev = env.event;
       if (ev.kind === 'cost') {
@@ -130,6 +135,10 @@ export function requestResync(): void {
 
 export function resolveApproval(sessionId: string, approvalId: string, decision: 'approve' | 'deny'): void {
   conn.resolveApproval(sessionId, approvalId, decision);
+}
+
+export function discoverExistingTerminals(): void {
+  conn.sendJsonEvent('', { kind: 'discoverExistingTerminals' });
 }
 
 export function spawnSession(cwd?: string): void {
