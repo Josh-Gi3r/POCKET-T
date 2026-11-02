@@ -1,0 +1,55 @@
+name: UI visual preview
+
+on:
+  push:
+    branches:
+      - feat/terminal-first-join-mobile
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install app dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build actual Pocket-T Svelte interface
+        run: |
+          pnpm --filter @pocket-t/shared build
+          pnpm --filter @pocket-t/web-client build
+
+      - name: Install isolated screenshot dependencies
+        run: |
+          npm install --prefix /tmp/pt-visual --no-audit --no-fund playwright@1.55.0 ws@8.21.0
+          node /tmp/pt-visual/node_modules/playwright/cli.js install --with-deps chromium
+
+      - name: Capture iPhone and desktop screenshots from actual UI
+        env:
+          PLAYWRIGHT_MODULE: /tmp/pt-visual/node_modules/playwright
+          WS_MODULE: /tmp/pt-visual/node_modules/ws
+          POCKET_T_SHOT_DIR: ui-screenshots
+        run: node packages/web-client/scripts/capture-preview.cjs
+
+      - name: Upload preview screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pocket-t-ui-preview
+          path: ui-screenshots/
+          if-no-files-found: error
+          retention-days: 14
