@@ -140,7 +140,7 @@
 
     <main class="page-content">
       {#if section === 'home'}
-        <HomeWorkspace {navigate} onNavigate={navigate} onOpenSession={openSession} />
+        <HomeWorkspace onNavigate={navigate} onOpenSession={openSession} />
       {:else if section === 'terminal'}
         <TerminalWorkspace />
       {:else if section === 'files'}
