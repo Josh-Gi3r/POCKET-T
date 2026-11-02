@@ -46,7 +46,7 @@
     </div>
     <div class="welcome-headline">
       <div>
-        <h1>Everything, <em>within reach.</em></h1>
+        <h1>Your machine. <em>Anywhere.</em></h1>
         <p>The work on your computer, beautifully connected to wherever you are.</p>
       </div>
       {#if attention > 0}<div class="attention-pill"><PTIcon name="sparkles" size={15}/>{attention} approval{attention === 1 ? '' : 's'} need attention</div>{/if}
@@ -214,17 +214,17 @@
     h1 { font-size:40px; letter-spacing:-.064em; max-width:400px; }
     .welcome-headline p { font-size:12.5px; max-width:340px; margin-top:10px; }
     .attention-pill { display:inline-flex; margin-top:13px; }
-    .hero-card { min-height:298px; border-radius:25px; padding:28px 25px; }
+    .hero-card { min-height:252px; border-radius:25px; padding:24px 24px; }
     .hero-copy { width:100%; }
     .hero-overline { font-size:9px; }
-    .hero-copy h2 { font-size:31px; max-width:265px; margin-top:27px; }
+    .hero-copy h2 { font-size:28px; max-width:265px; margin-top:20px; }
     .hero-copy p { font-size:12px; max-width:245px; line-height:1.7; }
     .hero-actions { gap:7px; }.hero-cta,.hero-secondary { min-height:43px; border-radius:12px; font-size:11px; padding:0 12px; gap:8px; }
     .hero-secondary { display:none; }
-    .hero-foot { font-size:10px; margin-top:18px; }
+    .hero-foot { font-size:10px; margin-top:12px; }
     .hero-art { right:-26%; width:67%; opacity:.28; }
     .front-card { right:26%; }
-    .workspace-section,.session-section { margin-top:31px; }
+    .workspace-section,.session-section { margin-top:25px; }
     .section-heading h2 { font-size:21px; }.mini-caption { display:none; }
     .tool-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
     .tool-card { min-height:138px; padding:17px; gap:15px; border-radius:18px; }
