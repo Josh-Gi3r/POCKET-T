@@ -301,7 +301,9 @@
               <button onclick={focusCompose} class:mode-active={keyboardMode === 'compose'}>Compose</button>
             </div>
           </div>
-          <KeyboardRow disabled={!online || selected.detached} />
+          {#if keyboardMode === 'direct'}
+            <KeyboardRow disabled={!online || selected.detached} />
+          {/if}
           <div class="compose-row">
             <span class="prompt-glyph">❯</span>
             <textarea
