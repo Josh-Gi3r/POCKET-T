@@ -262,7 +262,7 @@
   }
   @media(max-width:720px){
     .overview-content{padding:21px 17px calc(env(safe-area-inset-bottom,0px) + 112px)}
-    .overview-topline{margin-bottom:17px}.overline{font-size:9px;letter-spacing:1.25px}.global-shortcut{min-width:0;padding:10px;border-radius:12px}.global-shortcut span,.global-shortcut kbd{display:none}
+    .overview-topline{margin-bottom:17px}.overline{font-size:10px;letter-spacing:1.25px}.global-shortcut{display:none}
     .hero{border-radius:24px;min-height:391px;display:block}
     .hero-copy{width:100%;padding:31px 25px 34px}.hero-eyebrow{font-size:9px;letter-spacing:1.6px}
     .hero h1{font-size:clamp(40px,10.8vw,50px);line-height:1.08;letter-spacing:-2.3px;margin:19px 0 13px;max-width:310px}
