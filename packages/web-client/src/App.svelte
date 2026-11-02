@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import TerminalWorkspace from './components/TerminalWorkspace.svelte';
   import FilesWorkspace from './components/FilesWorkspace.svelte';
   import AppsWorkspace from './components/AppsWorkspace.svelte';
@@ -8,6 +9,26 @@
   type Section = 'terminals' | 'files' | 'apps' | 'vault' | 'machine';
   let section = $state<Section>('terminals');
   let navOpen = $state(false);
+  let keyboardInset = $state(0);
+
+  // iOS Safari overlays its software keyboard without reducing the layout
+  // viewport. Reserve the covered area so the terminal and command bar
+  // remain usable while typing, then return space when it closes.
+  onMount(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => {
+      keyboardInset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+    };
+    viewport.addEventListener('resize', update);
+    viewport.addEventListener('scroll', update);
+    update();
+    return () => {
+      viewport.removeEventListener('resize', update);
+      viewport.removeEventListener('scroll', update);
+    };
+  });
+
   const connected = $derived($status === 'open');
 
   function navigate(next: Section) {
@@ -22,7 +43,7 @@
   <meta name="description" content="Join your live Mac terminal from your phone. A true persistent shell, no AI required." />
 </svelte:head>
 
-<div class="shell">
+<div class="shell" style:padding-bottom={keyboardInset + 'px'}>
   {#if navOpen}
     <button class="nav-overlay" aria-label="Close navigation" onclick={() => (navOpen = false)}></button>
   {/if}
