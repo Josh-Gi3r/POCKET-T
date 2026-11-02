@@ -45,6 +45,10 @@ export function setTermSink(sink: TermSink | null): void {
 }
 
 const sessionMap = new Map<string, SessionInfo>();
+// Capture the previous selection ONCE. Attaching the first catalog entry
+// updates localStorage, but should not erase the desired restored session
+// before its later sessionAdded frame arrives.
+const preferredSessionId = readSaved();
 let restoredSaved = false;
 
 function refreshSessionList(): void {
@@ -112,11 +116,16 @@ function handleEvent(frameSessionId: string, env: EventEnvelope): void {
       }
       // Prefer restoring the previous selection, but don't leave the UI
       // permanently blank when that old session no longer exists.
-      const saved = readSaved();
-      if (!get(current)) attach(env.session.sessionId);
-      else if (saved && saved === env.session.sessionId && get(current) !== saved && !restoredSaved) {
+      if (!get(current)) {
+        attach(env.session.sessionId);
+        if (env.session.sessionId === preferredSessionId) restoredSaved = true;
+      } else if (
+        preferredSessionId && !restoredSaved &&
+        env.session.sessionId === preferredSessionId &&
+        get(current) !== preferredSessionId
+      ) {
         restoredSaved = true;
-        attach(saved);
+        attach(preferredSessionId);
       }
       break;
     }
