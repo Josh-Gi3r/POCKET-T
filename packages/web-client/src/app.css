@@ -152,3 +152,43 @@ code,
 @media(prefers-reduced-motion:reduce){
   .pt-shell :is(button,.work-card,.tool-card,.sidebar,.glass-device){transition-duration:.01ms!important;animation-duration:.01ms!important}
 }
+
+
+/* Stronger selector scopes for nested Svelte component styles. The
+ * underlying PTY and ANSI colors intentionally remain untouched. */
+.pt-shell .surface.terminal-surface{background:var(--pt-bg)!important}
+.pt-shell .term-page .terminal-stage{background:var(--pt-bg)!important}
+.pt-shell .term-page .session-column{background:var(--pt-glass)!important;border-color:var(--pt-line)!important}
+.pt-shell .term-page .session-column .column-title h2,
+.pt-shell .term-page .session-column .session-info strong,
+.pt-shell .term-page .session-column .external-info strong,
+.pt-shell .term-page .session-column .sidebar-footer strong{color:var(--pt-text)!important}
+.pt-shell .term-page .session-column .session-info small,
+.pt-shell .term-page .session-column .external-info small{color:var(--pt-secondary)!important}
+.pt-shell .term-page .session-column .session.chosen{background:var(--pt-subtle)!important;border-color:var(--pt-accent-border)!important}
+.pt-shell .term-page .stage-header{background:var(--pt-glass)!important;border-color:var(--pt-line)!important;color:var(--pt-text)!important;min-height:72px!important;padding:12px 20px!important}
+.pt-shell .term-page .stage-header .stage-title h1,
+.pt-shell .term-page .stage-header .mobile-title{color:var(--pt-text)!important}
+.pt-shell .term-page .stage-header .stage-title p{color:var(--pt-muted)!important}
+.pt-shell .term-page .stage-header .mobile-sessions{color:var(--pt-text)!important}
+.pt-shell .term-page .stage-header .icon-action{color:var(--pt-secondary)!important;background:var(--pt-subtle)!important;border-color:var(--pt-line)!important}
+.pt-shell .term-page .terminal-tabs{background:var(--pt-glass)!important;border-color:var(--pt-line)!important}
+.pt-shell .term-page .terminal-tabs button{color:var(--pt-secondary)!important}
+.pt-shell .term-page .terminal-tabs button.tab-active{color:var(--pt-accent)!important;border-color:var(--pt-accent)!important}
+.pt-shell .term-page .console{border-radius:21px 21px 0 0!important;margin:11px 15px 0!important;border:1px solid #313d53!important;box-shadow:0 17px 51px #19244c19!important}
+.pt-shell .term-page .console .terminal-dots{display:none!important}
+.pt-shell .term-page .control-dock{background:var(--pt-glass)!important;border-color:var(--pt-line)!important}
+.pt-shell .term-page .control-dock .quick-actions button{color:var(--pt-secondary)!important}
+.pt-shell .term-page .control-dock .quick-actions button.mode-active{background:var(--pt-subtle)!important;color:var(--pt-accent)!important}
+.pt-shell .term-page .control-dock .compose-row{background:var(--pt-glass)!important;border-color:var(--pt-accent-border)!important}
+.pt-shell .term-page .control-dock .compose-row textarea{color:var(--pt-text)!important;font-size:16px!important}
+.pt-shell .term-page .control-dock .compose-row textarea::placeholder{color:var(--pt-muted)!important}
+.pt-shell .term-page .control-dock .prompt-glyph{color:var(--pt-accent)!important}
+.pt-shell .term-page .control-dock .send-command{background:var(--pt-accent)!important;color:#fff!important}
+.pt-shell .term-page .control-dock .keybar{background:transparent!important;border-color:var(--pt-line)!important}
+.pt-shell .term-page .control-dock .keybar button{background:var(--pt-subtle)!important;border-color:var(--pt-line)!important;color:var(--pt-text)!important;min-width:44px!important;height:44px!important}
+.pt-shell .term-page .control-dock .dock-footer{color:var(--pt-muted)!important}
+@media(max-width:900px){
+  .pt-shell .term-page .stage-header{height:53px!important;min-height:53px!important;padding:5px 12px!important}
+  .pt-shell .term-page .console{margin:6px 8px 0!important;border-radius:15px 15px 0 0!important}
+}
