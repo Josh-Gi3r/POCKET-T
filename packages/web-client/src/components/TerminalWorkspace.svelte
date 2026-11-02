@@ -483,4 +483,81 @@
   }
   @media(max-width:430px){.status-connection{font-size:0;gap:0}.status-connection span{width:8px;height:8px}.full-toggle{display:none}.dock-footer{font-size:8px}.shell-capability{font-size:7px}.compose-row textarea{font-size:14px}}
   @media(prefers-reduced-motion:reduce){button{transition:none}}
+
+  /* Pocket Studio: the terminal is the ENGINE, not the visual language.
+     This is an intentional bright, refined workroom surrounding a genuine
+     xterm PTY. Console bytes and session transport remain unchanged. */
+  .term-page{background:#f8f8fc;color:#282a49;--accent:#7660dd;--line:#e3e2f0;--subtle:#918fa5}
+  .session-column{background:#fcfbff;border-right:1px solid #e6e5f0}
+  .column-title h2{font-size:19px;letter-spacing:-.7px;color:#292841}
+  .eyebrow,.group-label,.quick-caption,.crumb{color:#a19bad}
+  .count{color:#8979c0}
+  .new-shell{height:40px;width:40px;border:0;border-radius:12px;background:#eeeaff;color:#7c62e4;box-shadow:0 4px 14px #7a6acf16;transition:transform .22s,background .22s}
+  .new-shell:hover{transform:rotate(90deg) scale(1.05);background:#ded8fd}
+  .search-container{background:#f2f0f9;border:1px solid #e5e2f1;border-radius:12px}
+  .search-container span{color:#9182c7}.search-container input{color:#37334d;font-size:13px}.search-container input::placeholder{color:#a5a0b8}
+  .session{color:#413e59;border:1px solid transparent;transition:background .22s,transform .2s}
+  .session:hover{background:#f5f2ff;transform:translateX(2px)}
+  .session.chosen{background:#eeeaff;border-color:#e0dafd;box-shadow:0 4px 15px #8173cc0c}
+  .session-icon{background:#e9ebfa;color:#6c6dc7}.session-icon.agent{background:#f0e9fc;color:#8566bf}
+  .session-info strong,.external-info strong{color:#3c3953}.session-info small,.external-info small{color:#9594aa}
+  .discover-heading button{color:#8062d9}.external-icon{background:#efedfb;color:#8872b5}.external{color:#45435c}
+  .join{background:#ece7ff;border:1px solid #d9ceff;color:#745bc6}.observe{color:#aaa2b9}
+  .sidebar-footer{border-top:1px solid #e8e6f0}.sidebar-footer strong{color:#34324d}.sidebar-footer small{color:#9997ac}.sidebar-device{color:#8c73bf}
+  .terminal-stage{background:#f8f8fc}
+  .stage-header{background:#fbfbfe;border-bottom:1px solid #e8e8f1;min-height:97px;padding:20px 26px}
+  .stage-title h1{color:#282640;letter-spacing:-.9px}.stage-title p{color:#8d8c9f}
+  .status-pill{background:#e7f8f2;color:#269c7f;border:1px solid #d5f4e8}
+  .status-pill span{background:#4bc79e}.status-pill.off{color:#b88991;background:#fff0f1;border-color:#f5dedf}
+  .stage-actions .status-connection{color:#7f789c}.status-connection span{background:#56c5a3}
+  .icon-action{background:#f0edf9;border:1px solid #e5e0f2;color:#6c628c;min-width:41px;height:41px;border-radius:12px;transition:transform .2s,background .2s}
+  .icon-action:hover{background:#e5defd;transform:translateY(-2px)}
+  .terminal-tabs{background:#fbfbfe;border-bottom:1px solid #e8e5f2}
+  .terminal-tabs button{font-size:12px;color:#9b98ac}.terminal-tabs button.tab-active{color:#775ddc;border-bottom-color:#8a6bec}
+  .shell-capability{color:#a49eb4}.shell-capability span{color:#d0cbd6}
+  .console{border:1px solid #dddbee;border-radius:19px 19px 0 0;overflow:hidden;background:#171b33;box-shadow:0 14px 40px #29224c21;margin:12px 18px 0}
+  .terminal-dots{display:none}
+  .connection-overlay{inset:0;background:#171a30ed}.connection-overlay strong{color:#fff}
+  .control-dock{background:#fff;border-top:1px solid #e9e7f3;box-shadow:0 -7px 22px #2324410a}
+  .quick-caption{font-size:9px;color:#aba4b9}
+  .quick-actions button{color:#8f8aa4;border-radius:10px;min-height:42px;font-size:11px;transition:background .2s,color .2s}
+  .quick-actions button:hover{background:#f2effc;color:#6f58c8}
+  .quick-actions button.mode-active{background:#eee8ff;color:#785fe0}
+  .compose-row{background:#f6f5fc;border:1px solid #e2def2;border-radius:14px;min-height:56px;transition:border-color .2s,box-shadow .2s}
+  .compose-row:focus-within{border-color:#a496ed;box-shadow:0 0 0 4px #a796ee1e}
+  .prompt-glyph{color:#8b72e8}.compose-row textarea{color:#37334f;font-size:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+  .compose-row textarea::placeholder{color:#a09cb4}
+  .send-command{height:43px;min-width:43px;background:#7b64e4;border-radius:12px;color:#fff;transition:transform .2s,box-shadow .2s}
+  .send-command:hover:not(:disabled){box-shadow:0 8px 20px #7c65d953;transform:translateY(-1px)}
+  .dock-footer{color:#a4a1b4}.safe-dot{background:#4fc3a0}
+  .mode-label{color:#998cac}
+  .empty-main{background:radial-gradient(ellipse at 50% 48%,#e4dfff8d,transparent 60%),#faf9fd}
+  .empty-emblem{border:0;background:linear-gradient(135deg,#ac9cfc,#7865d9);color:#fff;box-shadow:0 18px 38px #745fc54a}
+  .empty-main h2{color:#2c294a}.empty-main p{color:#8c889d}
+  .new-primary{background:#806ae4;color:white;box-shadow:0 10px 22px #7c63dd33}.new-primary:hover{background:#6d52d6}
+  .secondary-discover{color:#795ed9}
+  .join-feedback{background:#e7f6ef;color:#339e79}.join-error{background:#fff0ef;color:#b76672}
+  .term-page.immersive{background:#13172a}.term-page.immersive .console{border:0;margin:0;border-radius:0}
+  .mobile-sheet{background:#fff;color:#2b2945;border-color:#e3dff6}
+  .sheet-handle{background:#d2cfe2}.sheet-header h2{color:#302b49}.sheet-header button{color:#8b83ab}
+  .sheet-new{background:#eeeaff;border:1px solid #d9d1fa;color:#7258c9}
+  .sheet-session{color:#393550;border-bottom:1px solid #f0edf7}
+  .sheet-session small{color:#9491a7}.sheet-arrow{color:#7f6bd0}
+  .sheet-backdrop{background:#15112e9c;backdrop-filter:blur(5px)}
+  @media(max-width:900px){
+    .stage-header{background:#faf9ff;padding:6px 13px;min-height:53px;height:53px}
+    .mobile-sessions{color:#39324f;max-width:57vw}
+    .session-lines{color:#816bd6}.dropdown-indicator{color:#8b79c8}
+    .status-connection{color:#9f92b8}.icon-action{min-width:39px;height:39px;padding:0 8px;color:#7669ac}
+    .terminal-tabs{background:#faf9ff;padding:0 6px}.terminal-tabs button{font-size:11px}
+    .console{margin:8px 9px 0;border-radius:16px 16px 0 0}
+    .quick-control-header{padding:5px 9px 0}.quick-actions button{min-height:39px;font-size:10px}
+    .compose-row{margin:5px 9px 0;min-height:53px;padding:6px 8px}.compose-row textarea{font-size:16px}
+    .dock-footer{padding:6px 11px 9px;font-size:9px}
+    .mobile-sheet{animation:sheetUp .38s cubic-bezier(.22,1,.36,1) both}
+  }
+  @keyframes sheetUp{from{opacity:.75;transform:translateY(27px)}to{opacity:1;transform:translateY(0)}}
+  @media(hover:none){.session:hover,.icon-action:hover,.new-shell:hover,.quick-actions button:hover{transform:none}}
+  @media(prefers-reduced-motion:reduce){.mobile-sheet{animation:none}.session,.new-shell,.icon-action,.send-command,.quick-actions button{transition:none}}
+
 </style>
