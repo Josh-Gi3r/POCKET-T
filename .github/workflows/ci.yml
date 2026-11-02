@@ -47,6 +47,24 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      # Screenshot-driven visual QA: launch the compiled Svelte PWA against
+      # mock WS events, exercise real navigation, and upload actual browser
+      # captures at iPhone and desktop viewport sizes.
+      - name: Install screenshot runner
+        run: npm install --prefix /tmp/pt-visual --no-audit --no-fund playwright@1.58.2 ws@8.18.0
+
+      - name: Capture mobile and desktop UI
+        run: node packages/web-client/scripts/capture-preview.cjs
+
+      - name: Upload UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pocket-t-design-screenshots
+          path: ui-screenshots/
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Lint
         run: pnpm lint
 
