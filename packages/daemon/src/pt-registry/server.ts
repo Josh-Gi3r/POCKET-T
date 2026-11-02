@@ -969,37 +969,39 @@ let RELAY_CLIENT: BrowserClient | null = null;
  * move on. The first run pops a system prompt — accept it once and
  * subsequent spawns are seamless.
  */
-function spawnPtSession(opts: { cwd?: string } = {}): void {
+function spawnPtSession(opts: { cwd?: string } = {}): Promise<string> {
   const ptBin = process.env.POCKET_T_PT_BIN ?? '/usr/local/bin/pt';
-  // The 'do script' string runs in the new Terminal.app window. We
-  // explicitly `exec` pt so we don't depend on the user's profile
-  // already having pt as its shell — works on every profile.
-  //
-  // `cd` first if the caller supplied a working directory (so the
-  // new window opens IN that folder, matching the user's expectation
-  // when they tap + while looking at a project session).
-  const cwdPrefix = opts.cwd ? `cd ${shellEscape(opts.cwd)} && ` : '';
-  const cmd = `${cwdPrefix}exec ${ptBin}`;
-  const escaped = cmd.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  const script = `tell application "Terminal"
-  activate
-  do script "${escaped}"
-end tell`;
-  try {
-    spawnChild('osascript', ['-e', script], {
-      detached: true,
-      stdio:    'ignore',
-    }).unref();
-    console.log(`[pt-registry] spawned Terminal.app window (cwd=${opts.cwd ?? '~'})`);
-  } catch (e) {
-    console.warn(`[pt-registry] osascript spawn failed: ${(e as Error).message}`);
+  if (process.platform !== 'darwin') {
+    return Promise.reject(new Error('Pocket-T native terminal is supported on macOS only'));
   }
-}
+  if (!fs.existsSync(ptBin)) {
+    return Promise.reject(new Error('Native pt helper is not installed on this Mac'));
+  }
+  let cwd = os.homedir();
+  // A requested working directory is never pasted into a shell command.
+  // Validate it as a real directory; otherwise use the owner's home.
+  if (opts.cwd && path.isAbsolute(opts.cwd)) {
+    try {
+      if (fs.statSync(opts.cwd).isDirectory()) cwd = fs.realpathSync(opts.cwd);
+    } catch { /* invalid / removed folder => default */ }
+  }
+  const sessionId = 'pt-' + crypto.randomUUID();
+  const env = { ...process.env, POCKET_T_HEADLESS: '1', POCKET_T_SESSION_ID: sessionId };
+  // Never inherit an existing-tmux attachment target from a parent
+  // launch configuration when the user requested a brand-new shell.
+  delete env.POCKET_T_TMUX_ATTACH_TARGET;
 
-/** Minimal POSIX shell escape — wrap arg in single quotes, escape
- *  any internal single quotes. Plenty for the cwd-prefix use above. */
-function shellEscape(s: string): string {
-  return `'${s.replace(/'/g, "'\\''")}'`;
+  return new Promise<string>((resolve, reject) => {
+    const child = spawnChild(ptBin, [], {
+      cwd, env, detached: true, stdio: 'ignore',
+    });
+    child.once('spawn', () => {
+      child.unref();
+      console.log(`[pt-registry] launched headless native shell ${sessionId}`);
+      resolve(sessionId);
+    });
+    child.once('error', () => reject(new Error('Unable to launch native terminal')));
+  });
 }
 
 /**
@@ -1493,12 +1495,32 @@ function handleIncomingFrame(client: BrowserClient, frame: { type: WsV3MessageTy
           console.warn('[existing-terminals] discovery failed:', error);
         });
       } else if (msg.kind === 'spawnSession') {
-        // Phone-tapped "+ New session" — daemon launches /usr/local/bin/pt
-        // as a child process. pt opens its own PTY, runs the user's
-        // shell inside it, and registers via the same Unix socket
-        // path real Terminal.app sessions use. The browser sees the
-        // new session appear in its sidebar within ~100ms.
-        spawnPtSession({ cwd: typeof msg.cwd === 'string' ? msg.cwd : undefined });
+        // New sessions run headlessly inside a *real native PTY*, optionally
+        // backed by the private tmux server, and are automatically joinable
+        // from the phone. No Terminal.app window or Automation permission.
+        const requestId = typeof msg.requestId === 'string'
+          && /^[a-zA-Z0-9_-]{1,40}$/.test(msg.requestId) ? msg.requestId : '';
+        void spawnPtSession({ cwd: typeof msg.cwd === 'string' ? msg.cwd : undefined })
+          .then((sessionId) => {
+            if (!requestId || !client.authed || client.ws.readyState !== WebSocket.OPEN) return;
+            client.ws.send(encodeWsV3Frame({
+              type: WsV3MessageType.EVENT,
+              payload: new TextEncoder().encode(JSON.stringify({
+                kind: 'spawnSessionResult', requestId, ok: true, sessionId,
+              })),
+            }));
+          })
+          .catch((error: unknown) => {
+            console.warn('[pt-registry] new native shell failed:', error);
+            if (!requestId || !client.authed || client.ws.readyState !== WebSocket.OPEN) return;
+            client.ws.send(encodeWsV3Frame({
+              type: WsV3MessageType.EVENT,
+              payload: new TextEncoder().encode(JSON.stringify({
+                kind: 'spawnSessionResult', requestId, ok: false,
+                message: error instanceof Error ? error.message : 'Failed to start terminal',
+              })),
+            }));
+          });
       }
       break;
     }
