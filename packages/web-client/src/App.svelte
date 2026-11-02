@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import PTIcon from './components/PTIcon.svelte';
+  import CommandPalette from './components/CommandPalette.svelte';
   import HomeWorkspace from './components/HomeWorkspace.svelte';
   import TerminalWorkspace from './components/TerminalWorkspace.svelte';
   import FilesWorkspace from './components/FilesWorkspace.svelte';
@@ -20,6 +21,7 @@
   let section = $state<Section>('home');
   let theme = $state<'light' | 'dark'>('light');
   let navOpen = $state(false);
+  let paletteOpen = $state(false);
   let keyboardInset = $state(0);
   const connected = $derived($status === 'open');
   const activeSessions = $derived($sessions.filter((s) => !s.detached).length);
@@ -28,6 +30,7 @@
   function navigate(next: Section): void {
     section = next;
     navOpen = false;
+    paletteOpen = false;
     try { localStorage.setItem('pt-last-workspace', next); } catch { /* private mode */ }
   }
 
@@ -50,10 +53,23 @@
       if (remembered === 'terminal') section = 'terminal';
     } catch { /* defaults are usable without localStorage */ }
 
+    // Never intercept Ctrl+K, which belongs to a real terminal. The
+    // desktop command palette uses Meta+K (⌘K); search is also a visible
+    // touch target, so mobile users aren't forced to learn a shortcut.
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        paletteOpen = !paletteOpen;
+      } else if (event.key === 'Escape' && paletteOpen) {
+        paletteOpen = false;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+
     // iOS visualViewport accounts for the on-screen keyboard. A keyboard
     // never obscures Pocket-T's terminal compose row.
     const vp = window.visualViewport;
-    if (!vp) return;
+    if (!vp) return () => window.removeEventListener('keydown', onKey);
     const update = () => { keyboardInset = Math.max(0, window.innerHeight - vp.height - vp.offsetTop); };
     vp.addEventListener('resize', update);
     vp.addEventListener('scroll', update);
@@ -61,6 +77,7 @@
     return () => {
       vp.removeEventListener('resize', update);
       vp.removeEventListener('scroll', update);
+      window.removeEventListener('keydown', onKey);
     };
   });
 </script>
@@ -88,6 +105,9 @@
     </div>
     <div class="sidebar-line"></div>
 
+    <button class="search-launch" onclick={() => (paletteOpen = true)} aria-label="Search workspaces and sessions">
+      <PTIcon name="search" size={18}/><span>Search anything</span><kbd>⌘K</kbd>
+    </button>
     <div class="sidebar-label">YOUR SPACE</div>
     <nav class="sidebar-links" aria-label="Workspaces">
       {#each nav as item (item.id)}
@@ -130,6 +150,7 @@
         <span class="mobile-mark">t</span><span>pocket<span class="logo-period">.</span>t</span>
       </button>
       <div class="mobile-header-end">
+        <button class="pt-icon-button mobile-search" aria-label="Search Pocket-T" onclick={() => (paletteOpen = true)}><PTIcon name="search" size={21}/></button>
         <button class="mobile-machine-chip" onclick={() => navigate('machine')} aria-label={connected ? 'Mac connected' : 'Mac offline'}>
           <span class="pt-status-dot" data-state={connected ? 'online' : 'offline'}></span>
           <span>{connected ? 'My Mac' : 'Offline'}</span>
@@ -190,6 +211,9 @@
       </nav>
     {/if}
   </div>
+  {#if paletteOpen}
+    <CommandPalette onClose={() => (paletteOpen = false)} onNavigate={navigate} onOpenSession={openSession} onTheme={toggleTheme}/>
+  {/if}
 </div>
 
 <style>
@@ -209,7 +233,12 @@
   .brand-type>span {color:var(--pt-violet);}
   .brand-type small {display:block;font-size:8px;font-weight:730;letter-spacing:1.5px;color:var(--pt-tertiary);margin-top:5px;}
   .close-drawer {display:none!important;}
-  .sidebar-line {height:1px;background:var(--pt-line);margin:28px 10px 23px;}
+  .sidebar-line {height:1px;background:var(--pt-line);margin:25px 10px 17px;}
+  .search-launch{display:flex;align-items:center;gap:10px;min-height:43px;margin:0 4px 23px;padding:0 11px;border-radius:12px;border:1px solid var(--pt-line);color:var(--pt-secondary);background:var(--pt-surface);font-size:12px;text-align:left;box-shadow:var(--pt-shadow-small);}
+  .search-launch:hover{color:var(--pt-violet);border-color:var(--pt-line-strong);box-shadow:var(--pt-shadow);}
+  .search-launch span{flex:1;white-space:nowrap;}
+  .search-launch kbd{display:grid;place-items:center;font-family:inherit;font-size:10px;font-weight:680;color:var(--pt-tertiary);border:1px solid var(--pt-line);background:var(--pt-surface-soft);padding:4px 6px;border-radius:7px;}
+  .mobile-search{height:43px!important;min-width:43px!important;width:43px!important;}
   .sidebar-label {color:var(--pt-tertiary);font-size:10px;font-weight:760;letter-spacing:1.2px;margin:0 15px 12px;}
   .sidebar-label.sidebar-more {margin-top:34px;}
   .sidebar-links {display:flex;flex-direction:column;gap:4px;}
