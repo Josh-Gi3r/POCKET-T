@@ -511,7 +511,33 @@ fn main() {
     // transparently fall back to a direct forkpty child (the shell then
     // shares the shim's lifetime, exactly as a plain login shell would).
     let tmux_bin = find_tmux();
-    let tmux_session = tmux_bin.as_ref().map(|_| tmux_session_name(&session_id));
+
+    // An explicitly requested join targets an EXISTING session on the
+    // user's default tmux server. This provides a real second tmux client
+    // on the same live shell/PTY, rather than another Mac desktop viewer.
+    // The daemon resolves the target against current tmux inventory.
+    let existing_tmux_target = match env::var("POCKET_T_TMUX_ATTACH_TARGET") {
+        Ok(name) if !name.is_empty() => {
+            if name.len() > 128 || name.chars().any(char::is_control) {
+                eprintln!("pt: invalid existing tmux session target");
+                exit(2);
+            }
+            Some(name)
+        }
+        _ => None,
+    };
+    if existing_tmux_target.is_some() && tmux_bin.is_none() {
+        eprintln!("pt: tmux is not installed; cannot join existing session");
+        exit(127);
+    }
+    // Imported tmux sessions do NOT belong to our private -L pocket-t
+    // server. They must never be marked as managed private sessions or
+    // killed via the private server's kill-session path.
+    let tmux_session = if existing_tmux_target.is_some() {
+        None
+    } else {
+        tmux_bin.as_ref().map(|_| tmux_session_name(&session_id))
+    };
 
     // Read initial window size from the controlling terminal so the
     // child's PTY starts at the right dimensions.
@@ -543,6 +569,27 @@ fn main() {
         unsafe {
             signal(libc::SIGPIPE, libc::SIG_DFL);
             signal(SIGWINCH, libc::SIG_DFL);
+        }
+
+        if let Some(existing) = existing_tmux_target.as_deref() {
+            // Join a pre-existing session on the DEFAULT tmux server.
+            // Exec with argv, not a shell string: no command interpolation.
+            // On failure exit: silently creating a new shell would falsely
+            // imply the user was still operating the original session.
+            if let Some(bin) = tmux_bin.as_deref() {
+                let args = [bin, "attach-session", "-t", existing];
+                let cargs: Vec<CString> = args
+                    .iter().filter_map(|arg| CString::new(arg.as_bytes()).ok())
+                    .collect();
+                if cargs.len() == args.len() {
+                    let mut argv: Vec<*const libc::c_char> =
+                        cargs.iter().map(|arg| arg.as_ptr()).collect();
+                    argv.push(std::ptr::null());
+                    unsafe { libc::execvp(cargs[0].as_ptr(), argv.as_ptr()); }
+                }
+            }
+            eprintln!("pt: failed to join existing tmux session '{}'", existing);
+            unsafe { libc::_exit(127); }
         }
 
         // Persistent path: become a tmux client that attaches to (or, on
