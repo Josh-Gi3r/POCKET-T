@@ -14,7 +14,8 @@ export interface ExistingTerminal {
   cwd: string;
   tty?: string;
   pane?: string;
-  capabilities: Array<'discover'>;
+  tmuxSession?: string;
+  capabilities: Array<'discover' | 'join'>;
 }
 
 type AppEntry = { source?: unknown; tty?: unknown; title?: unknown; processes?: unknown };
@@ -54,10 +55,14 @@ export function parseExistingTmux(text: string): ExistingTerminal[] {
     const [pane, session, window, cwd] = row.replace(/\r$/, '').split('\t');
     if (!pane || !/^%\d+$/.test(pane) || seen.has(pane)) continue;
     seen.add(pane);
+    // An existing pane belongs to a tmux session. Joining attaches another
+    // real tmux CLIENT to that session, not a new shell and not a screenshot.
+    if (!session || session.length > 128 || /[\x00-\x1f]/.test(session)) continue;
     result.push({
       sessionId: 'existing:tmux:' + pane, source: 'tmux', pane,
       title: (nameOf(session) || 'tmux') + ' / ' + (nameOf(window) || pane),
-      cwd: cwd && cwd.startsWith('/') ? cwd.slice(0, 300) : '', capabilities: ['discover'],
+      cwd: cwd && cwd.startsWith('/') ? cwd.slice(0, 300) : '',
+      tmuxSession: session, capabilities: ['discover', 'join'],
     });
   }
   return result.slice(0, 120);
@@ -65,12 +70,23 @@ export function parseExistingTmux(text: string): ExistingTerminal[] {
 
 const APP_DISCOVERY_SCRIPT = "function run() {\n  var result = [];\n  function safe(fn, fallback) { try { return fn(); } catch (e) { return fallback; } }\n  function visit(name, source) {\n    var app = Application(name);\n    if (!safe(function() { return app.running(); }, false)) return;\n    var windows = safe(function() { return app.windows(); }, []);\n    windows.forEach(function(win) {\n      var title = safe(function() { return String(win.name()); }, name);\n      safe(function() { return win.tabs(); }, []).forEach(function(tab) {\n        if (source === 'terminal') {\n          var tty = safe(function() { return String(tab.tty()); }, '');\n          var processes = safe(function() { return tab.processes().map(String); }, []);\n          result.push({ source: source, tty: tty, title: title, processes: processes });\n        } else {\n          safe(function() { return tab.sessions(); }, []).forEach(function(session) {\n            var tty = safe(function() { return String(session.tty()); }, '');\n            var sessionName = safe(function() { return String(session.name()); }, title);\n            result.push({ source: source, tty: tty, title: sessionName, processes: [] });\n          });\n        }\n      });\n    });\n  }\n  visit('Terminal', 'terminal');\n  visit('iTerm2', 'iterm2');\n  return JSON.stringify(result);\n}";
 
-async function discoverTmux(): Promise<ExistingTerminal[]> {
+export async function discoverTmux(): Promise<ExistingTerminal[]> {
   try {
     const format = ['#{pane_id}', '#{session_name}', '#{window_name}', '#{pane_current_path}'].join('\t');
     const { stdout } = await execFile('tmux', ['list-panes', '-a', '-F', format], { timeout: 2500, maxBuffer: 256 * 1024 });
     return parseExistingTmux(stdout);
   } catch { return []; } // No external tmux server is a normal condition.
+}
+
+/**
+ * Resolve a requested pane against the Mac's current tmux inventory. Never
+ * trust an arbitrary browser-supplied session name as a shell command.
+ * Only the DEFAULT tmux socket is considered (managed pocket-t uses -L).
+ */
+export async function resolveExistingTmuxTarget(sessionId: unknown): Promise<string | null> {
+  if (typeof sessionId !== 'string' || !/^existing:tmux:%\d{1,15}$/.test(sessionId)) return null;
+  const sessions = await discoverTmux();
+  return sessions.find((session) => session.sessionId === sessionId)?.tmuxSession ?? null;
 }
 
 export async function discoverExistingTerminals(): Promise<ExistingTerminal[]> {
