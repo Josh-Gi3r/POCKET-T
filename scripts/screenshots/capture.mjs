@@ -45,12 +45,12 @@ try {
   console.log('CAPTURED 02-mobile-session-switcher.png');
   await mobile.page.locator('.mobile-sheet .sheet-header button').click();
   await mobile.page.getByRole('button',{name:'Open navigation'}).click();
-  await mobile.page.getByRole('button',{name:'Files',exact:true}).click();
+  await mobile.page.locator('.app-nav .nav-items button').filter({hasText:'Files'}).click();
   await mobile.page.waitForTimeout(350);
   await mobile.page.screenshot({path:output+'/03-mobile-files.png',animations:'disabled'});
   console.log('CAPTURED 03-mobile-files.png');
   await mobile.page.getByRole('button',{name:'Open navigation'}).click();
-  await mobile.page.getByRole('button',{name:'Applications',exact:true}).click();
+  await mobile.page.locator('.app-nav .nav-items button').filter({hasText:'Applications'}).click();
   await mobile.page.waitForTimeout(350);
   await mobile.page.screenshot({path:output+'/04-mobile-apps.png',animations:'disabled'});
   console.log('CAPTURED 04-mobile-apps.png');
