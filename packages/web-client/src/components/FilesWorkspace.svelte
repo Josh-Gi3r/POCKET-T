@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PTIcon from './PTIcon.svelte';
   import { status, fileRoots, fileState, fetchFileRoots, browseFolder } from '../lib/store';
   import type { FileEntry } from '../lib/types';
 
@@ -75,7 +76,7 @@
       <h1>Files & folders<span>.</span></h1>
       <p>Your Mac's files, organised for a smaller screen. File contents and downloads are not enabled in this first release.</p>
     </div>
-    <span class="readonly">◉ READ-ONLY INVENTORY</span>
+    <span class="readonly"><PTIcon name="eye" size={15}/> READ-ONLY INVENTORY</span>
   </header>
 
   <div class="files-panel">
@@ -87,7 +88,7 @@
           {#each $fileRoots as root (root.id)}<option value={root.id}>{root.label}</option>{/each}
         </select>
       </div>
-      <button class="refresh" onclick={refresh} disabled={!connected} aria-label="Refresh folder listing">↻ <span>Refresh</span></button>
+      <button class="refresh" onclick={refresh} disabled={!connected} aria-label="Refresh folder listing"><PTIcon name="refresh" size={17}/> <span>Refresh</span></button>
     </div>
 
     {#if !connected}
@@ -105,14 +106,14 @@
       </div>
     {:else}
       <div class="breadcrumbs">
-        <button onclick={() => navigate('')} disabled={!folder} aria-label="Go to folder root">⌂ {activeRoot?.label ?? 'Folder'}</button>
+        <button onclick={() => navigate('')} disabled={!folder} aria-label="Go to folder root"><PTIcon name="home" size={15}/> {activeRoot?.label ?? 'Folder'}</button>
         {#each folder.split('/').filter(Boolean) as segment, index}
           <span>›</span>
           <button onclick={() => navigate(folder.split('/').slice(0, index + 1).join('/'))}>{segment}</button>
         {/each}
       </div>
       <div class="search-row">
-        <span class="search-icon">⌕</span>
+        <span class="search-icon"><PTIcon name="search" size={19}/></span>
         <input aria-label="Filter the current directory" type="search" placeholder="Filter files in this folder…" bind:value={filter}/>
         <span>{listing?.entries.length ?? 0} items</span>
       </div>
@@ -127,7 +128,7 @@
         <div class="file-list">
           {#each entries as e (e.relativePath)}
             <button class:file-selected={highlighted?.relativePath === e.relativePath} class="file-item" onclick={() => chooseEntry(e)} disabled={e.kind === 'symlink' || e.kind === 'other'}>
-              <span class="file-glyph" class:folder={e.kind === 'directory'}>{e.kind === 'directory' ? '▤' : e.kind === 'symlink' ? '↗' : '▧'}</span>
+              <span class="file-glyph" class:folder={e.kind === 'directory'}><PTIcon name={e.kind === 'directory' ? 'folder' : e.kind === 'file' ? 'file' : 'arrowUpRight'} size={19}/></span>
               <span class="file-details"><strong>{e.name}</strong><small>{kindName(e)}{e.kind === 'file' ? ' · ' + displaySize(e.size) : ''}</small></span>
               <span class="file-open">{e.kind === 'directory' ? '›' : e.kind === 'file' ? 'ⓘ' : '—'}</span>
             </button>
@@ -149,52 +150,65 @@
     </div>
   {/if}
 
-  <footer class="privacy-note">⌕ <span>Pocket-T lists only the folder metadata you specifically authorise on the Mac. Hidden files, symlink traversal, and file-content transfer are off by default.</span></footer>
+  <footer class="privacy-note"><PTIcon name="shield" size={19}/> <span>Pocket-T lists only the folder metadata you specifically authorise on the Mac. Hidden files, symlink traversal, and file-content transfer are off by default.</span></footer>
 </section>
 
 <style>
-  .files{flex:1;overflow-y:auto;padding:35px clamp(18px,4.5vw,70px) 60px;max-width:1320px;width:100%;margin:auto}
-  .files-header{display:flex;align-items:start;justify-content:space-between;gap:12px;margin-bottom:31px}
-  .eyebrow{font-size:10px;color:#7fabb0;letter-spacing:1.6px;font-weight:850}.eyebrow span{margin:0 8px;color:#557179}
-  .files-header h1{font-size:35px;letter-spacing:-1.4px;margin:12px 0;font-weight:680}.files-header h1 span{color:#a2eacb}
-  .files-header p{max-width:550px;color:#8fa7ae;line-height:1.7;font-size:12px;margin:0}
-  .readonly{border:1px solid #3f6051;background:#1b3530;color:#9ee6c5;font-size:9px;letter-spacing:1px;border-radius:8px;padding:10px;white-space:nowrap}
-  .files-panel{border:1px solid #294343;background:#101e28;border-radius:17px;overflow:hidden}
-  .files-toolbar{padding:19px 21px;display:flex;align-items:end;justify-content:space-between;gap:10px;background:#162932}
-  .folder-chooser{display:grid;gap:7px;max-width:370px;width:100%}.folder-chooser label{font-size:9px;color:#8da7a7;letter-spacing:1.2px;font-weight:800}
-  .folder-chooser select{color:#daf1e8;background:#223940;border:1px solid #36544f;border-radius:9px;padding:11px 35px 11px 11px;font-size:13px;width:100%}
-  .refresh{background:#213a35;border:1px solid #3c5e53;color:#adebd0;border-radius:9px;padding:10px 13px;font-size:12px;white-space:nowrap}
-  button:disabled{opacity:.45;cursor:not-allowed}.refresh:hover:not(:disabled){background:#2f5346}
-  .breadcrumbs{padding:15px 21px 5px;display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-height:49px}
-  .breadcrumbs button{color:#b5edcf;background:none;border:0;padding:5px 1px;font-size:12px;max-width:230px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
-  .breadcrumbs button:disabled{color:#99b7b3;opacity:1}.breadcrumbs span{color:#56767a}
-  .search-row{margin:12px 21px 7px;display:flex;align-items:center;gap:9px;background:#142b31;border:1px solid #2b4346;border-radius:11px;padding:11px 12px}
-  .search-icon{font-size:18px;color:#97d8bc}
-  .search-row input{flex:1;min-width:0;background:none;border:0;outline:0;color:#eaf7f1;font:inherit;font-size:13px}.search-row input::placeholder{color:#668389}
-  .search-row>span:last-child{white-space:nowrap;font-size:10px;color:#779d97}
-  .file-list{padding:10px 20px 22px;display:grid;gap:4px}
-  .file-item{display:flex;width:100%;align-items:center;gap:12px;text-align:left;padding:12px 10px;border:1px solid transparent;border-radius:11px;background:none}
-  .file-item:hover:not(:disabled),.file-item.file-selected{border-color:#335a50;background:#1c3837}
-  .file-glyph{display:grid;place-items:center;flex:none;width:38px;height:38px;color:#8bafc0;background:#223743;font-size:19px;border-radius:11px}.file-glyph.folder{background:#24493e;color:#a1f0c8}
-  .file-details{display:grid;gap:4px;min-width:0;flex:1}.file-details strong{overflow-wrap:anywhere;font-size:12px;font-weight:680;color:#e1f0ed}.file-details small{color:#79959e;font-size:10px}
-  .file-open{font-size:20px;color:#719b90}.back-folder{padding:10px 29px;border:0;background:none;color:#a6e6c9;font-size:11px}
-  .empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:45px 24px}
-  .empty-icon{font-size:36px;color:#a9edcb;margin-bottom:13px}
-  .empty strong{font-size:17px}.empty p{font-size:12px;color:#92aab0;line-height:1.8;max-width:490px;margin:12px 0}
-  .config-note{padding:12px;border:1px solid #385650;border-radius:8px;background:#1b3035;font-size:11px;color:#b9e9d6;max-width:100%;overflow-wrap:anywhere}
-  .no-items,.pending{padding:25px;color:#8da9a6;text-align:center;font-size:12px}.error-msg{margin:14px 20px;padding:12px;border:1px solid #815154;border-radius:9px;color:#fac7c7;font-size:12px;background:#3b2227}
-  .limit{font-size:11px;padding:15px 22px;color:#b7ab85;border-top:1px solid #2d4041}
-  .detail{margin-top:18px;padding:20px;background:#1b3432;border:1px solid #3a6556;border-radius:14px;display:grid;grid-template-columns:1fr auto;gap:9px}
-  .detail span{font-size:9px;color:#80bba8;letter-spacing:1.4px;font-weight:850}.detail h3{font-size:17px;margin:8px 0}.detail p{font-size:11px;color:#a6bec0;overflow-wrap:anywhere}.detail button{align-self:start;background:none;border:0;color:#add7c6}
-  .detail-foot{grid-column:1/-1;font-size:11px;line-height:1.6;color:#8da7a0;border-top:1px solid #31534a;padding-top:12px}
-  .privacy-note{display:flex;gap:12px;margin-top:19px;color:#849fa5;font-size:11px;line-height:1.7}.privacy-note>span{flex:1}
-  code{color:#c5e9db;font-family:ui-monospace,Menlo,monospace}
-  @media(max-width:760px){
-    .files{padding:24px 16px 35px}.files-header{display:block;margin-bottom:20px}.files-header h1{font-size:31px}.files-header p{font-size:12px}
-    .readonly{display:inline-flex;margin-top:13px;font-size:8px;padding:7px}
-    .files-toolbar{padding:15px}.folder-chooser{max-width:unset}.refresh span{display:none}
-    .search-row{margin:10px 12px}.file-list{padding:7px 10px 15px}.file-item{padding:10px 8px}
-    .breadcrumbs{padding:12px 13px 2px}.breadcrumbs button{max-width:135px}.search-row>span:last-child{font-size:9px}
-    .empty{padding:32px 16px}.config-note{font-size:10px}
+  .files{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:42px clamp(23px,4.7vw,76px) 95px;max-width:1260px;width:100%;margin:auto;color:var(--pt-ink);scrollbar-width:thin}
+  .files-header{display:flex;align-items:end;justify-content:space-between;gap:15px;margin-bottom:28px}
+  .eyebrow{color:var(--pt-tertiary);font-size:10px;font-weight:790;letter-spacing:1.2px}
+  .eyebrow span{margin:0 9px;color:var(--pt-line-strong)}
+  .files-header h1{font-size:clamp(32px,3.6vw,51px);letter-spacing:-.055em;line-height:1.16;margin:14px 0 9px;font-weight:740}
+  .files-header h1 span{color:var(--pt-violet)}
+  .files-header p{color:var(--pt-secondary);font-size:13px;max-width:560px;line-height:1.7;margin:0}
+  .readonly{display:inline-flex;align-items:center;gap:9px;color:var(--pt-violet);background:var(--pt-violet-soft);border:1px solid transparent;border-radius:100px;padding:11px 13px;font-size:10px;font-weight:770;letter-spacing:.6px;white-space:nowrap}
+  .files-panel{border-radius:23px;background:var(--pt-surface);border:1px solid var(--pt-line);box-shadow:var(--pt-shadow);overflow:hidden}
+  .files-toolbar{display:flex;align-items:end;gap:12px;justify-content:space-between;padding:21px 22px;border-bottom:1px solid var(--pt-line);background:var(--pt-surface)}
+  .folder-chooser{display:grid;gap:9px;min-width:0;width:min(350px,100%)}
+  .folder-chooser label{font-size:10px;color:var(--pt-tertiary);font-weight:770;letter-spacing:1px}
+  .folder-chooser select{background:var(--pt-surface-soft);color:var(--pt-ink);border:1px solid var(--pt-line);border-radius:12px;font-size:13px;min-height:45px;padding:0 14px}
+  .refresh{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 13px;border-radius:12px;border:1px solid var(--pt-line);background:var(--pt-surface);color:var(--pt-secondary);font-size:12px;font-weight:750}
+  .refresh:hover{background:var(--pt-surface-soft);color:var(--pt-violet)}
+  .breadcrumbs{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:18px 22px 4px;color:var(--pt-tertiary)}
+  .breadcrumbs button{background:none;color:var(--pt-violet);display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 4px;border-radius:8px;font-size:12px;font-weight:720;max-width:185px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .breadcrumbs button:disabled{color:var(--pt-secondary);opacity:1}
+  .breadcrumbs button:hover:not(:disabled){background:var(--pt-violet-soft)}
+  .search-row{display:flex;align-items:center;gap:10px;min-height:49px;margin:11px 20px 8px;border:1px solid var(--pt-line);border-radius:13px;background:var(--pt-surface-soft);padding:0 14px}
+  .search-icon{color:var(--pt-violet);display:grid;place-items:center}
+  .search-row input{flex:1;background:none;outline:none;border:0;color:var(--pt-ink);font-size:15px;min-width:0}
+  .search-row input::placeholder{color:var(--pt-tertiary)}.search-row>span:last-child{font-size:11px;font-weight:650;color:var(--pt-tertiary);white-space:nowrap}
+  .file-list{display:grid;gap:4px;padding:12px 15px 20px}
+  .file-item{display:flex;align-items:center;gap:13px;border:1px solid transparent;border-radius:14px;background:none;min-height:65px;width:100%;padding:9px 13px;text-align:left;color:var(--pt-ink)}
+  .file-item:hover:not(:disabled),.file-item.file-selected{background:var(--pt-violet-soft);border-color:rgba(98,89,234,.11)}
+  .file-glyph{display:grid;place-items:center;flex:none;height:42px;width:42px;border-radius:13px;background:var(--pt-surface-soft);color:var(--pt-secondary)}
+  .file-glyph.folder{background:#e6f1ff;color:#4e7bdb}
+  .file-details{flex:1;min-width:0;display:grid;gap:4px}.file-details strong{font-size:13px;font-weight:720;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-details small{font-size:11px;color:var(--pt-secondary)}
+  .file-open{color:var(--pt-tertiary);font-size:19px}.back-folder{background:none;color:var(--pt-violet);margin:0 20px;min-height:42px;padding:0 9px;border-radius:10px;font-size:11px;font-weight:750}.back-folder:hover{background:var(--pt-violet-soft)}
+  .empty{padding:62px 22px;display:flex;flex-direction:column;align-items:center;text-align:center}
+  .empty-icon{font-size:40px;color:var(--pt-violet);display:grid;place-items:center;width:75px;height:75px;border-radius:23px;background:var(--pt-violet-soft);margin-bottom:20px}
+  .empty strong{font-size:19px;font-weight:750}.empty p{max-width:475px;font-size:13px;color:var(--pt-secondary);line-height:1.75}
+  .config-note{padding:13px;background:var(--pt-surface-soft);border:1px solid var(--pt-line);border-radius:12px;color:var(--pt-secondary);max-width:100%;overflow-wrap:anywhere;font-size:11px}
+  .pending,.no-items{padding:30px;font-size:12px;color:var(--pt-secondary);text-align:center}
+  .error-msg{margin:13px 20px;padding:13px;background:#fff0ee;border:1px solid #f7d5ce;border-radius:12px;color:#a9473b;font-size:12px}
+  .limit{padding:13px 22px;background:var(--pt-surface-soft);color:var(--pt-secondary);border-top:1px solid var(--pt-line);font-size:11px}
+  .detail{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:16px;padding:22px;border:1px solid var(--pt-line);border-radius:20px;background:var(--pt-surface);box-shadow:var(--pt-shadow-small)}
+  .detail span{font-size:10px;color:var(--pt-violet);font-weight:770;letter-spacing:1px}.detail h3{font-size:19px;letter-spacing:-.5px;margin:7px 0}.detail p{font-size:12px;color:var(--pt-secondary);overflow-wrap:anywhere}
+  .detail button{width:38px;height:38px;background:var(--pt-surface-soft);color:var(--pt-secondary);border-radius:10px}
+  .detail-foot{border-top:1px solid var(--pt-line);padding-top:12px;margin-top:8px;grid-column:1/-1;font-size:12px;color:var(--pt-secondary);line-height:1.6}
+  .privacy-note{display:flex;gap:12px;align-items:start;color:var(--pt-secondary);font-size:11px;line-height:1.75;margin-top:22px}
+  .privacy-note :global(svg){color:var(--pt-violet);flex:none}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--pt-violet)}
+  @media(max-width:720px){
+    .files{padding:25px 18px 127px}.files-header{display:block;margin-bottom:20px}.files-header h1{font-size:34px;margin:12px 0 8px}.files-header p{font-size:12px;line-height:1.6}
+    .readonly{margin-top:15px;font-size:9px;padding:9px 12px}
+    .files-panel{border-radius:20px}
+    .files-toolbar{padding:15px;gap:9px}
+    .folder-chooser label{font-size:9px}.folder-chooser select{font-size:12px}
+    .refresh span{display:none}
+    .breadcrumbs{padding:14px 15px 4px;gap:4px}
+    .breadcrumbs button{max-width:130px}.search-row{margin:8px 12px 6px}
+    .file-list{padding:7px 9px 12px}.file-item{padding:8px;gap:9px;min-height:61px}
+    .file-glyph{width:39px;height:39px}
+    .file-details strong{font-size:12px}.file-details small{font-size:10px}.empty{padding:40px 18px}
   }
 </style>
