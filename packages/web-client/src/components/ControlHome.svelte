@@ -251,7 +251,7 @@
   .tool-card{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;background:var(--pt-glass);border:1px solid var(--pt-line);border-radius:17px;padding:18px 16px;color:var(--pt-text);text-align:left;min-width:0;transition:transform .28s cubic-bezier(.2,1,.3,1),box-shadow .28s,border-color .28s}
   .tool-card:hover{transform:translateY(-3px);box-shadow:0 18px 34px #28305a15;border-color:var(--pt-accent-border)}
   .tool-card>span:nth-child(2){display:grid;gap:6px;min-width:0}.tool-card strong{font-size:12px;font-weight:780}.tool-card small{font-size:10px;color:var(--pt-secondary);line-height:1.4}
-  .tool-card>svg{color:var(--pt-muted)}
+  .tool-card>:global(svg){color:var(--pt-muted)}
   .tool-icon{height:43px;width:43px;display:grid;place-items:center;border-radius:13px}
   .violet{background:#ece5ff;color:#7859cc}.sky{background:#e5f2ff;color:#578fcc}.mint{background:#dbf5eb;color:#328f72}
   .overview-footer{margin-top:40px;border-top:1px solid var(--pt-line);padding:19px 0;display:flex;align-items:center;justify-content:space-between;font-size:9px;font-weight:800;letter-spacing:1.3px;color:var(--pt-muted)}
