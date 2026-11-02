@@ -27,8 +27,8 @@
   let multilineConfirmed = $state(false);
   let fullScreen = $state(false);
   let notice = $state('');
-  let terminalRef: TerminalControls | undefined;
-  let draftInput: HTMLTextAreaElement | undefined;
+  let terminalRef = $state<TerminalControls | undefined>(undefined);
+  let draftInput = $state<HTMLTextAreaElement | undefined>(undefined);
 
   const online = $derived($status === 'open');
   const selected = $derived($sessions.find((s) => s.sessionId === $current) ?? null);
