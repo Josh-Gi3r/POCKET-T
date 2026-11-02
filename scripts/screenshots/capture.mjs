@@ -43,7 +43,7 @@ try {
   await mobile.page.waitForTimeout(350);
   await mobile.page.screenshot({path:output+'/02-mobile-session-switcher.png',animations:'disabled'});
   console.log('CAPTURED 02-mobile-session-switcher.png');
-  await mobile.page.getByRole('button',{name:'Close session selector'}).click();
+  await mobile.page.locator('.mobile-sheet .sheet-header button').click();
   await mobile.page.getByRole('button',{name:'Open navigation'}).click();
   await mobile.page.getByRole('button',{name:'Files',exact:true}).click();
   await mobile.page.waitForTimeout(350);
