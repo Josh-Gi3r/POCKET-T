@@ -155,6 +155,10 @@
         <span>Quick command</span>
         <kbd>⌘K</kbd>
       </button>
+      <button class="appearance-action" onclick={toggleTheme}>
+        <UiIcon name={theme === 'dark' ? 'sun' : 'moon'} size={18}/>
+        <span>Appearance</span><small>{theme === 'dark' ? 'Dark' : 'Light'}</small>
+      </button>
       <div class="machine-card">
         <div class="mac-symbol"><UiIcon name="computer" size={21}/></div>
         <div class="machine-info"><strong>Your Mac</strong><span>{online ? 'Connected' : $status === 'reconnecting' ? 'Reconnecting' : 'Offline'}</span></div>
@@ -270,6 +274,9 @@
   .quick-command{display:flex;align-items:center;gap:9px;padding:13px 11px;border-radius:13px;border:1px solid var(--pt-line);background:var(--pt-glass);color:var(--pt-secondary);width:100%;font-size:11px;text-align:left}
   .quick-command>span:nth-child(2){flex:1}.command-symbol{color:var(--pt-accent)}
   .quick-command kbd{font-size:9px;font-family:inherit;background:var(--pt-subtle);border:1px solid var(--pt-line);padding:5px 6px;border-radius:5px}
+  .appearance-action{width:100%;min-height:46px;display:flex;align-items:center;gap:11px;padding:12px 13px;margin-top:7px;background:transparent;border:1px solid transparent;border-radius:12px;color:var(--pt-secondary);font-size:12px;font-weight:650;text-align:left}
+  .appearance-action:hover{background:var(--pt-subtle);color:var(--pt-accent)}
+  .appearance-action>span{flex:1}.appearance-action small{color:var(--pt-muted);font-size:10px}
   .machine-card{display:flex;align-items:center;gap:10px;padding:13px 10px;background:var(--pt-subtle);border:1px solid var(--pt-line);border-radius:15px;margin-top:14px}
   .mac-symbol{height:35px;width:35px;display:grid;place-items:center;background:var(--pt-glass);color:var(--pt-accent);border:1px solid var(--pt-line);border-radius:12px}
   .machine-info{flex:1;display:grid;gap:4px;min-width:0}.machine-info strong{font-size:12px}.machine-info>span{font-size:10px;color:var(--pt-muted)}
