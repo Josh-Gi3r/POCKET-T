@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/terminal-first-join-mobile
+      - feat/pocket-studio-2028-ux
   workflow_dispatch:
 
 permissions:

@@ -197,4 +197,34 @@
     .breadcrumbs{padding:12px 13px 2px}.breadcrumbs button{max-width:135px}.search-row>span:last-child{font-size:9px}
     .empty{padding:32px 16px}.config-note{font-size:10px}
   }
+
+  /* Light, Finder-inspired Pocket Studio skin — permission logic unchanged. */
+  .files{color:#292942;background:transparent}
+  .eyebrow{color:#8c7bbe}.files-header h1{color:#292740}.files-header h1 span{color:#8269df}.files-header p{color:#8e91a5}
+  .readonly{color:#7763cf;background:#efebff;border-color:#e0d9fd}
+  .files-panel{background:#fff;border:1px solid #e9e8f3;border-radius:23px;box-shadow:0 16px 36px #34365a0c}
+  .files-toolbar{background:#f9f8ff;border-bottom:1px solid #edebf6}
+  .folder-chooser label{color:#9a97b0}
+  .folder-chooser select{background:#fff;border-color:#e4e0f1;color:#38334d;min-height:44px;font-size:14px}
+  .refresh{min-width:44px;min-height:44px;background:#eeeaff;color:#7a61d8;border-color:#e2ddf8}
+  .breadcrumbs button{color:#7964d6;min-height:40px}.breadcrumbs button:disabled{color:#847e99}
+  .breadcrumbs span{color:#b9b4c9}
+  .search-row{background:#f7f6fc;border-color:#e6e3f0;min-height:49px}.search-icon{color:#8c79de}
+  .search-row input{color:#343047;font-size:16px}.search-row input::placeholder{color:#aaa5bb}
+  .search-row>span:last-child{color:#a4a0b4}
+  .file-item{min-height:59px;transition:background .18s,transform .18s}
+  .file-item:hover:not(:disabled),.file-item.file-selected{background:#f6f2ff;border-color:#ede4ff}
+  .file-glyph{background:#ebecfa;color:#808abf}.file-glyph.folder{background:#f0ebff;color:#846bdc}
+  .file-details strong{color:#35324c;font-size:13px}.file-details small{color:#9493a8}
+  .file-open{color:#9990bd}.back-folder{color:#7d65d8;min-height:44px}
+  .empty strong{color:#343047}.empty p{color:#89889f}.empty-icon{color:#7f67d9}
+  .config-note{background:#f2f0fc;border-color:#e1dff0;color:#665c92}
+  .error-msg{background:#fff0f2;border-color:#f4d6dd;color:#b45c71}
+  .no-items,.pending{color:#9994ab}.limit{color:#a49376;border-color:#eee9df}
+  .detail{background:#f1edff;border-color:#e0d7fc}.detail h3{color:#38324e}.detail p{color:#908ba6}.detail span{color:#7961d1}
+  .detail button{color:#826acb}.detail-foot{color:#817d9a;border-color:#e0daf2}
+  .privacy-note{color:#9695a6}
+  code{color:#6650b4}
+  @media(hover:none){.file-item:hover:not(:disabled){background:transparent}}
+
 </style>

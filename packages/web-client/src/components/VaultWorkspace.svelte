@@ -61,4 +61,19 @@
     .grid{grid-template-columns:1fr;gap:9px}.tile{min-height:unset;padding:20px}.tile-icon{margin-bottom:11px}.tile p{min-height:unset}
     .truth-panel{padding:18px}.truth-row p{font-size:11px}
   }
+
+  .vault{color:#2c2943}
+  .eyebrow{color:#8878b5}
+  .hero{background:linear-gradient(117deg,#29264d,#594da6);border:1px solid #e4ddff;border-radius:26px;box-shadow:0 19px 38px #34328026}
+  .hero>span{color:#d9cffc}.hero h1 em{color:#e7d4ff}
+  .hero p{color:#d2d0ed}.hero-status{background:#ffffff20;border-color:#ffffff54;color:#f2eeff}
+  .shield{color:#ffffff}
+  .tile{background:#fff;border-color:#e9e7f4;border-radius:19px;min-height:225px}
+  .tile-icon{color:#856be0}.tile strong{color:#35304a}.tile p{color:#9693a7}
+  .not-ready{color:#a69bbd}
+  .truth-panel{background:#fff;border-color:#e7e5f0;border-radius:19px}
+  .truth-head span{color:#8670dc}.truth-head strong{color:#38324f}
+  .truth-row{border-color:#efedf5}.truth-row p{color:#87879c}
+  .yes{color:#3dbf9f}.no{color:#cf7885}.foot{color:#9696a6}
+
 </style>

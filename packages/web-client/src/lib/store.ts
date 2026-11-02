@@ -1,7 +1,7 @@
 import { writable, get } from 'svelte/store';
 import { PTConnection } from './connection';
 import { appendBubble, resetSession } from './bubbles';
-import type { ApprovedApp, AppLaunchResult, BubbleEvent, ConnStatus, CostState, DirectoryListing, EventEnvelope, ExistingTerminal, FileRoot, FileState, SessionInfo } from './types';
+import type { ApprovedApp, AppLaunchResult, BubbleEvent, ConnStatus, CostState, EventEnvelope, ExistingTerminal, FileRoot, FileState, SessionInfo } from './types';
 
 export const status = writable<ConnStatus>('connecting');
 export const sessions = writable<SessionInfo[]>([]);

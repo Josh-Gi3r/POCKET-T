@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Reproducible browser screenshots of the ACTUAL built Pocket-T Svelte app.
  *
@@ -20,7 +21,6 @@ const { WebSocketServer } = require(process.env.WS_MODULE || '/tmp/pt-visual/nod
 const root = path.resolve(__dirname, '../dist');
 const output = path.resolve(process.env.POCKET_T_SHOT_DIR || 'ui-screenshots');
 fs.mkdirSync(output, { recursive: true });
-const utf8 = new TextEncoder();
 
 function eventFrame(type, sessionId, payload) {
   const sid = Buffer.from(sessionId || '', 'utf8');
@@ -146,23 +146,40 @@ wss.on('connection',(ws)=>{
     await context.close();
   }
   try {
-    await makePage('01-iphone-terminal', {width:393,height:852}, async page=>{
-      await page.locator('.terminal-host').waitFor({timeout:12000});
-      await page.waitForTimeout(600);
+    await makePage('01-iphone-workbench',{width:393,height:852},async page=>{
+      await page.locator('.hero').waitFor({timeout:12000});
+      await page.waitForTimeout(250);
     });
-    await makePage('02-iphone-session-picker',{width:393,height:852},async page=>{
+    await makePage('02-iphone-live-session',{width:393,height:852},async page=>{
+      await page.getByRole('button',{name:/Continue working/}).click();
+      await page.locator('.terminal-host').waitFor({timeout:12000});
+      await page.waitForTimeout(350);
+    });
+    await makePage('03-iphone-session-sheet',{width:393,height:852},async page=>{
+      await page.getByRole('button',{name:/Continue working/}).click();
       await page.getByRole('button',{name:'Choose terminal session'}).click();
       await page.getByRole('button',{name:/Scan/}).last().click();
-      await page.waitForTimeout(450);
+      await page.waitForTimeout(350);
     });
-    await makePage('03-iphone-files',{width:393,height:852},async page=>{
-      await page.getByRole('button',{name:'Open navigation'}).click();
-      await page.getByRole('button',{name:'Files'}).click();
-      await page.waitForTimeout(800);
+    await makePage('04-iphone-files',{width:393,height:852},async page=>{
+      await page.locator('.floating-nav').getByRole('button',{name:'Files & folders'}).click();
+      await page.locator('.files-panel').waitFor({timeout:12000});
+      await page.waitForTimeout(420);
     });
-    await makePage('04-desktop-terminal',{width:1440,height:900},async page=>{
+    await makePage('05-desktop-workbench',{width:1440,height:900},async page=>{
+      await page.locator('.hero').waitFor({timeout:12000});
+      await page.waitForTimeout(350);
+    });
+    await makePage('06-desktop-live-session',{width:1440,height:900},async page=>{
+      await page.getByRole('button',{name:/Continue working/}).click();
       await page.locator('.terminal-host').waitFor({timeout:12000});
-      await page.waitForTimeout(600);
+      await page.waitForTimeout(380);
+    });
+    await makePage('07-iphone-quick-actions',{width:393,height:852},async page=>{
+      await page.getByRole('button',{name:'Open navigation'}).click();
+      await page.getByRole('button',{name:/Quick actions/}).click();
+      await page.getByRole('dialog',{name:'Pocket-T quick actions'}).waitFor({timeout:12000});
+      await page.waitForTimeout(280);
     });
     await fs.promises.writeFile(path.join(output,'README.txt'),
       'Screenshots of the actual built Pocket-T Svelte UI from the development branch.\n' +
