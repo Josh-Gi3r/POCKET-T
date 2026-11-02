@@ -56,4 +56,14 @@
   .keybar button.emphasized{border-color:#49786f;color:#b7f7db;background:#1e3939}
   .keybar button:disabled{opacity:.35}
   @media(max-width:760px){.keybar{padding:8px 10px;gap:6px}.keybar button{height:38px;min-width:42px}}
+
+  /* Premium accessory keyboard: macOS-like tactile controls, not green-on-black. */
+  .keybar{background:#fff;border-top:1px solid #efedf6;padding:8px 13px;gap:7px;min-height:61px;align-items:center}
+  .keybar button{min-width:44px;height:44px;background:#f3f1fa;border:1px solid #e7e4f1;border-bottom:2px solid #ddd9e9;border-radius:11px;color:#77728d;font-size:12px;font-weight:750;transition:transform .15s ease,background .2s,color .2s}
+  .keybar button.emphasized{background:#eae5fb;border-color:#d8cdf9;color:#775ed5}
+  .keybar button:hover:not(:disabled){background:#e8e1ff;color:#6b54d0}
+  .keybar button:active:not(:disabled){transform:scale(.93);background:#dad0fd}
+  @media(max-width:760px){.keybar{padding:7px 10px;min-height:59px}.keybar button{min-width:44px;height:44px}}
+  @media(hover:none){.keybar button:hover:not(:disabled){background:#f3f1fa;color:#77728d}}
+  @media(prefers-reduced-motion:reduce){.keybar button{transition:none}}
 </style>
