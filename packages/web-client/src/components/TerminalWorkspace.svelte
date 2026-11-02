@@ -146,6 +146,12 @@
     signal(success ? 'Selected terminal text copied' : 'Select text in the terminal first');
   }
 
+  function stageMultilinePaste(text: string): void {
+    setDraft(draft + text);
+    focusCompose();
+    signal('Multiple lines staged for your review — nothing was executed');
+  }
+
   async function pasteDraft(): Promise<void> {
     try {
       const text = await navigator.clipboard.readText();
@@ -272,7 +278,7 @@
           <div class="terminal-dots"><i></i><i></i><i></i><span>{selected.shell.split('/').pop() ?? 'shell'} · {selected.sessionId.slice(0, 8)}</span></div>
           {#if view === 'terminal'}
             {#key selected.sessionId}
-              <TerminalView bind:this={terminalRef} sessionId={selected.sessionId} {fontSize} interactive={online && !selected.detached} />
+              <TerminalView bind:this={terminalRef} sessionId={selected.sessionId} {fontSize} interactive={online && !selected.detached} onMultilinePaste={stageMultilinePaste} />
             {/key}
           {:else}
             <div class="activity-wrapper"><BubbleView sessionId={selected.sessionId} /></div>
