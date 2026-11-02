@@ -55,6 +55,7 @@ export type EventEnvelope =
   | { kind: 'bubble'; sessionId: string; event: BubbleEvent }
   | { kind: 'existingTerminals'; sessions: ExistingTerminal[] }
   | { kind: 'joinExistingTmuxResult'; requestId: string; ok: boolean; joinedSessionId?: string; message?: string }
+  | { kind: 'spawnSessionResult'; requestId: string; ok: boolean; sessionId?: string; message?: string }
   | { kind: 'fileRoots'; roots: FileRoot[] }
   | { kind: 'fileListing'; requestId: string; listing: DirectoryListing }
   | { kind: 'fileBrowseError'; requestId: string; message: string }
