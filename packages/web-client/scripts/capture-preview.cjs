@@ -165,7 +165,7 @@ wss.on('connection',(ws)=>{
     // The interface is the exact built app; only WS/machine state is fake.
     // Clearly mark the screenshot rather than passing fixture data off as real.
     await page.evaluate(()=>{
-      const tag=document.createElement('div');
+      const tag=globalThis.document.createElement('div');
       tag.textContent='INTERFACE PREVIEW  ·  SIMULATED SESSION DATA';
       Object.assign(tag.style,{
         position:'fixed',zIndex:'9999',left:'12px',top:'10px',
@@ -174,7 +174,7 @@ wss.on('connection',(ws)=>{
         padding:'6px 9px',border:'1px solid #9b9ae5',
         borderRadius:'999px',pointerEvents:'none',
       });
-      document.body.appendChild(tag);
+      globalThis.document.body.appendChild(tag);
     });
     await page.screenshot({path:path.join(output,name+'.png'),animations:'disabled'});
     const result={name,title:await page.title(),width:viewport.width,height:viewport.height};
