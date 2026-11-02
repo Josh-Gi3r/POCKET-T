@@ -29,9 +29,16 @@
   let section = $state<Section>('home');
   let commandOpen = $state(false);
   let commandQuery = $state('');
+  let paletteInput = $state<HTMLInputElement | undefined>(undefined);
   let keyboardInset = $state(0);
   let navOpen = $state(false);
-  let docLight = $state(true);
+  $effect(() => {
+    if (commandOpen) {
+      const focus = paletteInput;
+      // Focus after the modal's input is mounted; no HTML autofocus.
+      if (focus) queueMicrotask(() => focus.focus());
+    }
+  });
   const connected = $derived($status === 'open');
   const selected = $derived($sessions.find(s => s.sessionId === $current) ?? $sessions[0] ?? null);
   const activeCount = $derived($sessions.filter(s => !s.detached).length);
@@ -204,7 +211,7 @@
   {#if commandOpen}
     <div class="palette-scrim" role="presentation" onclick={() => (commandOpen = false)}></div>
     <div class="palette" role="dialog" aria-modal="true" aria-label="Pocket-T quick actions">
-      <div class="palette-head"><Icon name="search" size={23}/><input autofocus type="search" placeholder="Where do you want to go?" bind:value={commandQuery} aria-label="Search actions"/><button onclick={() => (commandOpen = false)} aria-label="Close quick actions"><Icon name="close" size={18}/></button></div>
+      <div class="palette-head"><Icon name="search" size={23}/><input bind:this={paletteInput} type="search" placeholder="Where do you want to go?" bind:value={commandQuery} aria-label="Search actions"/><button onclick={() => (commandOpen = false)} aria-label="Close quick actions"><Icon name="close" size={18}/></button></div>
       <div class="palette-group">QUICK ACTIONS</div>
       <div class="palette-items">
         {#each shownActions as action (action.id)}
@@ -265,7 +272,7 @@
   .machine-copy>button{display:flex;align-items:center;gap:9px;border:0;border-radius:11px;background:#fff;color:#44387c;padding:12px 17px;font-size:12px;font-weight:750}
   .capabilities{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:16px}
   .capabilities button{display:grid;grid-template-columns:30px 1fr 20px;align-items:center;column-gap:8px;row-gap:5px;text-align:left;border:1px solid #eae9f5;background:#fff;border-radius:16px;padding:20px 15px}
-  .capabilities button>svg:first-child{grid-row:1/3;color:#7563d5}.capabilities strong{font-size:12px}.capabilities span{grid-column:2;font-size:10px;color:#8e91a1}.capabilities button>svg:last-child{grid-column:3;grid-row:1/3;color:#a69ec7}
+  .capabilities button > :global(svg:first-child){grid-row:1/3;color:#7563d5}.capabilities strong{font-size:12px}.capabilities span{grid-column:2;font-size:10px;color:#8e91a1}.capabilities button > :global(svg:last-child){grid-column:3;grid-row:1/3;color:#a69ec7}
   .boundary{display:flex;gap:8px;align-items:start;color:#9294a5;font-size:11px;margin-top:23px}
   .floating-nav{display:none}
   .palette-scrim{position:fixed;inset:0;z-index:60;background:#12122a72;backdrop-filter:blur(7px)}
@@ -300,5 +307,5 @@
     .machine-copy h2{font-size:25px}.capabilities{grid-template-columns:1fr}
   }
   @media(hover:none){.rail-links button:hover,.palette-items button:hover{transform:none}}
-  @media(prefers-reduced-motion:reduce){.rail,.floating-nav button,.device,.palette-items button{transition:none}.content,.floating-nav,.palette{animation:none}}
+  @media(prefers-reduced-motion:reduce){.rail,.floating-nav button,.palette-items button{transition:none}.content,.floating-nav,.palette{animation:none}}
 </style>
