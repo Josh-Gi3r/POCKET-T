@@ -15,6 +15,7 @@ export interface ExistingTerminal {
   tty?: string;
   pane?: string;
   tmuxSession?: string;
+  tmuxTarget?: string;
   capabilities: Array<'discover' | 'join'>;
 }
 
@@ -52,7 +53,7 @@ export function parseExistingTmux(text: string): ExistingTerminal[] {
   const result: ExistingTerminal[] = [];
   const seen = new Set<string>();
   for (const row of text.split('\n')) {
-    const [pane, session, window, cwd] = row.replace(/\r$/, '').split('\t');
+    const [pane, session, window, cwd, sessionTarget] = row.replace(/\r$/, '').split('\t');
     if (!pane || !/^%\d+$/.test(pane) || seen.has(pane)) continue;
     seen.add(pane);
     // An existing pane belongs to a tmux session. Joining attaches another
@@ -62,7 +63,12 @@ export function parseExistingTmux(text: string): ExistingTerminal[] {
       sessionId: 'existing:tmux:' + pane, source: 'tmux', pane,
       title: (nameOf(session) || 'tmux') + ' / ' + (nameOf(window) || pane),
       cwd: cwd && cwd.startsWith('/') ? cwd.slice(0, 300) : '',
-      tmuxSession: session, capabilities: ['discover', 'join'],
+      tmuxSession: session,
+      // #{session_id} (for example '$4') is unambiguous even when session
+      // names contain tmux target separators ':' or '.'. Older fixtures
+      // lacking it fall back to the verified literal session name.
+      tmuxTarget: sessionTarget && /^\$\d+$/.test(sessionTarget) ? sessionTarget : session,
+      capabilities: ['discover', 'join'],
     });
   }
   return result.slice(0, 120);
@@ -72,7 +78,7 @@ const APP_DISCOVERY_SCRIPT = "function run() {\n  var result = [];\n  function s
 
 export async function discoverTmux(): Promise<ExistingTerminal[]> {
   try {
-    const format = ['#{pane_id}', '#{session_name}', '#{window_name}', '#{pane_current_path}'].join('\t');
+    const format = ['#{pane_id}', '#{session_name}', '#{window_name}', '#{pane_current_path}', '#{session_id}'].join('\t');
     const { stdout } = await execFile('tmux', ['list-panes', '-a', '-F', format], { timeout: 2500, maxBuffer: 256 * 1024 });
     return parseExistingTmux(stdout);
   } catch { return []; } // No external tmux server is a normal condition.
