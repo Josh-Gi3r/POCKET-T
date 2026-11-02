@@ -48,7 +48,7 @@
     <div class="hero-content">
       <span class="hero-kicker"><Icon name="activity" size={16}/> YOUR LIVE WORKSPACE</span>
       <h2>Your work.<br/><em>Still moving.</em></h2>
-      <p>{online ? 'Continue the exact session on your Mac. No duplicate shell. No AI tokens needed.' : 'Your workspace will be right here as soon as your Mac reconnects.'}</p>
+      <p>{online ? 'Pick up your real Mac session, right where you left off. No AI needed.' : 'Your workspace will be right here as soon as your Mac reconnects.'}</p>
       <button class="resume" onclick={() => selected ? onOpenSession(selected.sessionId) : onNewSession()} disabled={!online}>
         <span><Icon name={selected ? 'play' : 'plus'} size={18}/></span>
         {selected ? 'Continue working' : 'Start a session'}
@@ -177,18 +177,18 @@
   @media(max-width:800px){
     .home{padding:23px 19px 125px}.introduction{margin-bottom:20px}.introduction h1{font-size:41px;letter-spacing:-2.4px;margin:13px 0}
     .introduction p{font-size:12px;max-width:290px}.device{display:none}
-    .hero{border-radius:23px;min-height:308px;padding:28px 23px}.hero:after{border-radius:22px}
-    .hero h2{font-size:34px;letter-spacing:-1.6px;margin:18px 0 12px}.hero p{font-size:11px;max-width:220px;line-height:1.8}
-    .hero-content{max-width:258px}.hero-kicker{font-size:8px}.resume{min-height:46px;font-size:11px;margin-top:19px;padding-right:11px}.resume>span{width:31px;height:31px}
+    .hero{border-radius:23px;min-height:282px;padding:24px 23px}.hero:after{border-radius:22px}
+    .hero h2{font-size:32px;letter-spacing:-1.6px;margin:13px 0 9px}.hero p{font-size:11px;max-width:220px;line-height:1.65}
+    .hero-content{max-width:258px}.hero-kicker{font-size:8px}.resume{min-height:46px;font-size:11px;margin-top:16px;padding-right:11px}.resume>span{width:31px;height:31px}
     .resume > :global(svg:last-child){margin-left:0}.orbital{width:255px;height:289px;right:-94px;top:7px;opacity:.72}
     .ring1{width:135px;height:135px}.ring2{width:205px;height:205px}.ring3{width:269px;height:269px}
     .orb{left:79px;top:85px;width:130px;height:130px}.orb>div{left:9px;top:34px;width:112px;height:69px}
-    .floating-chip{font-size:8px;padding:7px;border-radius:8px}.chip-one{top:81px;left:0}.chip-two{bottom:55px;right:0}
+    .floating-chip{font-size:8px;padding:7px;border-radius:8px}.chip-one{display:none}.chip-two{bottom:55px;right:0}
     .star-one{bottom:28px;left:25px}.star-two{top:40px;right:30px}.hero-footer{bottom:17px;left:23px;right:23px;font-size:7px;letter-spacing:.9px}
-    .metrics{gap:8px;margin-top:12px}.metrics button{flex-direction:column;align-items:flex-start;gap:4px;min-height:113px;border-radius:15px;padding:12px}
+    .metrics{gap:8px;margin-top:12px}.metrics button{flex-direction:column;align-items:flex-start;gap:4px;min-height:96px;border-radius:15px;padding:10px}
     .metric-icon{width:31px;height:31px;border-radius:10px}.metric-icon :global(svg){width:17px;height:17px}
     .metrics strong{font-size:21px}.metrics button>span:last-child{font-size:9px;letter-spacing:-.15px}
-    .section-heading{margin:29px 0 12px}.section-heading h2{font-size:21px;margin-top:7px}
+    .section-heading{margin:23px 0 12px}.section-heading h2{font-size:21px;margin-top:7px}
     .session{gap:11px;min-height:70px;padding:11px 12px}.session-glyph{height:40px;width:40px;border-radius:12px}
     .session-copy strong{font-size:13px}.session-copy small{font-size:10px}.session-state{font-size:9px}.session-go{height:31px;width:31px}
     .quick-title{margin-top:29px}.quick-grid{grid-template-columns:1fr;gap:9px}.quick-grid button{min-height:72px;padding:12px 14px}.foot{padding:23px 5px}
