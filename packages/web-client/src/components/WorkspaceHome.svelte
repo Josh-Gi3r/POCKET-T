@@ -184,7 +184,7 @@
     .ring1{width:135px;height:135px}.ring2{width:205px;height:205px}.ring3{width:269px;height:269px}
     .orb{left:79px;top:85px;width:130px;height:130px}.orb>div{left:9px;top:34px;width:112px;height:69px}
     .floating-chip{font-size:8px;padding:7px;border-radius:8px}.chip-one{display:none}.chip-two{bottom:55px;right:0}
-    .star-one{bottom:28px;left:25px}.star-two{top:40px;right:30px}.hero-footer{bottom:17px;left:23px;right:23px;font-size:7px;letter-spacing:.9px}
+    .star-one{display:none}.star-two{top:40px;right:30px}.hero-footer{bottom:17px;left:23px;right:23px;font-size:7px;letter-spacing:.9px}
     .metrics{gap:8px;margin-top:12px}.metrics button{flex-direction:column;align-items:flex-start;gap:4px;min-height:96px;border-radius:15px;padding:10px}
     .metric-icon{width:31px;height:31px;border-radius:10px}.metric-icon :global(svg){width:17px;height:17px}
     .metrics strong{font-size:21px}.metrics button>span:last-child{font-size:9px;letter-spacing:-.15px}
