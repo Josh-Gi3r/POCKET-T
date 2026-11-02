@@ -986,7 +986,7 @@ function spawnPtSession(opts: { cwd?: string } = {}): Promise<string> {
     } catch { /* invalid / removed folder => default */ }
   }
   const sessionId = 'pt-' + crypto.randomUUID();
-  const env = { ...process.env, POCKET_T_HEADLESS: '1', POCKET_T_SESSION_ID: sessionId };
+  const env: NodeJS.ProcessEnv = { ...process.env, POCKET_T_HEADLESS: '1', POCKET_T_SESSION_ID: sessionId };
   // Never inherit an existing-tmux attachment target from a parent
   // launch configuration when the user requested a brand-new shell.
   delete env.POCKET_T_TMUX_ATTACH_TARGET;
