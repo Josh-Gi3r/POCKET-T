@@ -168,10 +168,10 @@ wss.on('connection',(ws)=>{
       const tag=globalThis.document.createElement('div');
       tag.textContent='INTERFACE PREVIEW  ·  SIMULATED SESSION DATA';
       Object.assign(tag.style,{
-        position:'fixed',zIndex:'9999',left:'12px',top:'10px',
-        fontFamily:'system-ui,sans-serif',fontSize:'9px',fontWeight:'800',
-        letterSpacing:'1px',color:'#272747',background:'#f5f3ffeb',
-        padding:'6px 9px',border:'1px solid #9b9ae5',
+        position:'fixed',zIndex:'9999',right:'12px',bottom:'93px',
+        fontFamily:'system-ui,sans-serif',fontSize:'8px',fontWeight:'750',
+        letterSpacing:'.6px',color:'#37366a',background:'#f9f8ffdf',
+        padding:'5px 7px',border:'1px solid #bbb9ee',
         borderRadius:'999px',pointerEvents:'none',
       });
       globalThis.document.body.appendChild(tag);
