@@ -317,7 +317,7 @@
     .rail{position:fixed;inset:0 auto 0 0;width:min(82vw,306px);transform:translateX(-104%);transition:transform .3s cubic-bezier(.22,1,.36,1);z-index:51;padding-top:calc(env(safe-area-inset-top,0px) + 25px);box-shadow:0 0 50px #1a164d12}
     .rail.opened{transform:translateX(0)}.nav-backdrop{display:block;position:fixed;inset:0;background:#0d102b84;z-index:50;border:0}
     .topbar{height:calc(55px + env(safe-area-inset-top,0px));min-height:calc(55px + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 17px 0;background:#f8f8fcd9;backdrop-filter:blur(18px)}
-    .mobile-menu{display:grid;place-items:center;width:39px;height:39px;border:0;background:none;color:#4f496b}
+    .mobile-menu{display:grid;place-items:center;width:44px;height:44px;border:0;background:none;color:#4f496b}
     .terminal-mode .mobile-menu{display:none}
     .terminal-mode .topbar-left{gap:12px}
     .topbar-brand{display:block;color:#28263f;font-size:20px;font-weight:850;letter-spacing:-.9px}
