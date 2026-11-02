@@ -16,13 +16,12 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: false, // main.ts registers via virtual:pwa-register
       manifest: {
-        name: 'pocket-t',
-        short_name: 'pocket-t',
-        description: 'Mirror your Mac terminal + CLI agents to your phone.',
-        theme_color: '#0b0f14',
-        background_color: '#0b0f14',
+        name: 'Pocket-T Workspace',
+        short_name: 'Pocket-T',
+        description: 'Your Mac workspaces, live terminals, files and apps — from anywhere.',
+        theme_color: '#f8f8fc',
+        background_color: '#f8f8fc',
         display: 'standalone',
-        orientation: 'portrait',
         scope: '/',
         start_url: '/',
         icons: [
