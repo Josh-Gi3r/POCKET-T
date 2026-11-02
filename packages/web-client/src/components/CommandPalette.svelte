@@ -56,7 +56,7 @@
 
 <div class="shade" role="presentation">
   <button class="scrim" aria-label="Close command center" onclick={onDismiss}></button>
-  <section class="palette" role="dialog" aria-modal="true" aria-label="Quick commands" onkeydown={onKeyDown}>
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Quick commands" tabindex="-1" onkeydown={onKeyDown}>
     <div class="palette-search"><UiIcon name="search" size={22}/><input bind:this={input} bind:value={search} placeholder="What would you like to open?" autocomplete="off" aria-label="Search commands and sessions"/><button class="close" onclick={onDismiss} aria-label="Close command palette"><UiIcon name="close" size={17}/></button></div>
     <div class="palette-caption">QUICK ACTIONS & LIVE SESSIONS <span>{options.length} MATCHES</span></div>
     <div class="palette-results">
@@ -70,7 +70,7 @@
       {#if !options.length}<div class="palette-empty">No matching commands or sessions.</div>{/if}
     </div>
     <footer><span><kbd>↑</kbd><kbd>↓</kbd> Browse</span><span><kbd>↵</kbd> Open</span><span><kbd>Esc</kbd> Close</span><strong>POCKET-T</strong></footer>
-  </section>
+  </div>
 </div>
 
 <style>
@@ -87,7 +87,7 @@
   .palette-results>button.chosen,.palette-results>button:hover{background:var(--pt-subtle);border-color:var(--pt-line)}
   .command-icon{height:39px;width:39px;display:grid;place-items:center;background:var(--pt-glass);border:1px solid var(--pt-line);border-radius:12px;color:var(--pt-accent)}
   .command-text{flex:1;display:grid;gap:4px;min-width:0}.command-text strong{font-size:13px;font-weight:760}.command-text small{font-size:11px;color:var(--pt-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .palette-results>button>svg{color:var(--pt-muted)}.palette-empty{padding:30px;text-align:center;color:var(--pt-secondary);font-size:13px}
+  .palette-results>button>:global(svg){color:var(--pt-muted)}.palette-empty{padding:30px;text-align:center;color:var(--pt-secondary);font-size:13px}
   footer{display:flex;align-items:center;gap:18px;border-top:1px solid var(--pt-line);padding:13px 19px;font-size:10px;color:var(--pt-muted)}
   footer>span{display:flex;align-items:center;gap:4px}footer strong{margin-left:auto;font-size:9px;letter-spacing:1px;color:var(--pt-accent)}
   kbd{background:var(--pt-subtle);border-radius:5px;border:1px solid var(--pt-line);padding:2px 5px;font-size:10px;color:var(--pt-secondary)}
