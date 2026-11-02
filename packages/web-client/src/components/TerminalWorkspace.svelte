@@ -275,6 +275,9 @@
         {/if}
 
         <div class="console" class:with-activity={view === 'activity'}>
+          {#if fullScreen}
+            <button class="immersive-exit" onclick={toggleFullscreen} aria-label="Exit immersive terminal">↙ Exit focus</button>
+          {/if}
           <div class="terminal-dots"><i></i><i></i><i></i><span>{selected.shell.split('/').pop() ?? 'shell'} · {selected.sessionId.slice(0, 8)}</span></div>
           {#if view === 'terminal'}
             {#key selected.sessionId}
@@ -455,6 +458,8 @@
   .secondary-discover{background:none;color:#b3e9d1;border:0;font-size:11px;margin-top:12px;padding:10px}
   .mobile-sessions,.sheet-backdrop,.mobile-sheet{display:none}
   .toast{position:fixed;z-index:70;bottom:calc(env(safe-area-inset-bottom,0px) + 110px);left:50%;transform:translateX(-50%);padding:11px 16px;background:#c5f7dc;color:#193d31;font-size:12px;font-weight:760;border-radius:11px;text-align:center;max-width:92vw;box-shadow:0 20px 48px #0008}
+  .term-page.immersive{position:fixed;inset:0;z-index:60;width:100vw;height:100dvh;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .immersive-exit{position:absolute;top:4px;right:8px;z-index:5;background:#24483d;color:#c9ffe5;border:1px solid #477363;border-radius:7px;padding:5px 10px;font-size:10px;font-weight:780}
   .term-page.immersive .session-column,.term-page.immersive .stage-header,.term-page.immersive .terminal-tabs{display:none}
   .term-page.immersive .console{margin:0;border:0;border-radius:0}
   @media(max-width:1220px){.session-column{width:210px}.stage-header{padding:17px}.shell-capability{font-size:8px}}
