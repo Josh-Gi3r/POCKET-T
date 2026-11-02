@@ -192,3 +192,58 @@ code,
   .pt-shell .term-page .stage-header{height:53px!important;min-height:53px!important;padding:5px 12px!important}
   .pt-shell .term-page .console{margin:6px 8px 0!important;border-radius:15px 15px 0 0!important}
 }
+
+
+/* Cohesive light surfaces for legacy Files / Apps workspaces.
+ * Keep capability limits unchanged: appearance must never imply wider access. */
+.pt-shell[data-theme="light"] .files .files-header h1,
+.pt-shell[data-theme="light"] .apps .header h1{color:var(--pt-text)}
+.pt-shell[data-theme="light"] .files .files-header h1 span,
+.pt-shell[data-theme="light"] .apps .header h1 span{color:var(--pt-accent)}
+.pt-shell[data-theme="light"] .files .files-header p,
+.pt-shell[data-theme="light"] .apps .header p{color:var(--pt-secondary)}
+.pt-shell[data-theme="light"] .files .eyebrow,
+.pt-shell[data-theme="light"] .apps .eyebrow{color:var(--pt-muted)}
+.pt-shell[data-theme="light"] .files .readonly{background:#f0edff!important;color:#6760c4!important;border-color:#ded9fb!important}
+.pt-shell[data-theme="light"] .files .files-panel,
+.pt-shell[data-theme="light"] .apps .intro-card,
+.pt-shell[data-theme="light"] .apps .app-card,
+.pt-shell[data-theme="light"] .apps .future-grid>div,
+.pt-shell[data-theme="light"] .apps .empty{background:var(--pt-glass)!important;border-color:var(--pt-line)!important;color:var(--pt-text)!important;box-shadow:0 10px 29px #1a24570a}
+.pt-shell[data-theme="light"] .files .files-toolbar{background:#eff0ff!important;border-color:var(--pt-line)!important}
+.pt-shell[data-theme="light"] .files .folder-chooser select{background:#fff!important;color:var(--pt-text)!important;border-color:var(--pt-line)!important;font-size:16px!important}
+.pt-shell[data-theme="light"] .files .folder-chooser label{color:var(--pt-secondary)!important}
+.pt-shell[data-theme="light"] .files .refresh,
+.pt-shell[data-theme="light"] .apps .section-head button{background:var(--pt-subtle)!important;border-color:var(--pt-line)!important;color:var(--pt-accent)!important}
+.pt-shell[data-theme="light"] .files .breadcrumbs button,
+.pt-shell[data-theme="light"] .files .back-folder{color:var(--pt-accent)!important}
+.pt-shell[data-theme="light"] .files .search-row{background:#f6f7ff!important;border-color:var(--pt-line)!important}
+.pt-shell[data-theme="light"] .files .search-row input{color:var(--pt-text)!important;font-size:16px!important}
+.pt-shell[data-theme="light"] .files .search-row input::placeholder{color:var(--pt-muted)!important}
+.pt-shell[data-theme="light"] .files .search-row>span:last-child{color:var(--pt-muted)!important}
+.pt-shell[data-theme="light"] .files .file-item{color:var(--pt-text)!important}
+.pt-shell[data-theme="light"] .files .file-item:hover:not(:disabled),
+.pt-shell[data-theme="light"] .files .file-item.file-selected{background:var(--pt-subtle)!important;border-color:var(--pt-accent-border)!important}
+.pt-shell[data-theme="light"] .files .file-glyph{background:#ebefff!important;color:#6276cc!important}
+.pt-shell[data-theme="light"] .files .file-glyph.folder{background:#ebe6ff!important;color:#7961d2!important}
+.pt-shell[data-theme="light"] .files .file-details strong{color:var(--pt-text)!important}
+.pt-shell[data-theme="light"] .files .file-details small,
+.pt-shell[data-theme="light"] .files .no-items,
+.pt-shell[data-theme="light"] .files .pending,
+.pt-shell[data-theme="light"] .files .privacy-note{color:var(--pt-secondary)!important}
+.pt-shell[data-theme="light"] .files .file-open{color:var(--pt-accent)!important}
+.pt-shell[data-theme="light"] .files .detail{background:#f0eeff!important;border-color:var(--pt-accent-border)!important;color:var(--pt-text)!important}
+.pt-shell[data-theme="light"] .files .detail p,
+.pt-shell[data-theme="light"] .files .detail-foot{color:var(--pt-secondary)!important}
+.pt-shell[data-theme="light"] .apps .intro-mark,
+.pt-shell[data-theme="light"] .apps .app-icon{background:#eeeaff!important;color:var(--pt-accent)!important}
+.pt-shell[data-theme="light"] .apps .intro-card p,
+.pt-shell[data-theme="light"] .apps .app-copy span,
+.pt-shell[data-theme="light"] .apps .future-grid p,
+.pt-shell[data-theme="light"] .apps .hint{color:var(--pt-secondary)!important}
+.pt-shell[data-theme="light"] .apps .section-head h2,
+.pt-shell[data-theme="light"] .apps .app-copy strong,
+.pt-shell[data-theme="light"] .apps .future-grid strong{color:var(--pt-text)!important}
+.pt-shell[data-theme="light"] .apps .launch{background:var(--pt-accent)!important;color:#fff!important}
+.pt-shell[data-theme="light"] .apps .feature-icon{color:var(--pt-accent)!important}
+@media(prefers-reduced-motion:reduce){.pt-shell[data-theme="light"] .files .file-item{transition:none}}
