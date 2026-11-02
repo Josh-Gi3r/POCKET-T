@@ -56,7 +56,7 @@ function isGlyph(size, x, y) {
   return false;
 }
 
-function makePng(size, maskable) {
+function makePng(size, _maskable) {
   // For maskable, keep glyph within the safe zone (already central); add a
   // full-bleed background so the platform can crop to any shape.
   const raw = Buffer.alloc(size * (size * 3 + 1));
