@@ -122,7 +122,7 @@
   .device-glyph{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:#efedff;color:#7b6ae1}
   .device>span:nth-child(2){display:grid;gap:4px;min-width:95px}.device strong{font-size:12px;color:#30314d}.device small{font-size:10px;color:#9496a7}
   .device>i{background:#55c7a4;width:8px;height:8px;border-radius:50%;box-shadow:0 0 0 4px #e5f9f0}.device>i.offline{background:#cc9da4;box-shadow:0 0 0 4px #f9e8eb}
-  .device>svg{color:#a0a0b5}
+  .device > :global(svg){color:#a0a0b5}
   .hero{position:relative;isolation:isolate;overflow:hidden;border-radius:28px;min-height:331px;padding:38px 42px;color:#fff;background:linear-gradient(113deg,#242646 0%,#22244c 45%,#5045ac 100%);box-shadow:0 25px 55px #30308f27}
   .hero:after{content:'';position:absolute;inset:1px;border:1px solid #ffffff33;border-radius:27px;pointer-events:none;z-index:5}
   .glow{position:absolute;pointer-events:none;filter:blur(55px);border-radius:50%}.glow-a{width:430px;height:290px;right:-50px;top:-50px;background:#a28df49c}.glow-b{width:360px;height:250px;right:250px;bottom:-175px;background:#695edb6c}
@@ -132,14 +132,14 @@
   .hero p{font-size:12px;color:#d1d1ec;line-height:1.9;max-width:330px;margin:0}
   .resume{display:flex;align-items:center;gap:12px;margin-top:23px;border:0;background:#fff;border-radius:13px;min-height:48px;padding:7px 15px 7px 8px;color:#27233e;font-size:12px;font-weight:780;box-shadow:0 11px 26px #090b281a;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}
   .resume:hover:not(:disabled){transform:translateY(-3px);box-shadow:0 16px 30px #0004}.resume:active:not(:disabled){transform:scale(.97)}
-  .resume>span{width:34px;height:34px;border-radius:10px;background:#eae7ff;color:#7865e4;display:grid;place-items:center}.resume>svg:last-child{margin-left:15px;color:#8179a4}
+  .resume>span{width:34px;height:34px;border-radius:10px;background:#eae7ff;color:#7865e4;display:grid;place-items:center}.resume > :global(svg:last-child){margin-left:15px;color:#8179a4}
   .orbital{position:absolute;top:0;right:37px;width:405px;height:337px;pointer-events:none}
   .ring{position:absolute;border:1px solid #ffffff4a;border-radius:50%;top:50%;left:53%;transform:translate(-50%,-50%)}
   .ring1{width:195px;height:195px}.ring2{width:278px;height:278px;border-color:#ffffff36}.ring3{width:349px;height:349px;border-style:dashed;border-color:#ffffff2b}
   .orb{position:absolute;left:115px;top:65px;width:210px;height:210px;border-radius:50%;background:radial-gradient(circle at 30% 25%,#fff 0%,#d4d2ff 24%,#9d9ef1 47%,#6b66b7 78%,#5d539f 100%);box-shadow:inset 9px 12px 23px #ffffffb8,inset -30px -25px 45px #211e756c,0 16px 53px #b6b7ff75;animation:orbFloat 8s ease-in-out infinite}
   .orb>div{position:absolute;left:16px;top:50px;width:170px;height:95px;transform:rotate(-32deg);border:2px solid #ffffff75;border-radius:50%}
   .floating-chip{position:absolute;z-index:2;display:flex;align-items:center;gap:7px;background:#fffe;backdrop-filter:blur(18px);border:1px solid #fff;color:#454267;border-radius:12px;padding:10px 12px;box-shadow:0 13px 30px #21195140;font-size:10px;font-weight:750;white-space:nowrap}
-  .chip-one{top:74px;left:2px;transform:rotate(-5deg)}.chip-one svg{color:#23ad8d}.chip-two{bottom:44px;right:0;transform:rotate(5deg)}
+  .chip-one{top:74px;left:2px;transform:rotate(-5deg)}.chip-one :global(svg){color:#23ad8d}.chip-two{bottom:44px;right:0;transform:rotate(5deg)}
   .chip-two i{height:8px;width:8px;border-radius:50%;background:#57c9a5}
   .tiny-star{position:absolute;color:#e4d9ff}.star-one{bottom:46px;left:75px}.star-two{top:35px;right:40px;font-size:25px}
   .hero-footer{position:absolute;z-index:3;bottom:18px;left:42px;right:42px;display:flex;align-items:center;gap:13px;color:#c5c7dfaa;font-size:8px;letter-spacing:1.7px;font-weight:750}
@@ -170,7 +170,7 @@
   .quick-grid button{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ebeaf3;border-radius:18px;padding:15px;text-align:left;min-width:0;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}
   .quick-grid button:hover{transform:translateY(-3px);box-shadow:0 14px 28px #47476e14}
   .quick-icon{width:44px;height:44px;display:grid;place-items:center;flex:none;border-radius:14px}
-  .quick-grid button>span:nth-child(2){flex:1;min-width:0;display:grid;gap:5px}.quick-grid strong{font-size:12px;color:#3d3d59;white-space:nowrap}.quick-grid small{font-size:10px;color:#9699ab;white-space:nowrap}.quick-grid button>svg:last-child{color:#aaa6bb}
+  .quick-grid button>span:nth-child(2){flex:1;min-width:0;display:grid;gap:5px}.quick-grid strong{font-size:12px;color:#3d3d59;white-space:nowrap}.quick-grid small{font-size:10px;color:#9699ab;white-space:nowrap}.quick-grid button > :global(svg:last-child){color:#aaa6bb}
   .foot{display:flex;align-items:center;justify-content:center;gap:7px;padding:26px;color:#9d9faf;font-size:10px}
   @keyframes orbFloat{50%{transform:translateY(-9px)}}@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   @media(max-width:1100px){.orbital{right:-35px}.metrics button{padding:14px 10px;gap:8px}.metrics small{display:none}}
@@ -180,7 +180,7 @@
     .hero{border-radius:23px;min-height:308px;padding:28px 23px}.hero:after{border-radius:22px}
     .hero h2{font-size:34px;letter-spacing:-1.6px;margin:18px 0 12px}.hero p{font-size:11px;max-width:220px;line-height:1.8}
     .hero-content{max-width:258px}.hero-kicker{font-size:8px}.resume{min-height:46px;font-size:11px;margin-top:19px;padding-right:11px}.resume>span{width:31px;height:31px}
-    .resume>svg:last-child{margin-left:0}.orbital{width:255px;height:289px;right:-94px;top:7px;opacity:.72}
+    .resume > :global(svg:last-child){margin-left:0}.orbital{width:255px;height:289px;right:-94px;top:7px;opacity:.72}
     .ring1{width:135px;height:135px}.ring2{width:205px;height:205px}.ring3{width:269px;height:269px}
     .orb{left:79px;top:85px;width:130px;height:130px}.orb>div{left:9px;top:34px;width:112px;height:69px}
     .floating-chip{font-size:8px;padding:7px;border-radius:8px}.chip-one{top:81px;left:0}.chip-two{bottom:55px;right:0}
