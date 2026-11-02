@@ -223,9 +223,9 @@ export class PTConnection {
     this.sendJsonEvent(sessionId, { kind: 'approvalDecision', approvalId, decision });
   }
 
-  spawnSession(cwd?: string): void {
-    // sessionId is irrelevant for spawn; server keys off the payload.
-    this.sendJsonEvent('', { kind: 'spawnSession', ...(cwd ? { cwd } : {}) });
+  spawnSession(cwd?: string, requestId?: string): void {
+    // Spawn is asynchronous; a real sessionAdded confirms readiness.
+    this.sendJsonEvent('', { kind: 'spawnSession', ...(cwd ? { cwd } : {}), ...(requestId ? { requestId } : {}) });
   }
 
   killSession(sessionId: string): void {
