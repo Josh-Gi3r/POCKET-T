@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import TerminalView from './TerminalView.svelte';
+  import PTIcon from './PTIcon.svelte';
   import KeyboardRow from './KeyboardRow.svelte';
   import BubbleView from './BubbleView.svelte';
   import {
@@ -18,6 +19,8 @@
   };
 
   let showSessions = $state(false);
+  let optionsOpen = $state(false);
+  let keysOpen = $state(false);
   let discoverStarted = $state(false);
   let sessionFilter = $state('');
   let view = $state<View>('terminal');
@@ -184,303 +187,409 @@
   });
 </script>
 
-<div class="term-page" class:immersive={fullScreen}>
-  <aside class="session-column" aria-label="Live terminal sessions">
-    <div class="column-title">
-      <div><span class="eyebrow">YOUR MACHINE</span><h2>Terminals <span class="count">{$sessions.length}</span></h2></div>
-      <button class="new-shell" onclick={newSession} disabled={!online} aria-label="Open new terminal">＋</button>
+<div class="work-root" class:focus-mode={fullScreen}>
+  <!-- Desktop: a true session navigator, not a second faux terminal window. -->
+  <aside class="sessions-sidebar" aria-label="Terminal session navigation">
+    <div class="sessions-heading">
+      <div>
+        <span class="pt-eyebrow">WORKSPACES</span>
+        <h2>Live sessions</h2>
+      </div>
+      <button class="pt-icon-button create-small" onclick={newSession} disabled={!online || $spawnState.status === 'starting'} title="New terminal" aria-label="New terminal"><PTIcon name="plus" size={19}/></button>
     </div>
-    <div class="search-container">
-      <span>⌕</span>
-      <input type="search" placeholder="Find a session" aria-label="Search terminal sessions" bind:value={sessionFilter} />
+    <div class="session-search">
+      <PTIcon name="search" size={17}/>
+      <input type="search" placeholder="Find a session" aria-label="Find a session" bind:value={sessionFilter}/>
     </div>
-    <div class="session-scroll">
-      <div class="group-label">LIVE SESSIONS</div>
+    <div class="session-list">
+      <div class="group-head"><span>ON YOUR MAC</span><span>{managed.length}</span></div>
       {#each managed as s (s.sessionId)}
-        <button
-          class:chosen={$current === s.sessionId}
-          class="session"
-          onclick={() => chooseSession(s.sessionId)}
-        >
-          <span class="session-icon" class:agent={!!s.vendor}>{s.vendor === 'claude' ? '✳' : s.vendor === 'codex' ? '◇' : '>_'}</span>
-          <span class="session-info"><strong>{displayName(s)}</strong><small>{vendorName(s)} · {s.detached ? 'Detached' : 'Running'}</small></span>
-          <span class:idle={s.detached} class="session-led"></span>
+        <button class:chosen={selected?.sessionId === s.sessionId} class="session-tile" onclick={() => chooseSession(s.sessionId)}>
+          <span class="session-tile-icon"><PTIcon name={s.vendor ? 'sparkles' : 'terminal'} size={19}/></span>
+          <span class="session-tile-text"><strong>{displayName(s)}</strong><small>{vendorName(s)} · {s.detached ? 'Detached' : 'Live'}</small></span>
+          <span class="pt-status-dot" data-state={s.detached ? 'offline' : 'online'}></span>
         </button>
       {/each}
-      {#if !managed.length}
-        <div class="list-empty">No managed sessions yet.<br/>Create one or discover what is already running.</div>
+      {#if managed.length === 0}
+        <div class="empty-list">No open sessions here yet.</div>
       {/if}
-      <div class="discover-heading">
-        <span class="group-label">ALREADY OPEN ON MAC</span>
-        <button onclick={discover} disabled={!online} aria-label="Scan existing terminals">↻ Scan</button>
-      </div>
+      <div class="group-head discovered-head"><span>ALREADY OPEN</span><button onclick={discover} disabled={!online}><PTIcon name="refresh" size={14}/> Scan</button></div>
       {#each discovered as ext (ext.sessionId)}
-        <div class="external">
-          <span class="external-icon">{ext.source === 'tmux' ? '⊞' : '⌘'}</span>
-          <span class="external-info"><strong>{ext.title}</strong><small>{ext.source === 'tmux' ? 'tmux session' : ext.source === 'iterm2' ? 'iTerm2' : 'Terminal.app'}</small></span>
+        <div class="session-tile discovered-tile">
+          <span class="session-tile-icon external-icon"><PTIcon name="window" size={18}/></span>
+          <span class="session-tile-text"><strong>{ext.title}</strong><small>{ext.source === 'tmux' ? 'tmux' : ext.source === 'iterm2' ? 'iTerm2' : 'Terminal.app'}</small></span>
           {#if ext.source === 'tmux' && ext.capabilities.includes('join')}
-            <button class="join" onclick={() => joinExisting(ext)} disabled={!online || $joinState.status === 'joining'}>Join</button>
+            <button class="join-btn" onclick={() => joinExisting(ext)} disabled={!online || $joinState.status === 'joining'}>Join</button>
           {:else}
-            <span class="observe">Listed</span>
+            <span class="read-only-label">Listed</span>
           {/if}
         </div>
       {/each}
-      {#if discoverStarted && !discovered.length}
-        <div class="list-empty">No other terminals discovered, or macOS denied discovery permissions.</div>
-      {/if}
-      {#if $spawnState.status === 'starting'}<div class="join-feedback">Starting your new shell…</div>{/if}
-      {#if $spawnState.status === 'error'}<div class="join-error">{$spawnState.message}</div>{/if}
-      {#if $joinState.status === 'joining'}<div class="join-feedback">Joining the existing tmux session…</div>{/if}
-      {#if $joinState.status === 'error'}<div class="join-error">{$joinState.message}</div>{/if}
+      {#if discoverStarted && discovered.length === 0}<div class="empty-list">No other sessions found, or discovery isn’t permitted.</div>{/if}
+      {#if $joinState.status === 'error'}<div class="error-feedback">{$joinState.message}</div>{/if}
+      {#if $spawnState.status === 'error'}<div class="error-feedback">{$spawnState.message}</div>{/if}
+      {#if $joinState.status === 'joining'}<div class="pending-feedback">Joining existing session…</div>{/if}
     </div>
-    <div class="sidebar-footer">
-      <span class="machine-dot" class:offline={!online}></span>
-      <div><strong>Local Mac</strong><small>{online ? 'Connected securely' : $status === 'reconnecting' ? 'Reconnecting' : 'Offline'}</small></div>
-      <span class="sidebar-device">⌘</span>
+    <div class="sidebar-help">
+      <span class="sidebar-help-icon"><PTIcon name="info" size={18}/></span>
+      <p>One Mac. Every session.<br/><span>No AI required.</span></p>
     </div>
   </aside>
 
-  <section class="terminal-stage">
-    <header class="stage-header">
-      <button class="mobile-sessions" onclick={() => (showSessions = true)} aria-label="Choose terminal session">
-        <span class="session-lines">☷</span>
-        <span class="mobile-title">{selected ? displayName(selected) : 'Your terminals'}</span>
-        <span class="dropdown-indicator">⌄</span>
-      </button>
-      <div class="stage-title">
-        <div class="crumb">POCKET-T <span> / </span> LIVE TERMINAL</div>
-        <div class="stage-title-row"><h1>{selected ? displayName(selected) : 'Your terminals'}</h1>
-          {#if selected}<span class:off={selected.detached} class="status-pill"><span></span>{selected.detached ? 'DETACHED' : 'LIVE SESSION'}</span>{/if}
+  <section class="work-main">
+    <header class="work-header">
+      <div class="work-heading">
+        <span class="pt-eyebrow">YOUR MAC <span class="crumb-divide">/</span> {selected ? 'ACTIVE WORKSPACE' : 'SESSIONS'}</span>
+        <div class="work-title">
+          <h1>{selected ? displayName(selected) : 'Your workspace.'}</h1>
+          {#if selected}
+            <span class="state-indicator"><span class="pt-status-dot" data-state={online && !selected.detached ? 'online' : 'offline'}></span>{online && !selected.detached ? 'Live' : selected.detached ? 'Detached' : 'Offline'}</span>
+          {/if}
         </div>
-        <p>{selected?.cwd ?? 'Connect to a real shell on your Mac — no AI needed.'}</p>
+        <p>{selected ? selected.cwd : 'Real terminal sessions. Beautifully connected.'}</p>
       </div>
-      <div class="stage-actions">
-        <span class="status-connection" class:offline={!online}><span></span>{online ? 'CONNECTED' : 'OFFLINE'}</span>
-        <button class="icon-action" onclick={() => adjustFont(-1)} aria-label="Decrease terminal font" title="Smaller text">A−</button>
-        <button class="icon-action" onclick={() => adjustFont(1)} aria-label="Increase terminal font" title="Larger text">A+</button>
-        <button class="icon-action full-toggle" onclick={toggleFullscreen} aria-label={fullScreen ? 'Exit immersive terminal' : 'Immersive terminal'} title="Expand terminal">{fullScreen ? '↙' : '⤢'}</button>
+      <div class="work-head-actions">
+        <button class="mobile-current" onclick={() => (showSessions = true)} aria-label="Open session picker">
+          <PTIcon name="layers" size={18}/><span>Sessions</span><PTIcon name="chevronDown" size={15}/>
+        </button>
+        <button class="pt-icon-button small-head-button" title="Scan existing Mac terminals" aria-label="Discover existing terminal sessions" onclick={() => { showSessions = true; discover(); }} disabled={!online}><PTIcon name="scan" size={20}/></button>
+        <button class="pt-primary new-session" disabled={!online || $spawnState.status === 'starting'} onclick={newSession}>
+          <PTIcon name="plus" size={18}/> <span>New session</span>
+        </button>
       </div>
     </header>
 
     {#if selected}
-      <div class="terminal-layout">
-        {#if !fullScreen}
-          <div class="terminal-tabs" role="tablist" aria-label="Session views">
-            <button class:tab-active={view === 'terminal'} role="tab" aria-selected={view === 'terminal'} onclick={() => chooseView('terminal')}>▣ Terminal</button>
+      <div class="session-stage pt-card-enter">
+        <div class="stage-toolbar">
+          <div class="stage-tabs" role="tablist" aria-label="Session surfaces">
+            <button class:tab-active={view === 'terminal'} role="tab" aria-selected={view === 'terminal'} onclick={() => chooseView('terminal')}>
+              <PTIcon name="terminal" size={17}/> Live terminal
+            </button>
             {#if selected.vendor}
-              <button class:tab-active={view === 'activity'} role="tab" aria-selected={view === 'activity'} onclick={() => chooseView('activity')}>✳ Activity</button>
+              <button class:tab-active={view === 'activity'} role="tab" aria-selected={view === 'activity'} onclick={() => chooseView('activity')}>
+                <PTIcon name="activity" size={17}/> Activity
+              </button>
             {/if}
-            <span class="shell-capability">{selected.sessionId.startsWith('join-') ? 'ATTACHED TO EXISTING TMUX' : 'REAL PTY'} <span>·</span> {selected.rows} × {selected.cols}</span>
           </div>
-        {/if}
+          <div class="stage-controls">
+            <span class="stage-machine"><PTIcon name="laptop" size={16}/> Mac</span>
+            <button class="pt-icon-button action-button" title="Copy selected text" aria-label="Copy terminal selection" onclick={() => void copySelection()} disabled={view !== 'terminal'}><PTIcon name="copy" size={18}/></button>
+            <button class="pt-icon-button action-button" title={fullScreen ? 'Exit focus mode' : 'Focus mode'} aria-label={fullScreen ? 'Exit focus mode' : 'Focus mode'} onclick={toggleFullscreen}><PTIcon name={fullScreen ? 'shrink' : 'expand'} size={18}/></button>
+            <div class="options-holder">
+              <button class="pt-icon-button action-button" title="Terminal settings" aria-label="Terminal settings" aria-expanded={optionsOpen} onclick={() => (optionsOpen = !optionsOpen)}><PTIcon name="more" size={20}/></button>
+              {#if optionsOpen}
+                <div class="options-menu">
+                  <div>APPEARANCE</div>
+                  <button onclick={() => adjustFont(1)}><PTIcon name="plus" size={17}/> Increase text size</button>
+                  <button onclick={() => adjustFont(-1)}><PTIcon name="minus" size={17}/> Decrease text size</button>
+                  <button onclick={() => { keysOpen = !keysOpen; optionsOpen = false; }}><PTIcon name="keyboard" size={17}/>{keysOpen ? 'Hide' : 'Show'} special keys</button>
+                  <button onclick={() => { toggleFullscreen(); optionsOpen = false; }}><PTIcon name="expand" size={17}/> {fullScreen ? 'Exit focus' : 'Enter focus'} mode</button>
+                </div>
+              {/if}
+            </div>
+          </div>
+        </div>
 
-        <div class="console" class:with-activity={view === 'activity'}>
-          {#if fullScreen}
-            <button class="immersive-exit" onclick={toggleFullscreen} aria-label="Exit immersive terminal">↙ Exit focus</button>
-          {/if}
-          <div class="terminal-dots"><i></i><i></i><i></i><span>{selected.shell.split('/').pop() ?? 'shell'} · {selected.sessionId.slice(0, 8)}</span></div>
-          {#if view === 'terminal'}
-            {#key selected.sessionId}
-              <TerminalView bind:this={terminalRef} sessionId={selected.sessionId} {fontSize} interactive={online && !selected.detached} onMultilinePaste={stageMultilinePaste} />
-            {/key}
-          {:else}
-            <div class="activity-wrapper"><BubbleView sessionId={selected.sessionId} /></div>
-          {/if}
+        <div class="screen-region">
+          <div class="screen-surface">
+            {#if view === 'terminal'}
+              {#key selected.sessionId}
+                <TerminalView
+                  bind:this={terminalRef}
+                  sessionId={selected.sessionId}
+                  {fontSize}
+                  interactive={online && !selected.detached}
+                  onMultilinePaste={stageMultilinePaste}
+                />
+              {/key}
+            {:else}
+              <BubbleView sessionId={selected.sessionId}/>
+            {/if}
+          </div>
           {#if !online || selected.detached}
-            <div class="connection-overlay"><span class="connection-symbol">⌁</span><strong>{!online ? 'Connection interrupted' : 'Session detached'}</strong><p>{!online ? 'Your terminal remains on your Mac. Commands are not queued or replayed.' : 'The terminal is not currently accepting input.'}</p></div>
+            <div class="offline-ribbon"><PTIcon name="info" size={15}/>{!online ? 'Connection interrupted. Terminal input is paused.' : 'This session is detached. Input is unavailable.'}</div>
           {/if}
         </div>
 
-        <div class="control-dock">
-          <div class="quick-control-header">
-            <span class="quick-caption">TERMINAL CONTROLS</span>
-            <div class="quick-actions">
-              <button onclick={() => void copySelection()} disabled={view !== 'terminal'} title="Copy selected terminal text">Copy</button>
-              <button onclick={() => void pasteDraft()} disabled={!online} title="Paste clipboard into editable draft">Paste</button>
-              <button onclick={focusDirect} class:mode-active={keyboardMode === 'direct'} disabled={!online || selected.detached || view !== 'terminal'}>Direct keys</button>
-              <button onclick={focusCompose} class:mode-active={keyboardMode === 'compose'}>Compose</button>
+        <div class="command-area">
+          <div class="command-heading">
+            <div class="compose-label">
+              <span class="compose-glow"><PTIcon name="bolt" size={14}/></span>
+              <span>Terminal input</span>
+            </div>
+            <div class="mode-segment" role="group" aria-label="Input mode">
+              <button class:mode-active={keyboardMode === 'compose'} onclick={focusCompose}><PTIcon name="file" size={14}/> Compose</button>
+              <button class:mode-active={keyboardMode === 'direct'} onclick={focusDirect} disabled={!online || selected.detached || view !== 'terminal'}><PTIcon name="cursor" size={14}/> Direct</button>
             </div>
           </div>
-          <KeyboardRow disabled={!online || selected.detached} />
-          <div class="compose-row">
-            <span class="prompt-glyph">❯</span>
+          {#if keysOpen}
+            <div class="keys-holder">
+              <KeyboardRow disabled={!online || selected.detached}/>
+            </div>
+          {/if}
+          <div class="command-box" class:needs-review={hasMultiline && multilineConfirmed}>
             <textarea
               bind:this={draftInput}
+              aria-label="Compose command for the selected terminal"
+              placeholder={keyboardMode === 'direct' ? 'Tap the live terminal to type directly, or compose here…' : 'Send a command to your Mac…'}
               rows="1"
               value={draft}
               oninput={(event) => setDraft(event.currentTarget.value)}
               onkeydown={onDraftKey}
-              placeholder={online ? 'Type a command, or tap Direct keys…' : 'Offline — draft stays on this device'}
-              aria-label="Compose input for the selected live terminal"
               enterkeyhint="send"
-              spellcheck="false"
               autocomplete="off"
               autocapitalize="off"
+              spellcheck="false"
             ></textarea>
-            <button
-              class="send-command"
-              class:confirm={hasMultiline && multilineConfirmed}
-              onclick={sendDraft}
-              disabled={!online || selected.detached || !draft.trim()}
-              aria-label={hasMultiline && !multilineConfirmed ? 'Review multiline command' : 'Send to terminal'}
-              title={hasMultiline && !multilineConfirmed ? 'Review multiple lines' : 'Send to live PTY'}
-            >{hasMultiline && !multilineConfirmed ? 'Review' : hasMultiline ? 'Confirm' : '↵'}</button>
+            <div class="command-buttons">
+              <button class="paste-command pt-icon-button" onclick={() => void pasteDraft()} disabled={!online} title="Paste clipboard to editable input" aria-label="Paste clipboard"><PTIcon name="copy" size={19}/></button>
+              <button class="send-command" class:review={hasMultiline && multilineConfirmed} onclick={sendDraft} disabled={!online || selected.detached || !draft.trim()}>
+                {#if hasMultiline}<span>{multilineConfirmed ? 'Confirm' : 'Review'}</span>{/if}
+                <PTIcon name="arrowUp" size={18}/>
+              </button>
+            </div>
           </div>
-          <div class="dock-footer">
-            <span><span class="safe-dot"></span>{online ? 'Input goes directly to your Mac. No model or tokens required.' : 'Offline input will not auto-send.'}</span>
-            <span class="mode-label">{keyboardMode === 'direct' ? 'DIRECT PTY' : 'EDITABLE DRAFT'}</span>
+          <div class="command-footer">
+            <div class="command-note"><PTIcon name="shield" size={14}/> {online ? 'Executes on your Mac. No AI or tokens needed.' : 'Disconnected. Drafts stay on this device.'}</div>
+            <button class="keys-toggle" class:keys-active={keysOpen} onclick={() => (keysOpen = !keysOpen)}><PTIcon name="keyboard" size={16}/><span>{keysOpen ? 'Hide' : 'Special'} keys</span><PTIcon name={keysOpen ? 'chevronDown' : 'chevronUp'} size={14}/></button>
           </div>
         </div>
       </div>
     {:else}
-      <div class="empty-main">
-        <div class="empty-emblem"><span>❯_</span></div>
-        <span class="eyebrow">YOUR TERMINAL, ANYWHERE</span>
-        <h2>Pick up exactly<br/>where you left off.</h2>
-        <p>Open a real shell or join an existing tmux session. No AI, no token limits, no simulated terminal.</p>
-        <button class="new-primary" onclick={newSession} disabled={!online || $spawnState.status === 'starting'}>＋ {$spawnState.status === 'starting' ? 'Starting…' : 'New terminal'}</button>
-        {#if $spawnState.status === 'error'}<div class="join-error">{$spawnState.message}</div>{/if}
-        <button class="secondary-discover" onclick={() => { showSessions = true; discover(); }} disabled={!online}>Discover existing sessions →</button>
+      <div class="no-session pt-card-enter">
+        <div class="no-session-art" aria-hidden="true"><div class="art-orbit"></div><div class="art-disc"><PTIcon name="layers" size={51} stroke={1.3}/></div></div>
+        <span class="pt-eyebrow">READY WHEN YOU ARE</span>
+        <h2>Stay in your flow,<br/>from anywhere.</h2>
+        <p>Start a native shell or join a tmux session that's already open on your Mac. Everything runs for real, without AI tokens.</p>
+        <div class="no-session-actions">
+          <button class="pt-primary" onclick={newSession} disabled={!online || $spawnState.status === 'starting'}><PTIcon name="plus" size={18}/>{ $spawnState.status === 'starting' ? 'Starting…' : 'New session' }</button>
+          <button class="pt-ghost" onclick={() => { showSessions = true; discover(); }} disabled={!online}><PTIcon name="scan" size={17}/> Find existing</button>
+        </div>
+        {#if $spawnState.status === 'error'}<div class="error-feedback">{$spawnState.message}</div>{/if}
       </div>
     {/if}
   </section>
 
   {#if showSessions}
-    <button class="sheet-backdrop" aria-label="Close session selector" onclick={() => (showSessions = false)}></button>
-    <div class="mobile-sheet" role="dialog" aria-label="Choose a terminal">
-      <div class="sheet-handle"></div>
-      <div class="sheet-header"><h2>My terminals</h2><button onclick={() => (showSessions = false)} aria-label="Close">✕</button></div>
-      <button class="sheet-new" onclick={newSession} disabled={!online}>＋ New terminal</button>
-      <div class="sheet-scroll">
-        <div class="group-label">LIVE TERMINALS</div>
+    <button class="picker-backdrop" aria-label="Close session picker" onclick={() => (showSessions = false)}></button>
+    <section class="session-picker" role="dialog" aria-modal="true" aria-label="Choose a terminal session">
+      <div class="picker-handle" aria-hidden="true"></div>
+      <div class="picker-header">
+        <div><span class="pt-eyebrow">YOUR WORK</span><h2>Sessions</h2></div>
+        <button class="pt-icon-button" onclick={() => (showSessions = false)} aria-label="Close session picker"><PTIcon name="x" size={20}/></button>
+      </div>
+      <div class="picker-tools">
+        <button class="pt-primary" onclick={newSession} disabled={!online || $spawnState.status === 'starting'}><PTIcon name="plus" size={16}/> New session</button>
+        <button class="pt-ghost scan-trigger" onclick={discover} disabled={!online}><PTIcon name="scan" size={17}/> Discover</button>
+      </div>
+      <div class="picker-list">
+        <div class="group-head"><span>LIVE SESSIONS</span><span>{$sessions.length}</span></div>
         {#each $sessions as s (s.sessionId)}
-          <button class="sheet-session" onclick={() => chooseSession(s.sessionId)}>
-            <span class="session-icon">{s.vendor === 'claude' ? '✳' : '>_'}</span>
-            <span><strong>{displayName(s)}</strong><small>{vendorName(s)} · {s.detached ? 'Detached' : 'Running'}</small></span>
-            <span class="sheet-arrow">↗</span>
+          <button class:chosen={selected?.sessionId === s.sessionId} class="session-tile" onclick={() => chooseSession(s.sessionId)}>
+            <span class="session-tile-icon"><PTIcon name={s.vendor ? 'sparkles' : 'terminal'} size={19}/></span>
+            <span class="session-tile-text"><strong>{displayName(s)}</strong><small>{vendorName(s)} · {s.detached ? 'Detached' : 'Running'}</small></span>
+            <PTIcon name="arrowUpRight" size={17}/>
           </button>
         {/each}
-        <div class="discover-heading"><span class="group-label">ALREADY OPEN</span><button onclick={discover} disabled={!online}>↻ Scan</button></div>
+        <div class="group-head discovered-head"><span>ALREADY OPEN ON YOUR MAC</span><span>{$existingTerminals.length}</span></div>
         {#each $existingTerminals as ext (ext.sessionId)}
-          <div class="sheet-session">
-            <span class="session-icon">⌘</span>
-            <span><strong>{ext.title}</strong><small>{ext.source === 'tmux' ? 'tmux' : ext.source} · {ext.capabilities.includes('join') ? 'Can join' : 'Discovery only'}</small></span>
+          <div class="session-tile discovered-tile">
+            <span class="session-tile-icon external-icon"><PTIcon name="window" size={19}/></span>
+            <span class="session-tile-text"><strong>{ext.title}</strong><small>{ext.source === 'tmux' ? 'tmux session' : ext.source === 'iterm2' ? 'iTerm2' : 'Terminal.app'}</small></span>
             {#if ext.source === 'tmux' && ext.capabilities.includes('join')}
-              <button class="join" disabled={!online || $joinState.status === 'joining'} onclick={() => joinExisting(ext)}>Join</button>
-            {/if}
+              <button class="join-btn" onclick={() => joinExisting(ext)} disabled={!online || $joinState.status === 'joining'}>Join</button>
+            {:else}<span class="read-only-label">Listed</span>{/if}
           </div>
         {/each}
-        {#if $spawnState.status === 'starting'}<div class="join-feedback">Starting a real terminal…</div>{/if}
-      {#if $spawnState.status === 'error'}<div class="join-error">{$spawnState.message}</div>{/if}
-      {#if $joinState.status === 'joining'}<div class="join-feedback">Attaching to existing tmux…</div>{/if}
-        {#if $joinState.status === 'error'}<div class="join-error">{$joinState.message}</div>{/if}
+        {#if $joinState.status === 'joining'}<div class="pending-feedback">Joining the existing tmux session…</div>{/if}
+        {#if $joinState.status === 'error'}<div class="error-feedback">{$joinState.message}</div>{/if}
+        {#if $spawnState.status === 'starting'}<div class="pending-feedback">Starting your native terminal…</div>{/if}
+        {#if $spawnState.status === 'error'}<div class="error-feedback">{$spawnState.message}</div>{/if}
+        {#if discoverStarted && !$existingTerminals.length}<div class="empty-list">No other terminals discovered, or macOS did not permit discovery.</div>{/if}
       </div>
-    </div>
+      <div class="picker-caption"><PTIcon name="info" size={15}/> Existing Terminal.app and iTerm2 tabs are discoverable but not universally joinable.</div>
+    </section>
   {/if}
-  {#if notice}<div class="toast" role="status">{notice}</div>{/if}
+  {#if notice}<div class="work-toast" role="status">{notice}</div>{/if}
 </div>
 
 <style>
-  .term-page{display:flex;flex:1;min-width:0;min-height:0;height:100%;background:#0a111b;color:#e5eef1;overflow:hidden;--line:#253544;--subtle:#839aa8;--accent:#a6efcc}
-  button{cursor:pointer;font-family:inherit}
-  button:disabled{cursor:not-allowed;opacity:.36}
-  button:focus-visible{outline:2px solid #a6efcc;outline-offset:2px}
-  .session-column{width:255px;flex:none;min-height:0;display:flex;flex-direction:column;background:#111c29;border-right:1px solid #283643}
-  .column-title{display:flex;align-items:center;justify-content:space-between;padding:26px 20px 15px}
-  .eyebrow,.group-label,.quick-caption,.crumb{font-size:9px;letter-spacing:1.6px;font-weight:800;color:#7998a3}
-  .column-title h2{font-size:18px;letter-spacing:-.5px;font-weight:700;margin:8px 0 0}.count{font-size:11px;color:#9baeb8;margin-left:8px}
-  .new-shell{border:1px solid #467469;background:#20413d;color:#b6f9d9;width:34px;height:34px;font-size:23px;border-radius:10px}
-  .search-container{display:flex;align-items:center;gap:9px;background:#182734;border:1px solid #2b4150;margin:2px 14px 19px;border-radius:10px;padding:10px 11px}
-  .search-container span{font-size:20px;color:#90b3af}.search-container input{background:none;border:0;outline:none;color:white;min-width:0;flex:1;font-size:12px}
-  .search-container input::placeholder{color:#768d9b}
-  .session-scroll{flex:1;overflow-y:auto;padding:0 10px;scrollbar-color:#324653 transparent;scrollbar-width:thin}
-  .group-label{display:block;margin:0 10px 12px}
-  .session,.external{width:100%;display:flex;align-items:center;gap:11px;padding:11px 9px;background:none;border:1px solid transparent;color:inherit;text-align:left;border-radius:12px}
-  .session:hover,.session.chosen{background:#1d3239;border-color:#36574c}
-  .session-icon,.external-icon{display:grid;place-items:center;flex:none;width:34px;height:36px;border-radius:10px;font:700 12px ui-monospace,Menlo,monospace;color:#b9d6e0;background:#203443}
-  .session-icon.agent{color:#aaf5d5;background:#26483f;font-size:18px}
-  .session-info,.external-info{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
-  .session-info strong,.external-info strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .session-info small,.external-info small{color:#879fad;font-size:10px}
-  .session-led,.machine-dot{height:7px;width:7px;border-radius:50%;background:#98edc7;box-shadow:0 0 10px #a9f6cf77;flex:none}
-  .session-led.idle,.machine-dot.offline{background:#a98575;box-shadow:none}
-  .discover-heading{display:flex;justify-content:space-between;align-items:center;margin:26px 8px 7px}
-  .discover-heading .group-label{margin:0}
-  .discover-heading button{border:0;background:none;color:#a6e8ca;font-weight:700;font-size:11px}
-  .external{padding:9px;gap:8px}
-  .external-icon{font-size:17px;background:#2a3744;color:#aebcca}
-  .external-info strong{max-width:128px}.join{background:#1b3e35;color:#baf3d5;border:1px solid #3d6857;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:750}
-  .observe{font-size:9px;color:#758f99}
-  .list-empty{color:#6e8896;font-size:11px;line-height:1.6;padding:13px 10px 17px}
-  .join-feedback,.join-error{font-size:11px;color:#b9edcd;background:#204039;padding:11px;border-radius:9px;line-height:1.5;margin:10px}
-  .join-error{background:#3c282a;color:#f5c1bb}
-  .sidebar-footer{display:flex;align-items:center;gap:12px;border-top:1px solid #2b3a45;padding:18px}.sidebar-footer div{display:flex;flex-direction:column;gap:4px;flex:1}.sidebar-footer strong{font-size:12px}.sidebar-footer small{font-size:10px;color:#8ea3ae}.sidebar-device{font-size:19px;color:#93b8b7}
-  .terminal-stage{min-height:0;min-width:0;display:flex;flex-direction:column;flex:1;background:#0d1723}
-  .stage-header{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:22px 25px;border-bottom:1px solid #233443;min-height:107px;background:#111c29}
-  .stage-title{min-width:0}.crumb{margin-bottom:10px}.crumb span{color:#476475;margin:0 7px}.stage-title-row{display:flex;align-items:center;gap:13px}
-  .stage-title h1{font-size:24px;letter-spacing:-.8px;margin:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .stage-title p{color:#879ea9;font-size:11px;white-space:nowrap;max-width:47vw;overflow:hidden;text-overflow:ellipsis;margin:7px 0 0}
-  .status-pill{display:flex;align-items:center;gap:6px;border:1px solid #3d6658;background:#1d382f;color:#bbf9db;font-size:9px;letter-spacing:.9px;padding:6px 10px;border-radius:50px;font-weight:800;white-space:nowrap}
-  .status-pill span{width:6px;height:6px;background:#9ef5cb;border-radius:50%}.status-pill.off{color:#e0b9a6;border-color:#6f564d;background:#352724}.status-pill.off span{background:#cba092}
-  .stage-actions{display:flex;gap:7px;align-items:center}
-  .icon-action{color:#b5cbd1;background:#1d2d3c;border:1px solid #304456;border-radius:9px;min-width:36px;height:36px;padding:0 10px;font-size:12px;font-weight:800}
-  .status-connection{color:#b1d8c5;white-space:nowrap;display:flex;align-items:center;gap:6px;font-size:9px;font-weight:800;letter-spacing:1px;margin-right:8px}
-  .status-connection span{background:#90e9bd;width:7px;height:7px;border-radius:50%}.status-connection.offline span{background:#d6a090}
-  .terminal-layout{display:flex;flex:1;min-height:0;flex-direction:column}
-  .terminal-tabs{display:flex;align-items:center;gap:5px;flex:none;border-bottom:1px solid #2b3d48;padding:0 19px;background:#101b28;height:43px}
-  .terminal-tabs button{align-self:stretch;font-size:11px;padding:0 15px;font-weight:700;color:#8197a6;background:none;border:0;border-bottom:2px solid transparent}
-  .terminal-tabs button.tab-active{color:#b4f4d1;border-bottom-color:#a0f5ce}
-  .shell-capability{color:#708f9b;font-size:9px;letter-spacing:.7px;font-weight:700;margin-left:auto}
-  .shell-capability span{color:#405660;padding:0 5px}
-  .console{min-height:0;flex:1;display:flex;flex-direction:column;position:relative;border:1px solid #314354;border-radius:13px 13px 0 0;margin:12px 14px 0;overflow:hidden;background:#0b1019}
-  .terminal-dots{flex:none;height:31px;background:#152333;border-bottom:1px solid #263747;display:flex;align-items:center;gap:6px;padding:0 12px}
-  .terminal-dots i{width:7px;height:7px;border-radius:50%;background:#e9878b}.terminal-dots i:nth-child(2){background:#edc778}.terminal-dots i:nth-child(3){background:#79ca9b}
-  .terminal-dots span{font-size:9px;letter-spacing:.7px;margin-left:auto;color:#8a9bab;font-family:ui-monospace,Menlo,monospace}
-  .activity-wrapper{display:flex;min-height:0;flex:1}
-  .connection-overlay{position:absolute;inset:31px 0 0;background:rgba(7,15,23,.88);z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px}
-  .connection-symbol{font-size:39px;color:#c9a69d;margin-bottom:10px}.connection-overlay strong{font-size:17px}.connection-overlay p{color:#92a5ad;font-size:12px;line-height:1.7;max-width:300px}
-  .control-dock{flex:none;background:#111c29;border-top:1px solid #2e4450;padding-bottom:env(safe-area-inset-bottom, 0px)}
-  .quick-control-header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px 3px;gap:8px}
-  .quick-caption{white-space:nowrap}.quick-actions{display:flex;align-items:center;gap:3px;overflow-x:auto}
-  .quick-actions button{background:none;border:0;color:#93adb9;padding:8px 9px;font-size:10px;font-weight:700;white-space:nowrap;border-radius:8px}
-  .quick-actions button.mode-active{background:#23433c;color:#bdf6d6}
-  .compose-row{display:flex;align-items:center;gap:9px;margin:7px 13px 0;padding:8px;background:#1a2a39;border:1px solid #385356;border-radius:13px}
-  .prompt-glyph{font-size:20px;color:#98edc5;margin-left:7px}
-  .compose-row textarea{flex:1;min-width:0;max-height:105px;min-height:28px;resize:vertical;padding:3px 0;background:none;border:0;outline:none;color:#e8f6f0;font-size:15px;line-height:1.45;font-family:ui-monospace,Menlo,Consolas,monospace}
-  .compose-row textarea::placeholder{color:#7c99a2}.send-command{min-width:41px;height:39px;background:#a5f6cf;color:#123d32;border:0;border-radius:10px;font-size:20px;font-weight:850;padding:0 11px}
-  .send-command.confirm{min-width:74px;font-size:12px;background:#e4d195;color:#4b391c}
-  .dock-footer{display:flex;justify-content:space-between;gap:10px;padding:8px 18px 11px;color:#7f9ca6;font-size:10px}
-  .dock-footer>span{display:flex;align-items:center;gap:7px}.safe-dot{width:6px;height:6px;border-radius:50%;background:#7ec89d}.mode-label{letter-spacing:.7px;font-size:9px;font-weight:750;white-space:nowrap}
-  .empty-main{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;padding:25px;text-align:center;background:radial-gradient(ellipse at center,#21453d33,transparent 62%)}
-  .empty-emblem{display:grid;place-items:center;width:100px;height:100px;border-radius:26px;background:#203d3b;border:1px solid #43645b;color:#b3f8d7;font-family:ui-monospace,Menlo,monospace;font-size:34px;margin-bottom:30px;transform:rotate(-3deg)}
-  .empty-emblem span{transform:rotate(3deg)}.empty-main h2{font-size:clamp(32px,3.2vw,48px);letter-spacing:-1.8px;line-height:1.15;margin:14px 0}
-  .empty-main p{font-size:13px;line-height:1.8;color:#96b0b6;max-width:360px}.new-primary{background:#a9f8d4;color:#123d32;border:0;border-radius:11px;padding:15px 25px;font-size:12px;font-weight:800;margin-top:21px}
-  .secondary-discover{background:none;color:#b3e9d1;border:0;font-size:11px;margin-top:12px;padding:10px}
-  .mobile-sessions,.sheet-backdrop,.mobile-sheet{display:none}
-  .toast{position:fixed;z-index:70;bottom:calc(env(safe-area-inset-bottom,0px) + 110px);left:50%;transform:translateX(-50%);padding:11px 16px;background:#c5f7dc;color:#193d31;font-size:12px;font-weight:760;border-radius:11px;text-align:center;max-width:92vw;box-shadow:0 20px 48px #0008}
-  .term-page.immersive{position:fixed;inset:0;z-index:60;width:100vw;height:100dvh;padding-bottom:env(safe-area-inset-bottom,0px)}
-  .immersive-exit{position:absolute;top:4px;right:8px;z-index:5;background:#24483d;color:#c9ffe5;border:1px solid #477363;border-radius:7px;padding:5px 10px;font-size:10px;font-weight:780}
-  .term-page.immersive .session-column,.term-page.immersive .stage-header,.term-page.immersive .terminal-tabs{display:none}
-  .term-page.immersive .console{margin:0;border:0;border-radius:0}
-  @media(max-width:1220px){.session-column{width:210px}.stage-header{padding:17px}.shell-capability{font-size:8px}}
-  @media(max-width:900px){.session-column{display:none}.stage-title{display:none}.mobile-sessions{display:flex;align-items:center;gap:9px;background:none;border:0;color:#e6f2f2;min-width:0;max-width:50vw;padding:0}
-    .mobile-title{font-size:15px;font-weight:740;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.session-lines{font-size:20px;color:#aadfcb}.dropdown-indicator{color:#80a09b}
-    .stage-header{min-height:54px;padding:8px 13px;height:54px}.status-connection{margin:0 3px;font-size:8px}.stage-actions{gap:3px}
-    .icon-action{min-width:33px;height:34px;padding:0 8px;font-size:11px}
-    .terminal-tabs{height:39px;padding:0 5px}.terminal-tabs button{padding:0 12px}.shell-capability{font-size:8px}
-    .console{margin:7px 7px 0;border-radius:9px 9px 0 0}.terminal-dots{height:26px}.terminal-dots i{width:6px;height:6px}
-    .quick-control-header{padding:6px 8px 0}.quick-caption{display:none}.quick-actions{width:100%;justify-content:space-between}.quick-actions button{font-size:10px;padding:8px 8px}
-    .compose-row{margin:5px 8px 0;border-radius:12px;gap:7px}.dock-footer{padding:7px 12px 10px;font-size:9px}.dock-footer .mode-label{display:none}
-    .sheet-backdrop{display:block;position:fixed;inset:0;background:#02080dbc;z-index:50;border:0}
-    .mobile-sheet{display:flex;flex-direction:column;position:fixed;inset:auto 0 0;max-height:84dvh;padding:9px 15px calc(env(safe-area-inset-bottom,0px) + 18px);background:#172633;border-radius:24px 24px 0 0;border-top:1px solid #416257;z-index:51;box-shadow:0 -20px 90px #000b}
-    .sheet-handle{width:38px;height:4px;border-radius:99px;background:#59717b;margin:0 auto 17px}
-    .sheet-header{display:flex;align-items:center;justify-content:space-between}.sheet-header h2{font-size:20px;margin:0}.sheet-header button{background:none;border:0;font-size:17px;color:#c4dce2}
-    .sheet-new{margin:17px 0 10px;background:#274b40;border:1px solid #467b62;border-radius:11px;color:#c3ffdc;padding:13px;font-size:12px;font-weight:750;text-align:left}
-    .sheet-scroll{overflow-y:auto;min-height:0;scrollbar-width:thin}.sheet-scroll .group-label{margin-top:13px}
-    .sheet-session{width:100%;display:flex;align-items:center;gap:12px;padding:11px 5px;border:0;border-bottom:1px solid #2c404a;background:none;color:#e8f1f4;text-align:left}
-    .sheet-session>span:nth-child(2){flex:1;min-width:0;display:grid;gap:4px}.sheet-session strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sheet-session small{font-size:10px;color:#8faab1}
-    .sheet-arrow{color:#92d3ba}.join{padding:9px 14px}
+  .work-root { position:relative;flex:1;display:flex;min-height:0;min-width:0;color:var(--pt-ink); }
+  .sessions-sidebar {width:247px;flex:none;border-right:1px solid var(--pt-line);display:flex;flex-direction:column;padding:28px 13px 15px 17px;background:var(--pt-glass);min-height:0;}
+  .sessions-heading {display:flex;align-items:center;justify-content:space-between;margin:0 7px 18px;}
+  .sessions-heading h2 {font-size:18px;letter-spacing:-.7px;margin:8px 0 0;font-weight:760;}
+  .create-small {background:var(--pt-violet-soft)!important;color:var(--pt-violet)!important;width:40px!important;height:40px!important;min-width:40px!important;border-radius:13px!important;}
+  .session-search {display:flex;align-items:center;gap:9px;padding:0 12px;border-radius:12px;background:var(--pt-surface);border:1px solid var(--pt-line);height:43px;color:var(--pt-tertiary);margin:0 3px 20px;}
+  .session-search input {border:0;background:none;outline:none;font-size:12px;flex:1;color:var(--pt-ink);width:100%;}.session-search input::placeholder{color:var(--pt-tertiary);}
+  .session-list {flex:1;min-height:0;overflow-y:auto;padding-right:3px;scrollbar-width:thin;scrollbar-color:var(--pt-line-strong) transparent;}
+  .group-head {display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:var(--pt-tertiary);font-weight:780;letter-spacing:.75px;padding:0 9px;margin:0 0 12px;}
+  .group-head button{display:inline-flex;align-items:center;gap:5px;padding:6px;border-radius:8px;background:none;color:var(--pt-violet);font-size:11px;font-weight:750;letter-spacing:0;}
+  .group-head button:hover{background:var(--pt-violet-soft);}
+  .discovered-head {margin-top:29px;}
+  .session-tile {display:flex;align-items:center;gap:10px;width:100%;padding:10px 10px;border-radius:14px;border:1px solid transparent;color:var(--pt-ink);text-align:left;background:none;min-height:58px;}
+  button.session-tile:hover {background:var(--pt-surface);border-color:var(--pt-line);}
+  button.session-tile.chosen {background:var(--pt-violet-soft);border-color:rgba(112,98,220,.15);}
+  .session-tile-icon {display:grid;place-items:center;flex:none;width:37px;height:37px;border-radius:13px;background:var(--pt-surface);border:1px solid var(--pt-line);color:var(--pt-violet);}
+  .session-tile.chosen .session-tile-icon {background:var(--pt-surface);border-color:transparent;}
+  .session-tile-text {flex:1;min-width:0;display:grid;gap:5px;}
+  .session-tile-text strong {font-size:12px;font-weight:730;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;}
+  .session-tile-text small {font-size:10px;color:var(--pt-secondary);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+  .session-tile :global(.pt-status-dot) {height:6px;width:6px;}
+  .discovered-tile {gap:8px;}
+  .external-icon {color:var(--pt-secondary);background:var(--pt-surface-soft);}
+  .join-btn {min-height:36px;padding:0 11px;background:var(--pt-violet-soft);color:var(--pt-violet);border-radius:10px;font-size:11px;font-weight:790;}
+  .join-btn:hover{background:var(--pt-violet);color:#fff;}
+  .read-only-label {font-size:10px;color:var(--pt-tertiary);font-weight:650;}
+  .empty-list {font-size:12px;line-height:1.6;color:var(--pt-secondary);padding:17px 11px;}
+  .pending-feedback,.error-feedback {padding:12px;margin:8px 6px;border-radius:11px;background:var(--pt-violet-soft);color:var(--pt-violet);font-size:11px;line-height:1.5;}
+  .error-feedback{background:#fff0ec;color:#b34d45;}
+  .sidebar-help {display:flex;align-items:center;gap:10px;border:1px solid var(--pt-line);border-radius:16px;padding:16px 10px;background:var(--pt-surface);margin-top:13px;}
+  .sidebar-help-icon {display:grid;place-items:center;height:31px;width:31px;border-radius:10px;background:var(--pt-violet-soft);color:var(--pt-violet);flex:none;}
+  .sidebar-help p {margin:0;font-size:11px;font-weight:700;line-height:1.6;}.sidebar-help p span{font-weight:500;color:var(--pt-secondary);}
+  .work-main {display:flex;flex:1;min-width:0;min-height:0;flex-direction:column;padding:32px clamp(21px,3.5vw,50px) 24px;overflow:hidden;}
+  .work-header {display:flex;align-items:center;justify-content:space-between;gap:14px;flex:none;margin-bottom:25px;}
+  .work-heading{min-width:0;flex:1;}
+  .crumb-divide{margin:0 9px;color:var(--pt-tertiary);font-size:10px;}
+  .work-title{display:flex;align-items:center;gap:13px;margin-top:7px;min-width:0;}
+  .work-title h1{font-size:clamp(26px,2.8vw,39px);font-weight:730;letter-spacing:-1.6px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;max-width:530px;}
+  .work-heading p{font-size:11px;color:var(--pt-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:9px 0 0;max-width:450px;}
+  .state-indicator{display:inline-flex;align-items:center;gap:8px;background:var(--pt-teal-soft);border-radius:999px;padding:8px 11px;font-size:11px;font-weight:750;color:var(--pt-teal);white-space:nowrap;}
+  .work-head-actions{display:flex;align-items:center;gap:7px;flex:none;}.new-session{white-space:nowrap;}
+  .small-head-button{background:var(--pt-surface)!important;border:1px solid var(--pt-line)!important;box-shadow:var(--pt-shadow-small);}
+  .mobile-current{display:none;}
+  .session-stage{display:flex;flex-direction:column;flex:1;min-height:0;background:var(--pt-surface);border:1px solid var(--pt-line);border-radius:25px;overflow:hidden;box-shadow:var(--pt-shadow);}
+  .stage-toolbar{display:flex;align-items:center;justify-content:space-between;gap:9px;flex:none;padding:9px 12px 9px 17px;border-bottom:1px solid var(--pt-line);min-height:56px;}
+  .stage-tabs{display:flex;align-items:center;gap:4px;min-width:0;flex:1;}
+  .stage-tabs button {display:inline-flex;align-items:center;gap:8px;padding:0 14px;min-height:39px;border-radius:12px;background:transparent;color:var(--pt-secondary);font-size:12px;font-weight:720;white-space:nowrap;}
+  .stage-tabs button.tab-active{background:var(--pt-violet-soft);color:var(--pt-violet);}
+  .stage-tabs button:hover:not(.tab-active){background:var(--pt-surface-soft);}
+  .stage-controls{display:flex;align-items:center;gap:3px;}.stage-machine{display:flex;align-items:center;gap:7px;color:var(--pt-tertiary);font-size:11px;font-weight:700;padding:0 9px;}
+  .action-button{height:37px!important;min-width:37px!important;border-radius:11px!important;}
+  .options-holder{position:relative;}
+  .options-menu{position:absolute;right:0;top:45px;width:228px;border-radius:15px;border:1px solid var(--pt-line-strong);box-shadow:var(--pt-shadow-float);background:var(--pt-surface);padding:8px;z-index:7;animation:menu-appear 175ms var(--pt-ease-out);}
+  .options-menu>div{padding:9px 10px;font-size:10px;color:var(--pt-tertiary);font-weight:750;letter-spacing:.8px;}
+  .options-menu button{display:flex;align-items:center;gap:11px;background:none;width:100%;padding:10px;border-radius:9px;color:var(--pt-secondary);font-size:12px;text-align:left;}
+  .options-menu button:hover{background:var(--pt-surface-soft);color:var(--pt-ink);}
+  @keyframes menu-appear{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .screen-region{display:flex;flex-direction:column;position:relative;min-height:0;flex:1;padding:14px 14px 0;background:var(--pt-surface);}
+  .screen-surface{flex:1;min-height:0;min-width:0;display:flex;border-radius:18px 18px 0 0;overflow:hidden;background:#141624;box-shadow:inset 0 1px 0 #ffffff16;}
+  .offline-ribbon{position:absolute;top:24px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:9px;background:#fee9df;color:#a44732;font-size:11px;font-weight:740;padding:10px 15px;border-radius:12px;white-space:nowrap;box-shadow:0 8px 25px #0003;z-index:2;max-width:95%;}
+  .command-area{flex:none;padding:15px 19px 13px;background:var(--pt-surface);border-top:1px solid var(--pt-line);}
+  .command-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
+  .compose-label{display:flex;align-items:center;gap:9px;color:var(--pt-ink);font-weight:730;font-size:12px;}
+  .compose-glow{height:25px;width:25px;border-radius:8px;display:grid;place-items:center;background:var(--pt-violet-soft);color:var(--pt-violet);}
+  .mode-segment{display:flex;align-items:center;padding:3px;border:1px solid var(--pt-line);background:var(--pt-surface-soft);border-radius:12px;gap:3px;}
+  .mode-segment button{display:flex;align-items:center;gap:6px;background:none;padding:0 11px;min-height:31px;border-radius:9px;color:var(--pt-secondary);font-size:11px;font-weight:720;}
+  .mode-segment button.mode-active{background:var(--pt-surface);color:var(--pt-violet);box-shadow:var(--pt-shadow-small);}
+  .command-box{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 14px;border:1px solid var(--pt-line-strong);background:var(--pt-surface-soft);border-radius:16px;transition:border-color var(--pt-motion-medium) ease,box-shadow var(--pt-motion-medium) ease;}
+  .command-box:focus-within{border-color:var(--pt-violet);box-shadow:0 0 0 3px rgba(98,89,234,.07);}
+  .command-box.needs-review{border-color:var(--pt-amber);}
+  .command-box textarea{border:0;background:transparent;resize:vertical;flex:1;min-height:29px;max-height:120px;color:var(--pt-ink);line-height:1.5;padding:7px 0;font-family:inherit;outline:none;white-space:pre-wrap;font-size:15px;}
+  .command-box textarea::placeholder{color:var(--pt-tertiary);}
+  .command-buttons{display:flex;align-items:center;gap:3px;flex:none;}.paste-command{height:36px!important;min-width:36px!important;}
+  .send-command{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:40px;height:40px;border-radius:12px;color:white;background:#6259ea;font-size:11px;font-weight:760;padding:0 11px;}
+  .send-command:hover:not(:disabled){background:#5047d9;box-shadow:0 5px 15px #6559de33;}
+  .send-command.review{background:#b3773f;}
+  .command-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:9px;}
+  .command-note{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--pt-tertiary);line-height:1.45;}
+  .keys-toggle{display:inline-flex;align-items:center;gap:6px;min-height:35px;padding:0 8px;border-radius:9px;background:transparent;color:var(--pt-secondary);font-size:11px;font-weight:720;}
+  .keys-toggle.keys-active{color:var(--pt-violet);background:var(--pt-violet-soft);}
+  .keys-toggle:hover{background:var(--pt-surface-soft);}
+  .keys-holder{border:1px solid var(--pt-line);border-radius:12px;overflow:hidden;margin-bottom:10px;}
+  .keys-holder :global(.keybar){background:var(--pt-surface-soft);border-top:0;}
+  .keys-holder :global(.keybar button){background:var(--pt-surface);border-color:var(--pt-line-strong);color:var(--pt-secondary);}
+  .keys-holder :global(.keybar button.emphasized){background:var(--pt-violet-soft);color:var(--pt-violet);}
+  .no-session{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border:1px solid var(--pt-line);border-radius:26px;background:var(--pt-surface);box-shadow:var(--pt-shadow-small);overflow:hidden;padding:33px;}
+  .no-session-art{position:relative;display:grid;place-items:center;width:130px;height:130px;margin-bottom:24px;background:radial-gradient(circle,#eeedff,transparent 70%);}
+  .art-orbit{position:absolute;width:118px;height:118px;border-radius:50%;border:1px solid #8f87f180;box-shadow:0 0 0 24px #ddd9ff25;}
+  .art-disc{position:relative;display:grid;place-items:center;width:77px;height:77px;border-radius:23px;background:linear-gradient(145deg,#756ae7,#b5a9ff);color:white;box-shadow:0 15px 38px #756ae744;transform:rotate(-9deg);}
+  .no-session h2{font-size:clamp(29px,3vw,39px);line-height:1.14;letter-spacing:-1.6px;margin:16px 0 12px;font-weight:730;}
+  .no-session p{font-size:13px;line-height:1.7;color:var(--pt-secondary);max-width:375px;}
+  .no-session-actions{display:flex;align-items:center;gap:9px;margin-top:23px;}
+  .no-session-actions :global(.pt-primary){min-height:45px;}
+  .picker-backdrop{position:fixed;inset:0;border:0;background:#15142765;backdrop-filter:blur(5px);z-index:59;animation:picker-dim 250ms ease;}
+  .session-picker{position:fixed;right:0;top:0;bottom:0;width:min(420px,90vw);background:var(--pt-surface);box-shadow:var(--pt-shadow-float);z-index:60;display:flex;flex-direction:column;padding:24px;animation:picker-enter 330ms var(--pt-ease-out);}
+  .picker-handle{display:none;}
+  .picker-header{display:flex;align-items:center;justify-content:space-between;}
+  .picker-header h2{font-size:27px;letter-spacing:-.9px;margin:7px 0 0;}
+  .picker-tools{display:flex;align-items:center;gap:9px;margin:23px 0 25px;}
+  .picker-tools :global(.pt-primary){flex:1;}
+  .picker-list{flex:1;min-height:0;overflow-y:auto;}
+  .picker-list .group-head {margin-top:18px;}
+  .picker-list .session-tile{min-height:62px;}
+  .picker-caption{display:flex;gap:10px;align-items:start;font-size:11px;color:var(--pt-secondary);line-height:1.6;border-top:1px solid var(--pt-line);padding-top:15px;}
+  .picker-caption svg{flex:none;color:var(--pt-violet);}
+  .work-toast{position:fixed;z-index:80;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);left:50%;transform:translateX(-50%);max-width:90vw;min-height:45px;padding:12px 17px;background:var(--pt-ink);color:var(--pt-surface);box-shadow:var(--pt-shadow-float);border-radius:14px;display:grid;place-items:center;font-size:12px;font-weight:750;text-align:center;}
+  @keyframes picker-enter{from{transform:translateX(30px);opacity:.6}to{transform:translateX(0);opacity:1}}
+  @keyframes picker-dim{from{opacity:0}to{opacity:1}}
+  .work-root.focus-mode{position:fixed;inset:0;z-index:90;background:#141624;padding:0;height:100dvh;width:100vw;}
+  .focus-mode .sessions-sidebar,.focus-mode .work-header{display:none;}
+  .focus-mode .work-main{padding:0;}.focus-mode .session-stage{border:0;border-radius:0;box-shadow:none;}
+  .focus-mode .stage-toolbar{background:#1c1d2e;border:0;color:white;}
+  .focus-mode .stage-tabs button:not(.tab-active){color:#c8c8da;}.focus-mode .stage-tabs button.tab-active{background:#38334e;color:#e3d5ff;}
+  .focus-mode .stage-controls{color:#d8d9ee;}
+  .focus-mode .screen-region{padding:0;background:#141624;}
+  .focus-mode .screen-surface{border-radius:0;}
+  .focus-mode .command-area{background:#1e2030;border:0;}
+  .focus-mode .command-heading,.focus-mode .compose-label,.focus-mode .command-note{color:#ebebf5;}
+  .focus-mode .mode-segment{background:#2c2e43;border-color:#46455b;}.focus-mode .mode-segment button{color:#c9cbdb;}.focus-mode .mode-segment button.mode-active{background:#484262;color:#fff;}
+  .focus-mode .command-box{background:#292b41;border-color:#3f4159;}.focus-mode .command-box textarea{color:white;}
+  .focus-mode .keys-toggle{color:#e1dbff;}
+  @media(max-width:1180px){.sessions-sidebar{width:220px}.work-main{padding:28px 23px 20px}.stage-machine{display:none}}
+  @media(max-width:900px){
+    .work-root{min-height:0;}
+    .sessions-sidebar{display:none;}
+    .work-main{padding:18px 13px 14px;}
+    .work-header{margin-bottom:16px;}
+    .work-title h1{font-size:28px;max-width:calc(100vw - 225px);letter-spacing:-1.3px;}
+    .work-heading p{max-width:55vw;}
+    .work-head-actions{gap:5px;}
+    .mobile-current{display:flex;align-items:center;gap:7px;min-height:43px;padding:0 12px;border-radius:13px;background:var(--pt-surface);border:1px solid var(--pt-line);color:var(--pt-ink);font-size:12px;font-weight:760;}
+    .new-session{min-height:43px!important;padding:0 13px!important;}
+    .new-session span{display:none;}
+    .small-head-button{display:none!important;}
+    .session-stage{border-radius:20px;}
+    .stage-toolbar{padding:7px 8px;min-height:49px;}
+    .stage-tabs button{padding:0 12px;gap:6px;font-size:11px;}
+    .stage-controls{gap:0;}
+    .action-button{min-width:34px!important;width:34px!important;height:37px!important;}
+    .screen-region{padding:8px 8px 0;}
+    .screen-surface{border-radius:13px 13px 0 0;}
+    .command-area{padding:11px 12px 12px;}
+    .command-heading{margin-bottom:9px;}
+    .compose-label{font-size:11px;}
+    .mode-segment button{font-size:10px;padding:0 8px;}
+    .command-box{border-radius:14px;}
+    .command-box textarea{font-size:16px;}
+    .command-footer{margin-top:6px;}
+    .command-note{font-size:9px;line-height:1.3;}
+    .keys-toggle{min-height:32px;font-size:10px;}
+    .work-toast{bottom:calc(env(safe-area-inset-bottom,0px) + 16px);}
+    .session-picker{top:auto;left:0;right:0;bottom:0;width:100%;max-height:83dvh;border-radius:28px 28px 0 0;padding:11px 20px calc(20px + env(safe-area-inset-bottom,0px));animation:picker-up 340ms var(--pt-ease-out);}
+    .picker-handle{display:block;width:43px;height:5px;background:var(--pt-line-strong);border-radius:99px;margin:0 auto 15px;}
+    .picker-header h2{font-size:25px;}
+    @keyframes picker-up{from{transform:translateY(35px);opacity:.65}to{transform:translateY(0);opacity:1}}
   }
-  @media(max-width:430px){.status-connection{font-size:0;gap:0}.status-connection span{width:8px;height:8px}.full-toggle{display:none}.dock-footer{font-size:8px}.shell-capability{font-size:7px}.compose-row textarea{font-size:14px}}
-  @media(prefers-reduced-motion:reduce){button{transition:none}}
+  @media(max-width:450px){
+    .work-main{padding:14px 9px 10px;}
+    .work-header{margin-bottom:12px;}
+    .work-title h1{font-size:24px;max-width:190px;}
+    .work-heading p{max-width:190px;font-size:10px;}
+    .state-indicator{font-size:10px;padding:6px 8px;}
+    .mobile-current span{display:none;}
+    .mobile-current{width:44px;min-width:44px;justify-content:center;padding:0;}
+    .mobile-current :global(svg:last-child){display:none;}
+    .stage-toolbar{padding:6px;}
+    .stage-tabs button{padding:0 9px;font-size:10px;}
+    .action-button{min-width:32px!important;width:32px!important;}
+    .stage-controls button:nth-child(1){display:none;}
+    .compose-label{font-size:10px;gap:5px;}
+    .compose-glow{height:24px;width:24px;}
+    .mode-segment button{padding:0 7px;}
+    .command-area{padding:10px 10px 8px;}
+    .command-note{max-width:230px;line-height:1.25;}
+    .keys-toggle span{display:none;}
+  }
+  @media(prefers-reduced-motion:reduce){.session-picker,.picker-backdrop,.options-menu{animation:none;}}
 </style>
