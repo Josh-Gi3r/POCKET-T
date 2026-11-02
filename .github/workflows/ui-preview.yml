@@ -36,7 +36,7 @@ jobs:
       - name: Install isolated screenshot dependencies
         run: |
           npm install --prefix /tmp/pt-visual --no-audit --no-fund playwright@1.55.0 ws@8.21.0
-          node /tmp/pt-visual/node_modules/playwright/cli.js install --with-deps chromium
+          node /tmp/pt-visual/node_modules/playwright/cli.js install chromium
 
       - name: Capture iPhone and desktop screenshots from actual UI
         env:
