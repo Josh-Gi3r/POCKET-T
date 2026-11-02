@@ -6,9 +6,10 @@
     sessionId: string;
     fontSize?: number;
     interactive?: boolean;
+    onMultilinePaste?: (text: string) => void;
   }
 
-  let { sessionId, fontSize = 14, interactive = true }: Props = $props();
+  let { sessionId, fontSize = 14, interactive = true, onMultilinePaste }: Props = $props();
   let host: HTMLDivElement;
   let term: import('@xterm/xterm').Terminal | null = null;
   let fit: import('@xterm/addon-fit').FitAddon | null = null;
@@ -59,6 +60,18 @@
   }
 
   onMount(() => {
+    // xterm forwards normal single-line paste directly to the PTY. A
+    // multiline clipboard paste could inadvertently execute many commands;
+    // intercept it before xterm and stage it in Pocket-T's review composer.
+    const reviewPaste = (event: ClipboardEvent) => {
+      const text = event.clipboardData?.getData('text/plain') ?? '';
+      if (onMultilinePaste && /[\r\n]/.test(text)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        onMultilinePaste(text);
+      }
+    };
+    host.addEventListener('paste', reviewPaste, true);
     let dataSubscription: { dispose(): void } | null = null;
     let focusSubscription: { dispose(): void } | null = null;
 
@@ -137,6 +150,7 @@
 
     return () => {
       disposed = true;
+      host.removeEventListener('paste', reviewPaste, true);
       setTermSink(null);
       dataSubscription?.dispose();
       focusSubscription?.dispose();
