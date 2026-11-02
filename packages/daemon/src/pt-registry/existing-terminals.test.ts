@@ -34,7 +34,14 @@ describe('existing-terminal inventory', () => {
     const panes = parseExistingTmux(raw);
     expect(panes.map((s) => s.sessionId)).toEqual(['existing:tmux:%0', 'existing:tmux:%1']);
     expect(panes[0]?.cwd).toBe('/Users/me/app');
-    expect(panes[1]?.capabilities).toEqual(['discover']);
+    expect(panes[0]?.tmuxSession).toBe('work');
+    expect(panes[1]?.tmuxSession).toBe('dev');
+    expect(panes[1]?.capabilities).toEqual(['discover', 'join']);
+  });
+
+  it('never labels malformed tmux targets joinable', () => {
+    const raw = '%3\tbad\\nname\twindow\t/tmp\n%4\t\tno-session\t/tmp\n';
+    expect(parseExistingTmux(raw)).toEqual([]);
   });
 
   it('handles missing or malformed app metadata without raising', () => {
