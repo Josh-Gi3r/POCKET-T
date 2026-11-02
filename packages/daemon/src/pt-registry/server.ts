@@ -1463,7 +1463,7 @@ function handleIncomingFrame(client: BrowserClient, frame: { type: WsV3MessageTy
               ...process.env,
               POCKET_T_HEADLESS: '1',
               POCKET_T_SESSION_ID: joinedSessionId,
-              POCKET_T_TMUX_ATTACH_TARGET: target.tmuxSession,
+              POCKET_T_TMUX_ATTACH_TARGET: target.tmuxTarget ?? target.tmuxSession,
             },
             stdio: 'ignore',
             detached: true,
