@@ -4,7 +4,7 @@
   import KeyboardRow from './KeyboardRow.svelte';
   import BubbleView from './BubbleView.svelte';
   import {
-    status, sessions, current, existingTerminals, joinState,
+    status, sessions, current, existingTerminals, joinState, spawnState,
     conn, attach, spawnSession, discoverExistingTerminals, joinExistingTmux,
   } from '../lib/store';
   import type { ExistingTerminal, SessionInfo } from '../lib/types';
@@ -76,9 +76,10 @@
       signal('Your Mac is offline.');
       return;
     }
+    if ($spawnState.status === 'starting') return;
     spawnSession();
     showSessions = false;
-    signal('Opening a new terminal on your Mac…');
+    signal('Starting a real shell on your Mac…');
   }
 
   function discover(): void {
@@ -221,6 +222,8 @@
       {#if discoverStarted && !discovered.length}
         <div class="list-empty">No other terminals discovered, or macOS denied discovery permissions.</div>
       {/if}
+      {#if $spawnState.status === 'starting'}<div class="join-feedback">Starting your new shell…</div>{/if}
+      {#if $spawnState.status === 'error'}<div class="join-error">{$spawnState.message}</div>{/if}
       {#if $joinState.status === 'joining'}<div class="join-feedback">Joining the existing tmux session…</div>{/if}
       {#if $joinState.status === 'error'}<div class="join-error">{$joinState.message}</div>{/if}
     </div>
@@ -326,7 +329,8 @@
         <span class="eyebrow">YOUR TERMINAL, ANYWHERE</span>
         <h2>Pick up exactly<br/>where you left off.</h2>
         <p>Open a real shell or join an existing tmux session. No AI, no token limits, no simulated terminal.</p>
-        <button class="new-primary" onclick={newSession} disabled={!online}>＋ New terminal</button>
+        <button class="new-primary" onclick={newSession} disabled={!online || $spawnState.status === 'starting'}>＋ {$spawnState.status === 'starting' ? 'Starting…' : 'New terminal'}</button>
+        {#if $spawnState.status === 'error'}<div class="join-error">{$spawnState.message}</div>{/if}
         <button class="secondary-discover" onclick={() => { showSessions = true; discover(); }} disabled={!online}>Discover existing sessions →</button>
       </div>
     {/if}
@@ -357,7 +361,9 @@
             {/if}
           </div>
         {/each}
-        {#if $joinState.status === 'joining'}<div class="join-feedback">Attaching to existing tmux…</div>{/if}
+        {#if $spawnState.status === 'starting'}<div class="join-feedback">Starting a real terminal…</div>{/if}
+      {#if $spawnState.status === 'error'}<div class="join-error">{$spawnState.message}</div>{/if}
+      {#if $joinState.status === 'joining'}<div class="join-feedback">Attaching to existing tmux…</div>{/if}
         {#if $joinState.status === 'error'}<div class="join-error">{$joinState.message}</div>{/if}
       </div>
     </div>
