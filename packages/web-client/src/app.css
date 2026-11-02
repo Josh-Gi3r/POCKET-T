@@ -1,57 +1,64 @@
 :root {
-  --bg: #0b0f14;
-  --bg-elev: #121822;
-  --bg-card: #161d28;
-  --border: #232c3a;
-  --text: #e6edf3;
-  --text-dim: #8b98a9;
-  --accent: #3fe08f;
-  --accent-dim: #1f7a4d;
-  --user: #2b3b52;
-  --thought: #2a2140;
-  --action: #1c2b3a;
-  --result: #14231b;
-  --approval: #3a2a12;
-  --error: #3a1720;
-  --danger: #ff6b6b;
+  /* Pocket Studio — semantic tokens, not a terminal skin. */
+  --bg: #f8f8fc;
+  --bg-elev: #ffffff;
+  --bg-card: #f4f1fd;
+  --border: #e6e3f0;
+  --text: #292742;
+  --text-dim: #858399;
+  --accent: #7862df;
+  --accent-dim: #eee9ff;
+  --user: #ebe6ff;
+  --thought: #f3effc;
+  --action: #ecefff;
+  --result: #e9f7f3;
+  --approval: #fff4e9;
+  --error: #ffebed;
+  --danger: #cf6278;
+  --radius-card: 20px;
+  --radius-control: 12px;
+  --motion-fast: 145ms;
+  --motion-normal: 260ms;
+  --motion-ease: cubic-bezier(.22,1,.36,1);
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
 
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   color: var(--text);
   background: var(--bg);
+  color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-* {
+*, *::before, *::after {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
 }
 
-html,
-body {
+html, body {
   margin: 0;
   padding: 0;
   height: 100%;
   overscroll-behavior: none;
 }
 
-#app {
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
+#app { height: 100dvh; display:flex; flex-direction:column; min-height:0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 3px solid #9b88e9;
+  outline-offset: 2px;
 }
-
-button {
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-code,
-.mono {
-  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+button:disabled { cursor:not-allowed; }
+code, .mono { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
