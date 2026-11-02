@@ -57,7 +57,7 @@ export function parseExistingTmux(text: string): ExistingTerminal[] {
     seen.add(pane);
     // An existing pane belongs to a tmux session. Joining attaches another
     // real tmux CLIENT to that session, not a new shell and not a screenshot.
-    if (!session || session.length > 128 || /[\x00-\x1f]/.test(session)) continue;
+    if (!session || session.length > 128 || /[\x00-\x1f\\]/.test(session)) continue;
     result.push({
       sessionId: 'existing:tmux:' + pane, source: 'tmux', pane,
       title: (nameOf(session) || 'tmux') + ' / ' + (nameOf(window) || pane),
