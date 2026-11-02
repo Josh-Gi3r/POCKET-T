@@ -546,7 +546,7 @@
   .sheet-backdrop{background:#15112e9c;backdrop-filter:blur(5px)}
   @media(max-width:900px){
     .stage-header{background:#faf9ff;padding:6px 13px;min-height:53px;height:53px}
-    .mobile-sessions{color:#39324f;max-width:57vw}
+    .mobile-sessions{color:#39324f;max-width:57vw;min-height:44px}
     .session-lines{color:#816bd6}.dropdown-indicator{color:#8b79c8}
     .status-connection{color:#9f92b8}.icon-action{min-width:39px;height:39px;padding:0 8px;color:#7669ac}
     .terminal-tabs{background:#faf9ff;padding:0 6px}.terminal-tabs button{font-size:11px}
