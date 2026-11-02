@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { fade } from 'svelte/transition';
   import WorkspaceHome from './components/WorkspaceHome.svelte';
   import TerminalWorkspace from './components/TerminalWorkspace.svelte';
   import FilesWorkspace from './components/FilesWorkspace.svelte';
@@ -30,6 +31,7 @@
   let commandOpen = $state(false);
   let commandQuery = $state('');
   let paletteInput = $state<HTMLInputElement | undefined>(undefined);
+  let highlightedIndex = $state(0);
   let keyboardInset = $state(0);
   let navOpen = $state(false);
   $effect(() => {
@@ -61,6 +63,18 @@
     spawnSession();
     move('terminals');
   }
+  function paletteKeys(event: KeyboardEvent) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      highlightedIndex = Math.min(shownActions.length - 1, highlightedIndex + 1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      highlightedIndex = Math.max(0, highlightedIndex - 1);
+    } else if (event.key === 'Enter' && shownActions[highlightedIndex]) {
+      event.preventDefault();
+      perform(shownActions[highlightedIndex].id);
+    }
+  }
   function perform(action: string) {
     if (action === 'continue') {
       if (selected) openSession(selected.sessionId); else move('terminals');
@@ -78,7 +92,10 @@
     update();
 
     const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      // Ctrl-K is a REAL terminal command (kill line) and must remain
+      // available in the live PTY. Only intercept Command-K globally,
+      // or Ctrl-K outside a terminal session.
+      if ((event.metaKey || (event.ctrlKey && section !== 'terminals')) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         commandOpen = !commandOpen;
       } else if (event.key === 'Escape') {
@@ -155,6 +172,8 @@
     </header>
 
     <div class="content" class:dark-content={section === 'terminals'}>
+      {#key section}
+      <div class="scene" in:fade={{ duration: 185 }}>
       {#if section === 'home'}
         <WorkspaceHome
           onOpenSession={openSession}
@@ -195,6 +214,8 @@
           <p class="boundary"><Icon name="lock" size={16}/> Screen control and credential filling are not active in this build. They're separate Mac capabilities requiring permission.</p>
         </section>
       {/if}
+      </div>
+      {/key}
     </div>
 
     {#if section !== 'terminals'}
@@ -211,11 +232,11 @@
   {#if commandOpen}
     <div class="palette-scrim" role="presentation" onclick={() => (commandOpen = false)}></div>
     <div class="palette" role="dialog" aria-modal="true" aria-label="Pocket-T quick actions">
-      <div class="palette-head"><Icon name="search" size={23}/><input bind:this={paletteInput} type="search" placeholder="Where do you want to go?" bind:value={commandQuery} aria-label="Search actions"/><button onclick={() => (commandOpen = false)} aria-label="Close quick actions"><Icon name="close" size={18}/></button></div>
+      <div class="palette-head"><Icon name="search" size={23}/><input bind:this={paletteInput} type="search" placeholder="Where do you want to go?" bind:value={commandQuery} onkeydown={paletteKeys} oninput={() => highlightedIndex = 0} aria-label="Search actions"/><button onclick={() => (commandOpen = false)} aria-label="Close quick actions"><Icon name="close" size={18}/></button></div>
       <div class="palette-group">QUICK ACTIONS</div>
       <div class="palette-items">
-        {#each shownActions as action (action.id)}
-          <button onclick={() => perform(action.id)} disabled={action.id === 'new' && !connected}>
+        {#each shownActions as action,i (action.id)}
+          <button class:highlighted={highlightedIndex === i} onmouseenter={() => (highlightedIndex = i)} onclick={() => perform(action.id)} disabled={action.id === 'new' && !connected}>
             <span class="palette-icon"><Icon name={action.icon} size={19}/></span>
             <span><strong>{action.label}</strong><small>{action.detail}</small></span>
             <Icon name="chevron" size={17}/>
@@ -259,7 +280,8 @@
   .command-button:hover{box-shadow:0 6px 17px #5a558e18}.command-button kbd{border:1px solid #ebebf2;border-radius:5px;padding:3px 4px;font-size:9px;color:#a9a5b6}
   .avatar{display:grid;place-items:center;width:39px;height:39px;background:#eae6ff;color:#7662d5;border-radius:12px;border:0}
   .content{flex:1;min-height:0;display:flex;overflow:hidden;background:radial-gradient(ellipse at 95% 0%,#ececff75,transparent 43%),#f8f8fc;animation:pageEnter .3s cubic-bezier(.22,1,.36,1)}
-  .content.dark-content{background:#11172b}
+  .content.dark-content{background:#f8f8fc}
+  .scene{display:flex;min-width:0;min-height:0;flex:1;width:100%;overflow:hidden}
   .mobile-menu{display:none}.nav-backdrop{display:none}
   .machine-page{flex:1;overflow-y:auto;width:100%;max-width:1150px;margin:auto;padding:48px clamp(22px,5vw,70px)}
   .machine-page>.eyebrow{color:#897ab5;font-size:10px;letter-spacing:1.8px;font-weight:800}
@@ -282,7 +304,7 @@
   .palette-group{font-size:9px;color:#a6a2b7;letter-spacing:1.6px;font-weight:850;padding:18px 21px 8px}
   .palette-items{padding:0 10px 10px;max-height:55vh;overflow-y:auto}
   .palette-items button{display:flex;align-items:center;gap:13px;text-align:left;width:100%;border:0;background:none;border-radius:13px;padding:10px;color:#403e60;transition:background .18s,transform .18s}
-  .palette-items button:hover{background:#f3f0ff;transform:translateX(3px)}
+  .palette-items button:hover,.palette-items button.highlighted{background:#f3f0ff;transform:translateX(3px)}
   .palette-icon{width:42px;height:42px;border-radius:12px;background:#eeebff;color:#7c6ce1;display:grid;place-items:center;flex:none}
   .palette-items button>span:nth-child(2){flex:1;display:grid;gap:4px}.palette-items strong{font-size:13px}.palette-items small{font-size:10px;color:#9693ad}
   .palette-none{color:#9896a7;font-size:13px;padding:20px}.palette-foot{background:#f7f6fb;border-top:1px solid #eceaf3;color:#9b9aaf;display:flex;align-items:center;gap:8px;font-size:10px;padding:13px 20px}
