@@ -305,7 +305,7 @@
   .computer-copy h2{font-size:26px;margin:0}.computer-copy p{font-size:13px;line-height:1.85;color:var(--pt-secondary);margin:0}
   .computer-copy button{display:flex;align-items:center;gap:11px;border:0;border-radius:11px;background:var(--pt-accent);color:#fff;font-size:12px;font-weight:740;padding:12px 15px;margin-top:7px}
   .computer-note{display:flex;gap:12px;align-items:start;padding:20px;margin-top:19px;border:1px solid var(--pt-line);border-radius:16px;background:var(--pt-glass);color:var(--pt-secondary);font-size:12px;line-height:1.7}
-  .computer-note svg{flex:none;color:var(--pt-accent)}
+  .computer-note :global(svg){flex:none;color:var(--pt-accent)}
   .notice{z-index:350;position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#27284f;color:#fff;padding:13px 18px;border-radius:13px;box-shadow:0 18px 48px #12143633;font-size:12px;font-weight:700;max-width:90vw;text-align:center}
   :global(::view-transition-old(root)),:global(::view-transition-new(root)){animation-duration:.27s;animation-timing-function:cubic-bezier(.16,1,.3,1)}
   @media(max-width:900px){
