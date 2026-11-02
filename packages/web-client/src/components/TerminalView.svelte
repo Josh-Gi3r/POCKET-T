@@ -16,6 +16,7 @@
   let ro: ResizeObserver | null = null;
   let disposed = false;
   let loading = $state(true);
+  let error = $state('');
 
   function fitToScreen(): void {
     if (!term || !fit) return;
@@ -73,7 +74,6 @@
     };
     host.addEventListener('paste', reviewPaste, true);
     let dataSubscription: { dispose(): void } | null = null;
-    let focusSubscription: { dispose(): void } | null = null;
 
     const init = async () => {
       const [{ Terminal }, { FitAddon }] = await Promise.all([
@@ -143,17 +143,18 @@
       fitToScreen();
       ro = new ResizeObserver(() => fitToScreen());
       ro.observe(host);
-      focusSubscription = term.onResize(() => fitToScreen());
     };
 
-    void init().catch(() => { loading = false; });
+    void init().catch(() => {
+      loading = false;
+      error = 'Terminal renderer could not load. Please refresh the workspace.';
+    });
 
     return () => {
       disposed = true;
       host.removeEventListener('paste', reviewPaste, true);
       setTermSink(null);
       dataSubscription?.dispose();
-      focusSubscription?.dispose();
       ro?.disconnect();
       term?.dispose();
       term = null;
@@ -164,6 +165,7 @@
 
 <div class="terminal-wrap" class:readonly={!interactive}>
   {#if loading}<div class="loading">Connecting to live terminal…</div>{/if}
+  {#if error}<div class="loading error" role="alert">{error}</div>{/if}
   <div class="terminal-host" bind:this={host} aria-label="Interactive remote terminal for {sessionId}"></div>
 </div>
 
@@ -172,6 +174,7 @@
   .terminal-host{position:absolute;inset:0;padding:14px 14px 8px;width:100%;height:100%;overflow:hidden}
   .loading{position:absolute;inset:0;z-index:1;background:#0b1019;display:grid;place-items:center;color:#93aeb6;font-size:12px}
   .readonly{opacity:.84}
+  .error{color:#f5b0b4;padding:20px;text-align:center}
   :global(.xterm){height:100%;outline:none}
   :global(.xterm-viewport){-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#344b53 transparent}
   :global(.xterm-screen){margin:0}
