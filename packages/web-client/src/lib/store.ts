@@ -9,6 +9,19 @@ export const current = writable<string | null>(null);
 export const bubbles = writable<Record<string, BubbleEvent[]>>({});
 export const cost = writable<Record<string, CostState>>({});
 export const existingTerminals = writable<ExistingTerminal[]>([]);
+export const joinState = writable<{
+  status: 'idle' | 'joining' | 'ready' | 'error';
+  requestId: string;
+  joinedSessionId: string | null;
+  message: string;
+}>({ status: 'idle', requestId: '', joinedSessionId: null, message: '' });
+export const spawnState = writable<{
+  status: 'idle' | 'starting' | 'ready' | 'error';
+  requestId: string;
+  sessionId: string | null;
+  message: string;
+}>({ status: 'idle', requestId: '', sessionId: null, message: '' });
+
 export const fileRoots = writable<FileRoot[]>([]);
 export const fileState = writable<FileState>({ requestId: '', loading: false, listing: null, error: null });
 export const approvedApps = writable<ApprovedApp[]>([]);
@@ -20,10 +33,8 @@ function nextRequestId(): string {
 }
 
 
-// Terminal sink — the lazy-loaded TerminalView registers write/snapshot/reset
-// callbacks here so raw STDOUT/SNAPSHOT_VT frames reach xterm only when the
-// terminal tab is actually mounted. Until then, stdout is simply dropped
-// (bubbles are the primary view; the terminal replays via snapshot on attach).
+// Only the currently selected live xterm receives PTY frames. A newly
+// mounted terminal requests the current VT snapshot to restore real state.
 interface TermSink {
   write(bytes: Uint8Array): void;
   snapshot(text: string): void;
@@ -34,6 +45,11 @@ export function setTermSink(sink: TermSink | null): void {
 }
 
 const sessionMap = new Map<string, SessionInfo>();
+// Capture the previous selection ONCE. Attaching the first catalog entry
+// updates localStorage, but should not erase the desired restored session
+// before its later sessionAdded frame arrives.
+const preferredSessionId = readSaved();
+let restoredSaved = false;
 
 function refreshSessionList(): void {
   sessions.set([...sessionMap.values()].sort((a, b) => b.lastActiveAt - a.lastActiveAt));
@@ -53,7 +69,17 @@ function clearBubbles(sessionId: string): void {
 }
 
 export const conn = new PTConnection({
-  onStatus: (s) => status.set(s),
+  onStatus: (s) => {
+    status.set(s);
+    if (s !== 'open') {
+      joinState.update((state) => state.status === 'joining'
+        ? { ...state, status: 'error', message: 'Connection lost before the join completed' }
+        : state);
+      spawnState.update((state) => state.status === 'starting'
+        ? { ...state, status: 'error', message: 'Connection lost before the new shell registered' }
+        : state);
+    }
+  },
   onStdout: (sessionId, bytes) => {
     if (sessionId === get(current)) termSink?.write(bytes);
   },
@@ -74,12 +100,32 @@ function handleEvent(frameSessionId: string, env: EventEnvelope): void {
     case 'sessionUpdated': {
       sessionMap.set(env.session.sessionId, env.session);
       refreshSessionList();
-      // Auto-attach the first session we learn about so a fresh load lands
-      // somewhere useful. Prefer a previously-open session across reloads.
-      if (get(current) === null) {
-        const saved = readSaved();
-        if (saved && env.session.sessionId === saved) attach(saved);
-        else if (!saved) attach(env.session.sessionId);
+      // Join is complete only after a real pt-shim REGISTER, not merely
+      // because macOS accepted a spawn request.
+      const joining = get(joinState);
+      if (joining.status === 'joining' && joining.joinedSessionId === env.session.sessionId) {
+        attach(env.session.sessionId);
+        joinState.set({ ...joining, status: 'ready', message: 'Joined existing tmux session' });
+        break;
+      }
+      const starting = get(spawnState);
+      if (starting.status === 'starting' && starting.sessionId === env.session.sessionId) {
+        attach(env.session.sessionId);
+        spawnState.set({ ...starting, status: 'ready', message: 'Terminal ready' });
+        break;
+      }
+      // Prefer restoring the previous selection, but don't leave the UI
+      // permanently blank when that old session no longer exists.
+      if (!get(current)) {
+        attach(env.session.sessionId);
+        if (env.session.sessionId === preferredSessionId) restoredSaved = true;
+      } else if (
+        preferredSessionId && !restoredSaved &&
+        env.session.sessionId === preferredSessionId &&
+        get(current) !== preferredSessionId
+      ) {
+        restoredSaved = true;
+        attach(preferredSessionId);
       }
       break;
     }
@@ -98,6 +144,35 @@ function handleEvent(frameSessionId: string, env: EventEnvelope): void {
     }
     case 'existingTerminals': {
       existingTerminals.set(env.sessions);
+      break;
+    }
+    case 'spawnSessionResult': {
+      const pending = get(spawnState);
+      if (pending.status !== 'starting' || pending.requestId !== env.requestId) break;
+      if (!env.ok || !env.sessionId) {
+        spawnState.set({ ...pending, status: 'error', message: env.message ?? 'Unable to open shell' });
+        break;
+      }
+      const next = { ...pending, sessionId: env.sessionId };
+      if (sessionMap.has(env.sessionId)) {
+        attach(env.sessionId);
+        spawnState.set({ ...next, status: 'ready', message: 'Terminal ready' });
+      } else spawnState.set(next);
+      break;
+    }
+    case 'joinExistingTmuxResult': {
+      const pending = get(joinState);
+      if (pending.requestId !== env.requestId || pending.status !== 'joining') break;
+      if (!env.ok || !env.joinedSessionId) {
+        joinState.set({ ...pending, status: 'error', message: env.message ?? 'Unable to join tmux' });
+        break;
+      }
+      const next = { ...pending, joinedSessionId: env.joinedSessionId };
+      // Registration can arrive before the spawn acknowledgement.
+      if (sessionMap.has(env.joinedSessionId)) {
+        attach(env.joinedSessionId);
+        joinState.set({ ...next, status: 'ready', message: 'Joined existing tmux session' });
+      } else joinState.set(next);
       break;
     }
     case 'fileRoots': {
@@ -195,8 +270,30 @@ export function discoverExistingTerminals(): void {
   conn.sendJsonEvent('', { kind: 'discoverExistingTerminals' });
 }
 
+/** Join a real, pre-existing tmux session; do not create a new shell. */
+export function joinExistingTmux(existingSessionId: string): void {
+  if (get(status) !== 'open' || get(joinState).status === 'joining') return;
+  const requestId = nextRequestId();
+  joinState.set({ status: 'joining', requestId, joinedSessionId: null, message: '' });
+  conn.sendJsonEvent('', { kind: 'joinExistingTmux', sessionId: existingSessionId, requestId });
+  // A spawned process can fail before it registers. No fake success state.
+  setTimeout(() => {
+    joinState.update((state) => state.requestId === requestId && state.status === 'joining'
+      ? { ...state, status: 'error', message: 'The tmux client did not register. Check the Mac daemon and pt installation.' }
+      : state);
+  }, 15_000);
+}
+
 export function spawnSession(cwd?: string): void {
-  conn.spawnSession(cwd);
+  if (get(status) !== 'open' || get(spawnState).status === 'starting') return;
+  const requestId = nextRequestId();
+  spawnState.set({ status: 'starting', requestId, sessionId: null, message: '' });
+  conn.spawnSession(cwd, requestId);
+  setTimeout(() => {
+    spawnState.update((state) => state.requestId === requestId && state.status === 'starting'
+      ? { ...state, status: 'error', message: 'Native terminal did not register; check the Mac helper and daemon.' }
+      : state);
+  }, 15_000);
 }
 
 export function killSession(sessionId: string): void {

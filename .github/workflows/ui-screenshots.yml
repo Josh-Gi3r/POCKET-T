@@ -1,0 +1,49 @@
+name: Actual Pocket-T UI Screenshots
+on:
+  push:
+    branches:
+      - feat/terminal-first-join-mobile
+    paths:
+      - 'scripts/screenshots/**'
+      - '.github/workflows/ui-screenshots.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build real Pocket-T app
+        run: pnpm --filter @pocket-t/web-client build
+      - name: Install isolated screenshot browser
+        run: |
+          npm install --prefix /tmp/pocket-t-preview-playwright --no-audit --no-fund playwright@1.56.1
+          /tmp/pocket-t-preview-playwright/node_modules/.bin/playwright install --with-deps chromium
+      - name: Capture sample-state mobile and desktop UI
+        run: |
+          node scripts/screenshots/preview-server.mjs > /tmp/pocket-t-preview-server.log 2>&1 &
+          sleep 3
+          node scripts/screenshots/capture.mjs
+      - name: Upload screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pocket-t-real-ui-screenshots
+          path: screenshots/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Print fixture logs on failure
+        if: failure()
+        run: cat /tmp/pocket-t-preview-server.log || true

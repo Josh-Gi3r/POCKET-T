@@ -1,88 +1,182 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { setTermSink, requestResync, conn } from '../lib/store';
 
-  let { sessionId }: { sessionId: string } = $props();
+  interface Props {
+    sessionId: string;
+    fontSize?: number;
+    interactive?: boolean;
+    onMultilinePaste?: (text: string) => void;
+  }
 
-  let host = $state<HTMLDivElement | null>(null);
-  // Loaded dynamically so @xterm/xterm is code-split out of the main bundle
-  // and only fetched when this secondary tab is opened.
+  let { sessionId, fontSize = 14, interactive = true, onMultilinePaste }: Props = $props();
+  let host: HTMLDivElement;
   let term: import('@xterm/xterm').Terminal | null = null;
   let fit: import('@xterm/addon-fit').FitAddon | null = null;
   let ro: ResizeObserver | null = null;
-  const dec = new TextDecoder();
+  let disposed = false;
+  let loading = $state(true);
+  let error = $state('');
 
-  function doFit() {
-    if (!fit || !term) return;
+  function fitToScreen(): void {
+    if (!term || !fit) return;
     try {
+      if (!host || host.clientWidth < 30 || host.clientHeight < 30) return;
       fit.fit();
-      conn.sendResize(term.cols, term.rows);
+      // The live PTY is shared by other clients. Only resize when a real
+      // user is controlling this session, never during a hidden mount.
+      if (interactive && term.cols >= 4 && term.rows >= 2) {
+        conn.sendResize(term.cols, term.rows);
+      }
+    } catch { /* temporarily hidden or sizing between viewport changes */ }
+  }
+
+  $effect(() => {
+    const size = Math.min(22, Math.max(11, fontSize));
+    if (term) {
+      term.options.fontSize = size;
+      requestAnimationFrame(fitToScreen);
+    }
+  });
+
+  export function focusTerminal(): void {
+    term?.focus();
+  }
+
+  export async function copySelection(): Promise<boolean> {
+    const selected = term?.getSelection() ?? '';
+    if (!selected) return false;
+    try {
+      await navigator.clipboard.writeText(selected);
+      return true;
     } catch {
-      /* container briefly 0-sized during transitions */
+      return false;
     }
   }
 
-  onMount(async () => {
-    const [{ Terminal }, { FitAddon }] = await Promise.all([
-      import('@xterm/xterm'),
-      import('@xterm/addon-fit'),
-      import('@xterm/xterm/css/xterm.css'),
-    ]);
-    term = new Terminal({
-      cursorBlink: true,
-      fontSize: 13,
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-      theme: { background: '#0b0f14', foreground: '#e6edf3', cursor: '#3fe08f' },
-      scrollback: 4000,
-      convertEol: false,
+  export function clearLocalScreen(): void {
+    // This only clears the browser's visual buffer — it does NOT send a
+    // command to the remote shell or erase any remote session history.
+    term?.clear();
+  }
+
+  onMount(() => {
+    // xterm forwards normal single-line paste directly to the PTY. A
+    // multiline clipboard paste could inadvertently execute many commands;
+    // intercept it before xterm and stage it in Pocket-T's review composer.
+    const reviewPaste = (event: ClipboardEvent) => {
+      const text = event.clipboardData?.getData('text/plain') ?? '';
+      if (onMultilinePaste && /[\r\n]/.test(text)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        onMultilinePaste(text);
+      }
+    };
+    host.addEventListener('paste', reviewPaste, true);
+    let dataSubscription: { dispose(): void } | null = null;
+
+    const init = async () => {
+      const [{ Terminal }, { FitAddon }] = await Promise.all([
+        import('@xterm/xterm'),
+        import('@xterm/addon-fit'),
+        import('@xterm/xterm/css/xterm.css'),
+      ]);
+      if (disposed) return;
+      term = new Terminal({
+        cursorBlink: true,
+        fontSize,
+        fontFamily: "'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace",
+        letterSpacing: 0,
+        lineHeight: 1.2,
+        scrollback: 10000,
+        allowTransparency: false,
+        cursorStyle: 'bar',
+        convertEol: false,
+        theme: {
+          background: '#0b1019',
+          foreground: '#dfe9ef',
+          cursor: '#9ef1d3',
+          selectionBackground: '#38695d',
+          black: '#172130',
+          red: '#f28d92',
+          green: '#a0e6bb',
+          yellow: '#f6ce86',
+          blue: '#92baff',
+          magenta: '#d6b3ef',
+          cyan: '#87e9e9',
+          white: '#e6eef3',
+          brightBlack: '#7c95a2',
+          brightRed: '#ffa8ab',
+          brightGreen: '#c4f6d8',
+          brightYellow: '#f6e4ad',
+          brightBlue: '#b6d3ff',
+          brightMagenta: '#ecc9f5',
+          brightCyan: '#bbfaf4',
+          brightWhite: '#ffffff',
+        },
+      });
+      fit = new FitAddon();
+      term.loadAddon(fit);
+      term.open(host);
+
+      // Real PTY input, not an AI prompt. When disconnected or detached,
+      // the caller refuses input rather than saving surprise commands.
+      dataSubscription = term.onData((data) => {
+        if (interactive) conn.sendInput(data);
+      });
+
+      // Uint8Array is passed directly to xterm; it owns UTF-8 and ANSI
+      // streaming boundaries. A non-streaming TextDecoder would corrupt
+      // split multibyte terminal output.
+      setTermSink({
+        write: (bytes) => term?.write(bytes),
+        snapshot: (text) => {
+          term?.reset();
+          term?.write(text);
+        },
+      });
+      loading = false;
+
+      // The initial attach may predate the lazy xterm module load. Ask
+      // the daemon to replay its actual VT state for this live session.
+      requestResync();
+      fitToScreen();
+      ro = new ResizeObserver(() => fitToScreen());
+      ro.observe(host);
+    };
+
+    void init().catch(() => {
+      loading = false;
+      error = 'Terminal renderer could not load. Please refresh the workspace.';
     });
-    fit = new FitAddon();
-    term.loadAddon(fit);
-    if (host) term.open(host);
-    doFit();
 
-    // Typed keystrokes → PTY.
-    term.onData((d) => conn.sendInput(d));
-
-    // Register as the live sink for STDOUT / SNAPSHOT_VT of the current session.
-    setTermSink({
-      write: (bytes: Uint8Array) => term?.write(dec.decode(bytes)),
-      snapshot: (text: string) => {
-        term?.reset();
-        term?.write(text);
-      },
-    });
-
-    // We mounted after the attach-time snapshot was already sent (and
-    // dropped, since no sink existed). Ask the daemon to resend it.
-    requestResync();
-
-    ro = new ResizeObserver(() => doFit());
-    if (host) ro.observe(host);
-  });
-
-  onDestroy(() => {
-    setTermSink(null);
-    ro?.disconnect();
-    term?.dispose();
-    term = null;
+    return () => {
+      disposed = true;
+      host.removeEventListener('paste', reviewPaste, true);
+      setTermSink(null);
+      dataSubscription?.dispose();
+      ro?.disconnect();
+      term?.dispose();
+      term = null;
+      fit = null;
+    };
   });
 </script>
 
-<div class="term-host" bind:this={host}></div>
+<div class="terminal-wrap" class:readonly={!interactive}>
+  {#if loading}<div class="loading">Connecting to live terminal…</div>{/if}
+  {#if error}<div class="loading error" role="alert">{error}</div>{/if}
+  <div class="terminal-host" bind:this={host} aria-label="Interactive remote terminal for {sessionId}"></div>
+</div>
 
 <style>
-  .term-host {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    padding: 6px calc(var(--safe-right) + 6px) 6px calc(var(--safe-left) + 6px);
-    background: #0b0f14;
-  }
-  :global(.xterm) {
-    height: 100%;
-  }
-  :global(.xterm-viewport) {
-    -webkit-overflow-scrolling: touch;
-  }
+  .terminal-wrap{position:relative;flex:1;min-height:0;min-width:0;overflow:hidden;background:#0b1019}
+  .terminal-host{position:absolute;inset:0;padding:14px 14px 8px;width:100%;height:100%;overflow:hidden}
+  .loading{position:absolute;inset:0;z-index:1;background:#0b1019;display:grid;place-items:center;color:#93aeb6;font-size:12px}
+  .readonly{opacity:.84}
+  .error{color:#f5b0b4;padding:20px;text-align:center}
+  :global(.xterm){height:100%;outline:none}
+  :global(.xterm-viewport){-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#344b53 transparent}
+  :global(.xterm-screen){margin:0}
+  @media(max-width:760px){.terminal-host{padding:13px 10px 7px}}
 </style>

@@ -6,7 +6,7 @@
 
 <img src="docs/media/hero.png" alt="Pocket-T — your Mac terminal mirrored live to your phone: a Claude Code session on the desktop, the same session as bubbles on the phone with an approve/deny card and a live cost pill" width="860">
 
-Pocket-T mirrors every terminal you open on your Mac into a phone, laptop or any browser, live. Tail a production log, `ssh` into a Pi or a router, run a build, edit in `vim`, drive a trading bot, watch `htop` on the office box — or control Claude Code / Codex / OpenClaw / NanoClaw / Hermes / Aider from anywhere. Bidirectional input straight into the real PTY. Live USD cost pill + agent-aware bubble view when a CLI agent is detected. Free Cloudflare tunnel by default — no SSH, no VPN, no Tailscale, no port forwarding.
+Pocket-T puts you inside a **real, persistent Mac terminal session** from your phone or any browser. Open a native PTY shell headlessly, join an already-running `tmux` session, or mirror a Terminal.app window configured to use `pt`. Run `vim`, builds, SSH, network tools or any CLI with real keyboard input and scrollback. The mobile UI is **terminal-first**, and it works without AI subscriptions or tokens. Optional agents such as Codex and Claude remain regular programs inside the shell. Cloudflare Tunnel provides an outbound-only remote link by default.
 
 Sessions are **persistent**: each shell runs inside a private `tmux` server, so the shell — and any agent running in it — survives quitting Terminal.app, logging out, or a daemon restart, and re-attaches with full scrollback. A re-attaching browser is painted the last screen plus recent bubbles and cost, not a blank. When an agent hits an approval and no browser is watching, the daemon can fire a **Web Push** to the installable phone client.
 
@@ -44,6 +44,10 @@ Sessions are **persistent**: each shell runs inside a private `tmux` server, so 
 - [Credits](#credits)
 - [License](#license)
 
+## Terminal-first development branch
+
+The new phone experience, native headless shell creation and existing-tmux joining are under review in [terminal-first PR #6](https://github.com/Josh-Gi3r/POCKET-T/pull/6) (stacked on the exploratory [workspace PR #5](https://github.com/Josh-Gi3r/POCKET-T/pull/5)). They are **not yet released on `main`**. See the [real-device acceptance runbook](docs/terminal-first-smoke-test.md) and [web client implementation notes](packages/web-client/README.md). Passing CI does not replace a manual Mac/iPhone test.
+
 ## Why Pocket-T?
 
 Your terminal is where the real work happens — running a build, tailing a production log, SSH'd into a router or a Pi, restarting a dev server, watching `htop` on the box at the office, driving a Telegram or trading bot, debugging in `vim`, **or** running Claude Code / Codex / OpenClaw / NanoClaw / Hermes / Aider / Gemini CLI. The moment you step away from your Mac you lose all of it. Existing options fall short:
@@ -54,7 +58,7 @@ Your terminal is where the real work happens — running a build, tailing a prod
 - **VS Code Tunnels** is great for editing, not for driving long-running shells, network gear, or agents.
 - **screen / tmux + ssh** assumes you already have inbound access to the Mac — no good from a phone on LTE behind CGNAT.
 
-Pocket-T turns every terminal you open on the Mac into a session controllable from any browser, on any network. Bidirectional input straight into the real PTY. Works for **any** CLI — `htop`, `vim`, `tail -f`, `ssh router-edge`, `npm run dev`, `python bot.py`, a Bash script that's been running for two days. For AI-agent CLIs you also get bubble-rendered conversations, a live USD cost pill and approval cards for destructive tools — but those are a layer on top, not the foundation. The terminal is the foundation.
+Pocket-T exposes the live PTY of **managed shells** to your browser and can join a pre-existing default `tmux` session as another terminal client. Arbitrary Terminal.app/iTerm2 windows that were not started under `pt` are discoverable only where macOS allows it; their raw PTYs cannot universally be adopted after the fact. Run any CLI and use normal text, special keys and interactive TUIs. Agent-aware conversation views and cost tracking are optional layers; **direct terminal access never depends on an AI provider.**
 
 ## Install via your AI agent
 
@@ -84,11 +88,11 @@ cd POCKET-T && bash install.sh
 
 The installer verifies prerequisites, builds the workspace, builds + ad-hoc codesigns the native `pt` shell proxy and copies it to `/usr/local/bin/pt`, best-effort installs `cloudflared` via Homebrew, and installs the `pocket` launcher to `/usr/local/bin/pocket`.
 
-### 2. Point Terminal.app at `pt`
+### 2. (Optional) Mirror new Terminal.app windows automatically
 
-Terminal.app → Settings → Profiles → Shell → **Run command:** `/usr/local/bin/pt`. Tick **Run inside shell**. iTerm2, Ghostty and WezTerm have an equivalent setting.
+For automatic capture of future Mac terminal windows, open Terminal.app → Settings → Profiles → Shell → **Run command:** `/usr/local/bin/pt` and tick **Run inside shell**. iTerm2, Ghostty and WezTerm have equivalent configuration.
 
-Every new window on that profile is automatically a Pocket-T session — no wrapper command, no per-window flag.
+**You can skip this setting.** From Pocket-T's mobile UI, **New terminal** starts a real PTY headlessly without opening any Mac terminal window. **Scan → Join** can also attach to a pre-existing `tmux` session. This does not retroactively take over arbitrary existing Terminal.app windows.
 
 ### 3. Start the daemon
 
@@ -120,7 +124,7 @@ Anything not matching a `pocket` subcommand is passed through to the underlying 
 - ✋ **Tool-call approval from the phone** — Claude PreToolUse hooks surface as approve / deny cards. When no browser is watching, the daemon can fire a Web Push (below). Approvals fail closed when the daemon is exposed.
 - ♻️ **Persistent sessions** — Each shell runs inside a private `tmux` server, so the shell + any running agent survive quitting Terminal.app, logging out, or the shim dying. Re-attach and the same shell comes back with scrollback. Falls back to a direct shell when `tmux` isn't installed.
 - 🔔 **Push notifications** — With a VAPID key pair configured, an approval raised while no browser is live sends a Web Push to registered devices; the PWA service worker renders it and deep-links to the session.
-- 📱 **Installable PWA client** — The default phone UI (`packages/web-client`) is a bubble-first, installable Svelte PWA that reconnects across backgrounding and network changes. A self-contained single-file client is the fallback.
+- 📱 **Terminal-first mobile PWA** — The default phone UI (`packages/web-client`) is a responsive Svelte application with a live xterm, session picker, direct keys, editable command composer, mobile shortcut row and font sizing. AI bubbles are an optional secondary view; a self-contained single-file client remains the fallback.
 - 🎬 **Session recording** — Opt in with `POCKET_T_RECORD=1` and every session writes a standard `asciinema v2` cast file. Replay with `pocket replay <id>` or any asciinema player.
 - 🎨 **7 built-in skins** — Midnight (default), Halloween, Nokia, Christmas, Cyberpunk, Forest, Paper. New skins are pure CSS-variable blocks — ship one in a PR.
 - 🔄 **Detach & resume** — On a daemon restart the catalog rehydrates from `tmux` + a persisted state file; a transient `pt` restart is held through a 60-second grace window. Reconnect with the same session ID and history continues.

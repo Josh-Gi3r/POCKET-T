@@ -36,6 +36,17 @@ jobs:
       - name: Build
         run: pnpm -r build
 
+      # Preview assets for deterministic visual QA on the draft PR. GitHub
+      # Actions builds the exact committed Svelte/Vite code, so screenshots
+      # are not hand-drawn approximations of the interface.
+      - name: Upload web preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: pocket-t-web-preview
+          path: packages/web-client/dist/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Lint
         run: pnpm lint
 

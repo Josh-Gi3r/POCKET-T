@@ -30,11 +30,20 @@ describe('existing-terminal inventory', () => {
   });
 
   it('parses existing unmanaged tmux panes and safely ignores invalid rows', () => {
-    const raw = '%0\twork\tserver\t/Users/me/app\n%1\tdev\tvim\t/tmp\nnot-a-pane\tx\ty\tz\n';
+    const raw = '%0\twork\tserver\t/Users/me/app\t$12\n%1\tdev\tvim\t/tmp\t$13\nnot-a-pane\tx\ty\tz\n';
     const panes = parseExistingTmux(raw);
     expect(panes.map((s) => s.sessionId)).toEqual(['existing:tmux:%0', 'existing:tmux:%1']);
     expect(panes[0]?.cwd).toBe('/Users/me/app');
-    expect(panes[1]?.capabilities).toEqual(['discover']);
+    expect(panes[0]?.tmuxSession).toBe('work');
+    expect(panes[0]?.tmuxTarget).toBe('$12');
+    expect(panes[1]?.tmuxTarget).toBe('$13');
+    expect(panes[1]?.tmuxSession).toBe('dev');
+    expect(panes[1]?.capabilities).toEqual(['discover', 'join']);
+  });
+
+  it('never labels malformed tmux targets joinable', () => {
+    const raw = '%3\tbad\\nname\twindow\t/tmp\n%4\t\tno-session\t/tmp\n';
+    expect(parseExistingTmux(raw)).toEqual([]);
   });
 
   it('handles missing or malformed app metadata without raising', () => {

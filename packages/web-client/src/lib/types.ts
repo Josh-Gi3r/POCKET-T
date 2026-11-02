@@ -54,6 +54,8 @@ export type EventEnvelope =
   | { kind: 'sessionRemoved'; sessionId: string }
   | { kind: 'bubble'; sessionId: string; event: BubbleEvent }
   | { kind: 'existingTerminals'; sessions: ExistingTerminal[] }
+  | { kind: 'joinExistingTmuxResult'; requestId: string; ok: boolean; joinedSessionId?: string; message?: string }
+  | { kind: 'spawnSessionResult'; requestId: string; ok: boolean; sessionId?: string; message?: string }
   | { kind: 'fileRoots'; roots: FileRoot[] }
   | { kind: 'fileListing'; requestId: string; listing: DirectoryListing }
   | { kind: 'fileBrowseError'; requestId: string; message: string }
@@ -67,7 +69,8 @@ export interface ExistingTerminal {
   cwd: string;
   tty?: string;
   pane?: string;
-  capabilities: Array<'discover'>; // inventory only in first slice
+  tmuxSession?: string;
+  capabilities: Array<'discover' | 'join'>; // join requires a verified existing tmux session
 }
 
 export interface FileRoot {

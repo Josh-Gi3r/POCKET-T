@@ -10,7 +10,6 @@ import {
   encodeText,
   decodeText,
 } from './protocol';
-import { OutboundQueue } from './outbound';
 import type { ConnStatus } from './types';
 
 const FULL_FLAGS = SubscribeFlags.Stdout | SubscribeFlags.Snapshots | SubscribeFlags.Events;
@@ -48,9 +47,9 @@ export class PTConnection {
   private currentSession: string | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private handlers: ConnectionHandlers;
-  // Buffers user input produced while the socket is reconnecting; flushed
-  // in order on the next open so nothing typed mid-reconnect is lost.
-  private outbound = new OutboundQueue<Uint8Array>();
+  // Remote input is NEVER automatically queued through disconnects:
+  // reconnecting after an hour must not execute an old command unexpectedly.
+  // The UI keeps the unsent draft and asks the person to submit again.
   // First open vs. a reconnect: a reconnect must clear-then-resubscribe.
   private hasOpened = false;
 
@@ -113,8 +112,7 @@ export class PTConnection {
       this.sendSubscribe(this.currentSession);
     }
     this.startPing();
-    // 3) flush any input the user produced while we were reconnecting.
-    this.outbound.flush((frame) => this.rawSend(frame));
+    // Deliberately no replay of user keystrokes after an outage.
   }
 
   private onMessage(e: MessageEvent): void {
@@ -176,12 +174,11 @@ export class PTConnection {
     );
   }
 
-  /** Send user keystrokes/text to the attached session's PTY. Returns true
-   *  once the input is accepted — sent immediately or buffered for the next
-   *  open — and false only when there is no attached session to send to. */
+  /** Remote input is accepted only while the socket is currently live.
+   * A false result tells the UI to preserve the typed draft for retry. */
   sendInput(text: string): boolean {
-    if (!this.currentSession) return false;
-    this.sendUserFrame(
+    if (!this.currentSession || !this.isOpen()) return false;
+    this.rawSend(
       encodeFrame({
         type: MsgType.INPUT_TEXT,
         sessionId: this.currentSession,
@@ -193,8 +190,8 @@ export class PTConnection {
 
   /** Raw key bytes (e.g. escape sequences from the touch keyboard row). */
   sendKeyBytes(bytes: Uint8Array): boolean {
-    if (!this.currentSession) return false;
-    this.sendUserFrame(
+    if (!this.currentSession || !this.isOpen()) return false;
+    this.rawSend(
       encodeFrame({ type: MsgType.INPUT_KEY, sessionId: this.currentSession, payload: bytes }),
     );
     return true;
@@ -226,9 +223,9 @@ export class PTConnection {
     this.sendJsonEvent(sessionId, { kind: 'approvalDecision', approvalId, decision });
   }
 
-  spawnSession(cwd?: string): void {
-    // sessionId is irrelevant for spawn; server keys off the payload.
-    this.sendJsonEvent('', { kind: 'spawnSession', ...(cwd ? { cwd } : {}) });
+  spawnSession(cwd?: string, requestId?: string): void {
+    // Spawn is asynchronous; a real sessionAdded confirms readiness.
+    this.sendJsonEvent('', { kind: 'spawnSession', ...(cwd ? { cwd } : {}), ...(requestId ? { requestId } : {}) });
   }
 
   killSession(sessionId: string): void {
@@ -250,13 +247,6 @@ export class PTConnection {
    *  next open, so dropping them while closed is correct. */
   private send(frame: Uint8Array): void {
     if (this.isOpen()) this.rawSend(frame);
-  }
-
-  /** User input cannot be regenerated, so buffer it while closed and let
-   *  onOpen flush it in order. */
-  private sendUserFrame(frame: Uint8Array): void {
-    if (this.isOpen()) this.rawSend(frame);
-    else this.outbound.enqueue(frame);
   }
 
   private startPing(): void {
