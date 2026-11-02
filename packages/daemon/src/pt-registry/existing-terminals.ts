@@ -83,10 +83,10 @@ export async function discoverTmux(): Promise<ExistingTerminal[]> {
  * trust an arbitrary browser-supplied session name as a shell command.
  * Only the DEFAULT tmux socket is considered (managed pocket-t uses -L).
  */
-export async function resolveExistingTmuxTarget(sessionId: unknown): Promise<string | null> {
+export async function resolveExistingTmuxTarget(sessionId: unknown): Promise<ExistingTerminal | null> {
   if (typeof sessionId !== 'string' || !/^existing:tmux:%\d{1,15}$/.test(sessionId)) return null;
   const sessions = await discoverTmux();
-  return sessions.find((session) => session.sessionId === sessionId)?.tmuxSession ?? null;
+  return sessions.find((session) => session.sessionId === sessionId && !!session.tmuxSession) ?? null;
 }
 
 export async function discoverExistingTerminals(): Promise<ExistingTerminal[]> {
