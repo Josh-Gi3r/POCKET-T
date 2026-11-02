@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- CommonJS fixture runner intentionally uses require. */
 /**
  * Reproducible browser screenshots of the ACTUAL built Pocket-T Svelte app.
  *
@@ -20,7 +21,6 @@ const { WebSocketServer } = require(process.env.WS_MODULE || '/tmp/pt-visual/nod
 const root = path.resolve(__dirname, '../dist');
 const output = path.resolve(process.env.POCKET_T_SHOT_DIR || 'ui-screenshots');
 fs.mkdirSync(output, { recursive: true });
-const utf8 = new TextEncoder();
 
 function eventFrame(type, sessionId, payload) {
   const sid = Buffer.from(sessionId || '', 'utf8');
