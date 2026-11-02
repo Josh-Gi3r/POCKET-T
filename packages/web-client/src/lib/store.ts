@@ -15,6 +15,12 @@ export const joinState = writable<{
   joinedSessionId: string | null;
   message: string;
 }>({ status: 'idle', requestId: '', joinedSessionId: null, message: '' });
+export const spawnState = writable<{
+  status: 'idle' | 'starting' | 'ready' | 'error';
+  requestId: string;
+  sessionId: string | null;
+  message: string;
+}>({ status: 'idle', requestId: '', sessionId: null, message: '' });
 
 export const fileRoots = writable<FileRoot[]>([]);
 export const fileState = writable<FileState>({ requestId: '', loading: false, listing: null, error: null });
@@ -65,6 +71,9 @@ export const conn = new PTConnection({
       joinState.update((state) => state.status === 'joining'
         ? { ...state, status: 'error', message: 'Connection lost before the join completed' }
         : state);
+      spawnState.update((state) => state.status === 'starting'
+        ? { ...state, status: 'error', message: 'Connection lost before the new shell registered' }
+        : state);
     }
   },
   onStdout: (sessionId, bytes) => {
@@ -95,6 +104,12 @@ function handleEvent(frameSessionId: string, env: EventEnvelope): void {
         joinState.set({ ...joining, status: 'ready', message: 'Joined existing tmux session' });
         break;
       }
+      const starting = get(spawnState);
+      if (starting.status === 'starting' && starting.sessionId === env.session.sessionId) {
+        attach(env.session.sessionId);
+        spawnState.set({ ...starting, status: 'ready', message: 'Terminal ready' });
+        break;
+      }
       // Prefer restoring the previous selection, but don't leave the UI
       // permanently blank when that old session no longer exists.
       const saved = readSaved();
@@ -120,6 +135,20 @@ function handleEvent(frameSessionId: string, env: EventEnvelope): void {
     }
     case 'existingTerminals': {
       existingTerminals.set(env.sessions);
+      break;
+    }
+    case 'spawnSessionResult': {
+      const pending = get(spawnState);
+      if (pending.status !== 'starting' || pending.requestId !== env.requestId) break;
+      if (!env.ok || !env.sessionId) {
+        spawnState.set({ ...pending, status: 'error', message: env.message ?? 'Unable to open shell' });
+        break;
+      }
+      const next = { ...pending, sessionId: env.sessionId };
+      if (sessionMap.has(env.sessionId)) {
+        attach(env.sessionId);
+        spawnState.set({ ...next, status: 'ready', message: 'Terminal ready' });
+      } else spawnState.set(next);
       break;
     }
     case 'joinExistingTmuxResult': {
@@ -247,7 +276,15 @@ export function joinExistingTmux(existingSessionId: string): void {
 }
 
 export function spawnSession(cwd?: string): void {
-  conn.spawnSession(cwd);
+  if (get(status) !== 'open' || get(spawnState).status === 'starting') return;
+  const requestId = nextRequestId();
+  spawnState.set({ status: 'starting', requestId, sessionId: null, message: '' });
+  conn.spawnSession(cwd, requestId);
+  setTimeout(() => {
+    spawnState.update((state) => state.requestId === requestId && state.status === 'starting'
+      ? { ...state, status: 'error', message: 'Native terminal did not register; check the Mac helper and daemon.' }
+      : state);
+  }, 15_000);
 }
 
 export function killSession(sessionId: string): void {
