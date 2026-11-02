@@ -127,7 +127,12 @@ wss.on('connection',(ws)=>{
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const port = server.address().port;
   const url = 'http://127.0.0.1:'+port+'/?t=visual-preview';
-  const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+  // GitHub ubuntu-latest includes Google Chrome. Using its pre-installed
+  // browser avoids Playwright's OS-version-specific browser installer.
+  const bins=['/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'];
+  const executablePath=bins.find(candidate=>fs.existsSync(candidate));
+  if(!executablePath)throw new Error('No system Chrome/Chromium available on runner');
+  const browser=await chromium.launch({executablePath,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
   const failures=[];
   async function makePage(name, viewport, run) {
     const context=await browser.newContext({viewport,deviceScaleFactor:2,isMobile:viewport.width<500,hasTouch:viewport.width<500,colorScheme:'dark'});
