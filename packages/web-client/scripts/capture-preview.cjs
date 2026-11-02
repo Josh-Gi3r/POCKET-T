@@ -61,7 +61,7 @@ const screenshotText = [
  '\x1b[38;5;115mPOCKET-T · PREVIEW SESSION / SAMPLE OUTPUT\x1b[0m',
  '',
  '\x1b[38;5;250mdemo@macbook\x1b[0m \x1b[38;5;114m~/Projects/pocket-t\x1b[0m % git status -sb',
- '\x1b[38;5;111m## feat/terminal-first-join-mobile\x1b[0m',
+ '\x1b[38;5;111m## design/aurora-workspace-2028\x1b[0m',
  '',
  '\x1b[38;5;250mdemo@macbook\x1b[0m \x1b[38;5;114m~/Projects/pocket-t\x1b[0m % pnpm test',
  '',
@@ -125,55 +125,79 @@ wss.on('connection',(ws)=>{
 
 (async()=>{
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  const port = server.address().port;
-  const url = 'http://127.0.0.1:'+port+'/?t=visual-preview';
-  // GitHub ubuntu-latest includes Google Chrome. Using its pre-installed
-  // browser avoids Playwright's OS-version-specific browser installer.
+  const port=server.address().port;
+  const url='http://127.0.0.1:'+port+'/?t=visual-preview';
   const bins=['/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'];
   const executablePath=bins.find(candidate=>fs.existsSync(candidate));
-  if(!executablePath)throw new Error('No system Chrome/Chromium available on runner');
+  if(!executablePath)throw new Error('No system Chrome/Chromium installed on CI runner');
   const browser=await chromium.launch({executablePath,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
   const failures=[];
-  async function makePage(name, viewport, run) {
-    const context=await browser.newContext({viewport,deviceScaleFactor:2,isMobile:viewport.width<500,hasTouch:viewport.width<500,colorScheme:'dark'});
-    const page=await context.newPage();
-    page.on('pageerror',err=>failures.push(name+': '+err.message));
-    await page.goto(url,{waitUntil:'networkidle',timeout:25000});
-    await page.getByRole('button',{name:'Choose terminal session'}).count().catch(()=>{});
-    await page.waitForTimeout(1250);
-    await run(page);
-    await page.screenshot({path:path.join(output,name+'.png'),animations:'disabled'});
-    await context.close();
-  }
-  try {
-    await makePage('01-iphone-terminal', {width:393,height:852}, async page=>{
-      await page.locator('.terminal-host').waitFor({timeout:12000});
-      await page.waitForTimeout(600);
+
+  async function makePage(name,viewport,action){
+    const mobile=viewport.width<500;
+    const context=await browser.newContext({
+      viewport,deviceScaleFactor:2,isMobile:mobile,hasTouch:mobile,
+      colorScheme:'light',reducedMotion:'reduce',
     });
-    await makePage('02-iphone-session-picker',{width:393,height:852},async page=>{
+    const page=await context.newPage();
+    page.on('pageerror',error=>failures.push(name+': '+error.message));
+    await page.goto(url,{waitUntil:'domcontentloaded',timeout:25000});
+    await page.waitForTimeout(1000);
+    if(action==='session'){
+      await page.getByRole('button',{name:'Continue session'}).click();
+      await page.locator('.terminal-host').waitFor({timeout:12000});
+      await page.waitForTimeout(800);
+    }else if(action==='sessions'){
+      await page.getByRole('button',{name:'Continue session'}).click();
       await page.getByRole('button',{name:'Choose terminal session'}).click();
       await page.getByRole('button',{name:/Scan/}).last().click();
-      await page.waitForTimeout(450);
+      await page.waitForTimeout(500);
+    }else if(action==='files'){
+      if(mobile) await page.getByRole('navigation',{name:'Mobile navigation'}).getByRole('button',{name:'Files'}).click();
+      else await page.getByRole('navigation',{name:'Workspaces'}).getByRole('button',{name:'Files'}).click();
+      await page.waitForTimeout(500);
+    }else if(action==='palette'){
+      await page.getByRole('button',{name:'Open command palette'}).first().click();
+      await page.getByRole('dialog',{name:'Quick commands'}).waitFor({timeout:5000});
+      await page.waitForTimeout(300);
+    }
+
+    // The interface is the exact built app; only WS/machine state is fake.
+    // Clearly mark the screenshot rather than passing fixture data off as real.
+    await page.evaluate(()=>{
+      const tag=document.createElement('div');
+      tag.textContent='INTERFACE PREVIEW  ·  SIMULATED SESSION DATA';
+      Object.assign(tag.style,{
+        position:'fixed',zIndex:'9999',left:'12px',top:'10px',
+        fontFamily:'system-ui,sans-serif',fontSize:'9px',fontWeight:'800',
+        letterSpacing:'1px',color:'#272747',background:'#f5f3ffeb',
+        padding:'6px 9px',border:'1px solid #9b9ae5',
+        borderRadius:'999px',pointerEvents:'none',
+      });
+      document.body.appendChild(tag);
     });
-    await makePage('03-iphone-files',{width:393,height:852},async page=>{
-      await page.getByRole('button',{name:'Open navigation'}).click();
-      await page.getByRole('button',{name:'Files'}).click();
-      await page.waitForTimeout(800);
-    });
-    await makePage('04-desktop-terminal',{width:1440,height:900},async page=>{
-      await page.locator('.terminal-host').waitFor({timeout:12000});
-      await page.waitForTimeout(600);
-    });
+    await page.screenshot({path:path.join(output,name+'.png'),animations:'disabled'});
+    const result={name,title:await page.title(),width:viewport.width,height:viewport.height};
+    console.log('visual-check:',JSON.stringify(result));
+    await context.close();
+  }
+  try{
+    await makePage('01-iphone-overview',{width:393,height:852},null);
+    await makePage('02-iphone-live-session',{width:393,height:852},'session');
+    await makePage('03-iphone-session-picker',{width:393,height:852},'sessions');
+    await makePage('04-iphone-files',{width:393,height:852},'files');
+    await makePage('05-desktop-overview',{width:1440,height:900},null);
+    await makePage('06-desktop-live-session',{width:1440,height:900},'session');
+    await makePage('07-desktop-command-palette',{width:1440,height:900},'palette');
     await fs.promises.writeFile(path.join(output,'README.txt'),
-      'Screenshots of the actual built Pocket-T Svelte UI from the development branch.\n' +
-      'The WebSocket session catalog and terminal bytes are TEST FIXTURES, not a connection to any Mac.\n' +
-      'Captured by headless Chromium with Playwright in GitHub Actions.\n');
-    console.log('Saved screenshots:',fs.readdirSync(output));
-    if(failures.length)console.error('Page errors:',failures.join('\n'));
-    if(failures.length)process.exitCode=1;
-  } finally {
+      'Actual compiled Pocket-T Svelte UI, design/aurora-workspace-2028.\n'+
+      'Terminal sessions and machine events are mock WebSocket test fixtures.\n'+
+      'Screenshots taken by headless Chromium/Playwright in GitHub Actions.\n');
+    if(failures.length){console.error('Browser errors:',failures.join('\n'));process.exitCode=1;}
+    else console.log('Visual QA successful:',fs.readdirSync(output).join(', '));
+  }finally{
     await browser.close();
     await new Promise(resolve=>server.close(resolve));
     wss.close();
   }
-})().catch(err=>{console.error(err);process.exit(1)});
+})().catch(error=>{console.error(error);process.exit(1)});
