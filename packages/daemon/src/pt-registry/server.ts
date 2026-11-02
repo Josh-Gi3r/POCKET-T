@@ -54,7 +54,7 @@ import {
   type PersistedEvent,
 } from './state.js';
 import { loadPushServiceFromEnv, type PushService } from './push.js';
-import { discoverExistingTerminals } from './existing-terminals.js';
+import { discoverExistingTerminals, resolveExistingTmuxTarget } from './existing-terminals.js';
 import { publicFileRoots, handleFileBrowse } from './files.js';
 import { approvedApps, launchApprovedApp } from './apps.js';
 
@@ -1418,6 +1418,65 @@ function handleIncomingFrame(client: BrowserClient, frame: { type: WsV3MessageTy
             })),
           }));
         }
+      } else if (msg.kind === 'joinExistingTmux') {
+        // The browser can request to JOIN a session that was already
+        // running on the Mac before Pocket-T started. Resolve the target
+        // against current tmux inventory; never exec a browser command.
+        const requestId = typeof msg.requestId === 'string'
+          && /^[a-zA-Z0-9_-]{1,40}$/.test(msg.requestId) ? msg.requestId : '';
+        if (!requestId || !client.authed || client.ws.readyState !== WebSocket.OPEN) return;
+        const replyJoin = (payload: Record<string, unknown>) => {
+          if (!client.authed || client.ws.readyState !== WebSocket.OPEN) return;
+          client.ws.send(encodeWsV3Frame({
+            type: WsV3MessageType.EVENT,
+            payload: new TextEncoder().encode(JSON.stringify({
+              kind: 'joinExistingTmuxResult',
+              requestId,
+              ...payload,
+            })),
+          }));
+        };
+        if (process.platform !== 'darwin') {
+          replyJoin({ ok: false, message: 'Joining existing tmux is available on macOS only' });
+          return;
+        }
+        void resolveExistingTmuxTarget(msg.sessionId).then((target) => {
+          if (!target || !target.tmuxSession) {
+            replyJoin({ ok: false, message: 'Existing tmux session is no longer available' });
+            return;
+          }
+          const ptBin = process.env.POCKET_T_PT_BIN ?? '/usr/local/bin/pt';
+          if (!fs.existsSync(ptBin)) {
+            replyJoin({ ok: false, message: 'Pocket-T native pt helper is not installed on this Mac' });
+            return;
+          }
+          const joinedSessionId = 'join-' + crypto.randomUUID();
+          // A headless pt owns a real PTY whose child is a *tmux client*
+          // attached to the already-running default tmux server. The Mac
+          // user's original shell/process remain owned by tmux, not by us.
+          // Remote input is fed directly to that same live tmux session.
+          const child = spawnChild(ptBin, [], {
+            cwd: target.cwd && fs.existsSync(target.cwd) ? target.cwd : os.homedir(),
+            env: {
+              ...process.env,
+              POCKET_T_HEADLESS: '1',
+              POCKET_T_SESSION_ID: joinedSessionId,
+              POCKET_T_TMUX_ATTACH_TARGET: target.tmuxSession,
+            },
+            stdio: 'ignore',
+            detached: true,
+          });
+          child.once('spawn', () => {
+            child.unref();
+            // Spawn != confirmed attachment. UI waits for REGISTER.
+            replyJoin({ ok: true, joinedSessionId });
+          });
+          child.once('error', () => {
+            replyJoin({ ok: false, message: 'Unable to launch the tmux attachment helper' });
+          });
+        }).catch(() => {
+          replyJoin({ ok: false, message: 'Unable to inspect the existing tmux session' });
+        });
       } else if (msg.kind === 'discoverExistingTerminals') {
         // Opt-in, read-only native discovery. May trigger macOS Automation
         // permissions. Reply ONLY to the authenticated requester.
