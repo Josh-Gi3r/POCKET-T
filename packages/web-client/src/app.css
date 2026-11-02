@@ -55,3 +55,100 @@ code,
 .mono {
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 }
+
+
+/* ── Pocket-T Control Space / 2028 design foundation ───────────────────────
+ * Real PTY bytes remain untouched. These are presentation-only overrides:
+ * no faux window chrome, no terminal-green app shell, no AI dependency.
+ */
+.pt-shell {
+  --pt-radius-sm: 12px;
+  --pt-radius-md: 18px;
+  --pt-radius-lg: 26px;
+  --pt-motion-quick: 160ms;
+  --pt-motion-standard: 260ms;
+  --pt-motion-expand: 380ms;
+  --pt-ease-spring: cubic-bezier(.16,1,.3,1);
+  color-scheme: light;
+}
+.pt-shell[data-theme="dark"] { color-scheme: dark; }
+.pt-shell button:active:not(:disabled){filter:brightness(.98)}
+.pt-shell :is(input,textarea,button,select):focus-visible{outline:2px solid var(--pt-accent);outline-offset:3px}
+.pt-shell .term-page{background:var(--pt-bg);color:var(--pt-text)}
+.pt-shell .session-column{background:var(--pt-glass);border-color:var(--pt-line);color:var(--pt-text)}
+.pt-shell .column-title h2{font-size:18px;color:var(--pt-text);font-weight:790}
+.pt-shell .eyebrow,.pt-shell .group-label,.pt-shell .quick-caption,.pt-shell .crumb{color:var(--pt-muted)}
+.pt-shell .search-container{background:var(--pt-subtle);border-color:var(--pt-line)}
+.pt-shell .search-container input{color:var(--pt-text);font-size:14px}
+.pt-shell .session{border-radius:14px;min-height:60px}
+.pt-shell .session:hover,.pt-shell .session.chosen{border-color:var(--pt-accent-border);background:var(--pt-subtle)}
+.pt-shell .session-info strong{color:var(--pt-text);font-size:12px}
+.pt-shell .session-info small,.pt-shell .external-info small{color:var(--pt-secondary)}
+.pt-shell .sidebar-footer{background:var(--pt-subtle);border-color:var(--pt-line)}
+.pt-shell .sidebar-footer strong{color:var(--pt-text)}.pt-shell .sidebar-footer small{color:var(--pt-secondary)}
+.pt-shell .discover-heading button,.pt-shell .secondary-discover{color:var(--pt-accent)}
+.pt-shell .terminal-stage{background:var(--pt-bg)}
+.pt-shell .stage-header{background:var(--pt-glass);min-height:81px;padding:14px 24px;border-color:var(--pt-line);color:var(--pt-text)}
+.pt-shell .stage-title h1{font-size:22px;font-weight:800;color:var(--pt-text)}
+.pt-shell .stage-title p{color:var(--pt-muted)}
+.pt-shell .stage-actions .icon-action{background:var(--pt-subtle);border-color:var(--pt-line);color:var(--pt-secondary);border-radius:12px;min-height:42px;min-width:42px}
+.pt-shell .stage-actions .icon-action:hover{border-color:var(--pt-accent-border);color:var(--pt-accent);background:var(--pt-glass)}
+.pt-shell .mobile-title{font-weight:800;color:var(--pt-text)}
+.pt-shell .session-lines,.pt-shell .dropdown-indicator{color:var(--pt-accent)}
+.pt-shell .status-connection{color:var(--pt-secondary)}
+.pt-shell .terminal-tabs{background:var(--pt-glass);border-color:var(--pt-line);height:45px}
+.pt-shell .terminal-tabs button{color:var(--pt-secondary);font-weight:770}
+.pt-shell .terminal-tabs button.tab-active{color:var(--pt-accent);border-color:var(--pt-accent)}
+.pt-shell .shell-capability{color:var(--pt-muted)}
+.pt-shell .console{margin:13px 17px 0;border-radius:21px 21px 0 0;border:1px solid #333a56;box-shadow:0 14px 50px #222d4e22;background:#0b1019}
+.pt-shell .terminal-dots{display:none}
+.pt-shell .connection-overlay{inset:0}
+.pt-shell .control-dock{background:var(--pt-glass);border-color:var(--pt-line);color:var(--pt-text);backdrop-filter:blur(24px)}
+.pt-shell .quick-control-header{padding:7px 17px 1px}
+.pt-shell .quick-actions button{color:var(--pt-secondary);font-size:11px;min-height:42px;border-radius:11px}
+.pt-shell .quick-actions button:hover{background:var(--pt-subtle);color:var(--pt-accent)}
+.pt-shell .quick-actions button.mode-active{background:var(--pt-subtle);color:var(--pt-accent)}
+.pt-shell .keybar{background:transparent;border-color:var(--pt-line);padding-block:6px}
+.pt-shell .keybar button{background:var(--pt-subtle);border-color:var(--pt-line);color:var(--pt-text);min-width:44px;height:44px;font-size:12px;border-radius:12px}
+.pt-shell .keybar button:active:not(:disabled){background:var(--pt-accent);color:#fff}
+.pt-shell .keybar button.emphasized{background:var(--pt-subtle);border-color:var(--pt-accent-border);color:var(--pt-accent)}
+.pt-shell .compose-row{background:var(--pt-glass);border-color:var(--pt-accent-border);margin:7px 15px 0;border-radius:15px;padding:8px}
+.pt-shell .compose-row textarea{font-size:16px;color:var(--pt-text);min-height:30px}
+.pt-shell .compose-row textarea::placeholder{color:var(--pt-muted)}
+.pt-shell .prompt-glyph{color:var(--pt-accent)}
+.pt-shell .send-command{background:var(--pt-accent);color:#fff;border-radius:12px;height:44px;min-width:44px}
+.pt-shell .dock-footer{color:var(--pt-muted);font-size:11px}
+.pt-shell .new-shell,.pt-shell .new-primary{background:var(--pt-accent);color:#fff;border:0}
+.pt-shell .mobile-sheet{background:var(--pt-popover);color:var(--pt-text);border-color:var(--pt-line)}
+.pt-shell .sheet-session,.pt-shell .sheet-header button{color:var(--pt-text);border-color:var(--pt-line)}
+.pt-shell .sheet-session small{color:var(--pt-muted)}
+.pt-shell .sheet-new{background:var(--pt-subtle);color:var(--pt-accent);border-color:var(--pt-line)}
+.pt-shell .sheet-backdrop{background:#13143296;backdrop-filter:blur(5px)}
+.pt-shell .empty-main{background:radial-gradient(ellipse at center,#7770f51b,transparent 68%)}
+.pt-shell .empty-main p{color:var(--pt-secondary)}
+.pt-shell .empty-main h2{color:var(--pt-text)}
+.pt-shell .empty-emblem{background:linear-gradient(145deg,#736ff7,#515ddb);color:#fff;border:0;border-radius:27px;box-shadow:0 18px 45px #6e61e443}
+.pt-shell .term-page.immersive{background:var(--pt-bg)}
+.pt-shell .term-page.immersive .console{margin:0;border-radius:0;border:0}
+
+/* Pointer-based affordances never replace keyboard and touch feedback. */
+@media(hover:hover) and (pointer:fine){
+  .pt-shell .session,.pt-shell .tool-card,.pt-shell .work-card{transition:transform .28s var(--pt-ease-spring),background .24s,border-color .24s,box-shadow .24s}
+}
+@media(max-width:900px){
+  .pt-shell .stage-header{height:52px;min-height:52px;padding:7px 13px;background:var(--pt-glass)}
+  .pt-shell .mobile-sessions{min-height:44px}
+  .pt-shell .terminal-tabs{height:37px}
+  .pt-shell .console{margin:6px 8px 0;border-radius:16px 16px 0 0}
+  .pt-shell .stage-actions .icon-action{min-width:42px;height:42px;min-height:42px}
+  .pt-shell .quick-control-header{padding:3px 7px 0}
+  .pt-shell .quick-actions button{font-size:11px;min-height:42px;padding:7px 9px}
+  .pt-shell .keybar{padding:6px 8px;gap:6px}
+  .pt-shell .keybar button{height:44px;min-width:44px}
+  .pt-shell .compose-row{margin:4px 9px 0}
+  .pt-shell .dock-footer{padding:6px 12px 10px;font-size:10px}
+  .pt-shell .control-dock{padding-bottom:env(safe-area-inset-bottom,0px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .pt-shell :is(button,.work-card,.tool-card,.sidebar,.glass-device){transition-duration:.01ms!important;animation-duration:.01ms!important}
+}
